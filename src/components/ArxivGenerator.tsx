@@ -39,6 +39,7 @@ const LOADING_STEPS = [
 export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogGenerated }) => {
   const [arxivInput, setArxivInput] = useState("");
   const [rawText, setRawText] = useState("");
+  const [password, setPassword] = useState("");
   const [activeTab, setActiveTab] = useState<"arxiv" | "raw">("arxiv");
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -75,6 +76,11 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
       return;
     }
 
+    if (!password.trim()) {
+      setErrorMsg("Please provide the generation security password.");
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
@@ -83,7 +89,8 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           arxivInput: inputVal,
-          rawText: textVal
+          rawText: textVal,
+          password: password.trim()
         }),
       });
 
@@ -201,6 +208,25 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
                   </p>
                 </div>
               )}
+
+              {/* Password Input Block */}
+              <div className="space-y-2">
+                <label htmlFor="gen-password" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Generation Password
+                </label>
+                <input
+                  id="gen-password"
+                  type="password"
+                  placeholder="Enter security password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-100 outline-none focus:ring-2 focus:ring-black/5 focus:border-black font-mono text-sm transition-all bg-neutral-50/50 focus:bg-white"
+                  required
+                />
+                <p className="text-[11px] text-gray-400">
+                  Password is required for security. (Default is <code className="bg-neutral-100 px-1 rounded text-black font-bold">meridian</code>).
+                </p>
+              </div>
 
               {/* Error Block */}
               {errorMsg && (

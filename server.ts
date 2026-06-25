@@ -62,7 +62,12 @@ const fetchArxivMetadata = async (id: string) => {
 
 // API: Generate Blog Post from arXiv
 app.post("/api/blog/generate", async (req, res) => {
-  const { arxivInput, rawText } = req.body;
+  const { arxivInput, rawText, password } = req.body;
+
+  const expectedPassword = process.env.GENERATION_PASSWORD || "meridian";
+  if (!password || password !== expectedPassword) {
+    return res.status(403).json({ error: "Unauthorized: Incorrect generation password." });
+  }
 
   if (!arxivInput && !rawText) {
     return res.status(400).json({ error: "Missing arXiv input or raw text" });

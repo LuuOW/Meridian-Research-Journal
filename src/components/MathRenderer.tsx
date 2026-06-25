@@ -5,67 +5,164 @@ interface MathRendererProps {
   text: string;
 }
 
+// Robust helper to check if a matched segment inside $...$ is a math expression or currency/plain text
+const isMath = (content: string): boolean => {
+  const trimmed = content.trim();
+  
+  if (!trimmed) return false;
+  if (trimmed.includes("\n")) return false;
+  
+  // Exclude pure currency/number patterns: e.g., 29, 0, 0.02, 10k, 30M, 100k, 0.011, 0.10, ~0.02
+  if (/^~?\d+(?:\.\d+)?\s*[kKmMbB]?$/.test(trimmed)) {
+    return false;
+  }
+  
+  // Reject long strings (probably separate unrelated dollar symbols in same paragraph)
+  if (trimmed.length > 80) return false;
+  
+  // Reject common words that are definitely not math
+  if (/\b(until|cross|requests|million|tokens|per|day|month|year|dollars?|cents?|off|free)\b/i.test(trimmed)) {
+    return false;
+  }
+  
+  // Check if it has math-like characters or LaTeX backslash, or is a single short variable like x, p, g, T, etc.
+  const hasLaTexCommand = trimmed.includes("\\") || trimmed.includes("_") || trimmed.includes("^") || trimmed.includes("{") || trimmed.includes("}") || trimmed.includes("=") || trimmed.includes("+") || trimmed.includes("-") || trimmed.includes("<") || trimmed.includes(">") || trimmed.includes("*") || trimmed.includes("/") || trimmed.includes("(") || trimmed.includes(")") || trimmed.includes("[") || trimmed.includes("]") || trimmed.includes("|") || trimmed.includes(",") || trimmed.includes(";");
+  
+  // If it's a single letter (e.g. $k$, $p$, $g$, $T$, $x$, $i$, $j$, $s$), it's math
+  if (/^[a-zA-Z]$/.test(trimmed)) {
+    return true;
+  }
+  
+  // If it doesn't have any letters but is a math expression like 2\times 2 or 1 - s
+  if (hasLaTexCommand) {
+    return true;
+  }
+  
+  // If it has multiple spaces without math-like characters, it's probably not math
+  const spaces = (trimmed.match(/\s+/g) || []).length;
+  if (spaces > 2) {
+    return false;
+  }
+  
+  return true;
+};
+
 export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
   if (!text) return null;
 
-  // Render inline and block equations
-  // Split by $$ first for block math, then by $ for inline math
-  const renderLine = (line: string): React.ReactNode[] => {
-    const blocks = line.split("$$");
-    return blocks.map((block, idx) => {
-      // Every odd index is a block formula
-      if (idx % 2 !== 0) {
+  // Pre-extract all multi-line and single-line block math (delimited by $$ ... $$)
+  const blockMaths: { id: string; html: string }[] = [];
+  let preprocessedText = "";
+  let lastBlockIndex = 0;
+  const blockRegex = /\$\$([\s\S]+?)\$\$/g;
+  let blockMatch;
+  let blockCount = 0;
+
+  while ((blockMatch = blockRegex.exec(text)) !== null) {
+    const content = blockMatch[1];
+    let renderedHtml = "";
+    try {
+      renderedHtml = katex.renderToString(content.trim(), {
+        displayMode: true,
+        throwOnError: false,
+      });
+    } catch (err) {
+      console.error("KaTeX block error:", err);
+      renderedHtml = `<pre class="text-red-500 text-center my-4">$$\n${content}\n$$</pre>`;
+    }
+    
+    const id = `___BLOCK_MATH_PLACEHOLDER_${blockCount}___`;
+    blockMaths.push({ id, html: renderedHtml });
+    
+    preprocessedText += text.substring(lastBlockIndex, blockMatch.index) + id;
+    lastBlockIndex = blockRegex.lastIndex;
+    blockCount++;
+  }
+  preprocessedText += text.substring(lastBlockIndex);
+
+  const renderInlineMathAndText = (plainText: string): React.ReactNode[] => {
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    const regex = /\$([^\$\n]+?)\$/g;
+    let match;
+    
+    while ((match = regex.exec(plainText)) !== null) {
+      const matchIndex = match.index;
+      const fullMatch = match[0];
+      const content = match[1];
+      
+      if (matchIndex > lastIndex) {
+        parts.push(plainText.substring(lastIndex, matchIndex));
+      }
+      
+      if (isMath(content)) {
         try {
-          const html = katex.renderToString(block.trim(), {
-            displayMode: true,
+          const html = katex.renderToString(content.trim(), {
+            displayMode: false,
             throwOnError: false,
           });
-          return (
-            <div
-              key={`block-${idx}`}
-              className="my-6 overflow-x-auto py-2 flex justify-center text-slate-800"
+          parts.push(
+            <span
+              key={`inline-${matchIndex}`}
+              className="inline-block px-1 font-mono text-slate-900"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           );
         } catch (err) {
-          console.error("KaTeX block error:", err);
-          return <pre key={`block-err-${idx}`} className="text-red-500 text-center my-4">$$\n{block}\n$$</pre>;
+          console.error("KaTeX inline error:", err);
+          parts.push(<code key={`inline-err-${matchIndex}`} className="text-red-500">${content}$</code>);
         }
+      } else {
+        parts.push(fullMatch);
       }
+      
+      lastIndex = regex.lastIndex;
+    }
+    
+    if (lastIndex < plainText.length) {
+      parts.push(plainText.substring(lastIndex));
+    }
+    
+    return parts;
+  };
 
-      // Even indices contain standard text which might have inline formulas
-      const inlines = block.split("$");
-      return (
-        <span key={`text-${idx}`}>
-          {inlines.map((segment, sIdx) => {
-            // Every odd index is an inline formula
-            if (sIdx % 2 !== 0) {
-              try {
-                const html = katex.renderToString(segment.trim(), {
-                  displayMode: false,
-                  throwOnError: false,
-                });
-                return (
-                  <span
-                    key={`inline-${sIdx}`}
-                    className="inline-block px-1 font-mono text-slate-900"
-                    dangerouslySetInnerHTML={{ __html: html }}
-                  />
-                );
-              } catch (err) {
-                console.error("KaTeX inline error:", err);
-                return <code key={`inline-err-${sIdx}`} className="text-red-500">${segment}$</code>;
-              }
-            }
-            return <React.Fragment key={`plain-${sIdx}`}>{segment}</React.Fragment>;
-          })}
-        </span>
+  const renderLine = (line: string): React.ReactNode[] => {
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    const placeholderRegex = /___BLOCK_MATH_PLACEHOLDER_(\d+)___/g;
+    let match;
+    
+    while ((match = placeholderRegex.exec(line)) !== null) {
+      const matchIndex = match.index;
+      const placeholderIndex = parseInt(match[1], 10);
+      const mathObj = blockMaths[placeholderIndex];
+      
+      if (matchIndex > lastIndex) {
+        const textBefore = line.substring(lastIndex, matchIndex);
+        parts.push(...renderInlineMathAndText(textBefore));
+      }
+      
+      parts.push(
+        <div
+          key={`block-placeholder-${matchIndex}`}
+          className="my-6 w-full overflow-x-auto py-2 text-slate-800"
+          dangerouslySetInnerHTML={{ __html: mathObj.html }}
+        />
       );
-    });
+      
+      lastIndex = placeholderRegex.lastIndex;
+    }
+    
+    if (lastIndex < line.length) {
+      const textAfter = line.substring(lastIndex);
+      parts.push(...renderInlineMathAndText(textAfter));
+    }
+    
+    return parts;
   };
 
   // Split content by newlines to preserve paragraphs and headings
-  const paragraphs = text.split("\n");
+  const paragraphs = preprocessedText.split("\n");
   
   return (
     <div className="academic-body text-slate-700 leading-relaxed space-y-4">
@@ -125,9 +222,9 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
         
         // Default paragraph
         return (
-          <p key={`p-${pIdx}`} className="mb-4 leading-relaxed">
+          <div key={`p-${pIdx}`} className="mb-4 leading-relaxed">
             {renderLine(p)}
-          </p>
+          </div>
         );
       })}
     </div>

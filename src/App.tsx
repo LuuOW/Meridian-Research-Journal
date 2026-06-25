@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper } from "lucide-react";
+import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download } from "lucide-react";
 
 import { BlogPost } from "./types";
 import { PRELOADED_BLOGS } from "./data";
@@ -294,13 +294,32 @@ export default function App() {
                     </div>
 
                     {/* Right Column: Dynamic Glowing Banner SVG Illustration */}
-                    <div className="lg:col-span-5 flex justify-center items-center">
+                    <div className="lg:col-span-5 flex flex-col items-center gap-4 justify-center">
                       <div className="w-full max-w-[440px] h-auto p-2 bg-white rounded-3xl border border-gray-100 shadow-xl transition-all duration-300 transform hover:scale-[1.01]">
                         <div 
                           className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none"
                           dangerouslySetInnerHTML={{ __html: activeBlog.bannerSvg }}
                         />
                       </div>
+                      
+                      <button
+                        onClick={() => {
+                          if (!activeBlog?.bannerSvg) return;
+                          const blob = new Blob([activeBlog.bannerSvg], { type: "image/svg+xml" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `${activeBlog.slug || "meridian-banner"}.svg`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                        className="flex items-center gap-2 px-5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download Banner Image
+                      </button>
                     </div>
 
                   </div>
@@ -309,8 +328,8 @@ export default function App() {
               </div>
 
               {/* MAIN SCHOLARLY ARTICLE BODY VIEW CONTAINER */}
-              <div className="max-w-4xl mx-auto px-6 sm:px-8 py-12 md:py-16">
-                <article className="prose prose-slate max-w-none md:prose-lg bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/10 p-8 sm:p-12 relative overflow-hidden">
+              <div className="max-w-4xl mx-auto px-2 sm:px-8 py-12 md:py-16">
+                <article className="prose prose-slate max-w-none md:prose-lg bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/10 p-4 sm:p-12 relative overflow-hidden">
                   
                   {/* Abstract quote callout */}
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-black" />
