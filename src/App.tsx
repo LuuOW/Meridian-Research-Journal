@@ -18,29 +18,48 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
-  // Load preloaded articles and any custom user generated articles from LocalStorage
+  // Load preloaded articles and any custom user generated articles from Server & LocalStorage fallback
   useEffect(() => {
-    const saved = localStorage.getItem("meridian_blogs_saved");
-    if (saved) {
+    const loadBlogs = async () => {
       try {
-        const parsed = JSON.parse(saved) as BlogPost[];
-        // Filter out duplicates just in case
-        const customBlogs = parsed.filter(cb => !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
-        setBlogs([...PRELOADED_BLOGS, ...customBlogs]);
+        const response = await fetch("/api/blogs");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.blogs) {
+            const customBlogs = data.blogs.filter((cb: BlogPost) => !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
+            setBlogs([...customBlogs, ...PRELOADED_BLOGS]);
+            localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+            return;
+          }
+        }
       } catch (err) {
-        console.error("Failed to load custom blogs:", err);
+        console.error("Failed to load custom blogs from server, falling back to LocalStorage:", err);
+      }
+
+      // Fallback to local storage if server call fails
+      const saved = localStorage.getItem("meridian_blogs_saved");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as BlogPost[];
+          const customBlogs = parsed.filter(cb => !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
+          setBlogs([...customBlogs, ...PRELOADED_BLOGS]);
+        } catch (err) {
+          console.error("Failed to load custom blogs:", err);
+          setBlogs(PRELOADED_BLOGS);
+        }
+      } else {
         setBlogs(PRELOADED_BLOGS);
       }
-    } else {
-      setBlogs(PRELOADED_BLOGS);
-    }
+    };
+
+    loadBlogs();
   }, []);
 
   const handleBlogGenerated = (newBlog: BlogPost) => {
-    const updatedBlogs = [...blogs, newBlog];
+    const updatedBlogs = [newBlog, ...blogs.filter(b => b.id !== newBlog.id)];
     setBlogs(updatedBlogs);
     
-    // Save generated blogs to LocalStorage
+    // Save generated blogs to LocalStorage as a local backup
     const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
     localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
     
@@ -48,7 +67,7 @@ export default function App() {
     setActiveBlog(newBlog); // Automatically open the new blog
   };
 
-  const handleRemoveBlog = (id: string, e: React.MouseEvent) => {
+  const handleRemoveBlog = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm("Are you sure you want to delete this generated blog post?")) {
       const updatedBlogs = blogs.filter(b => b.id !== id);
@@ -60,6 +79,13 @@ export default function App() {
       }
       if (activeAudioBlog?.id === id) {
         setActiveAudioBlog(null);
+      }
+
+      // Delete from server persistent storage
+      try {
+        await fetch(`/api/blogs/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("Failed to delete blog from server:", err);
       }
     }
   };

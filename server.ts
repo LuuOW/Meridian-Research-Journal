@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
@@ -59,6 +60,93 @@ const fetchArxivMetadata = async (id: string) => {
     return null;
   }
 };
+
+const CUSTOM_BLOGS_FILE = path.join(process.cwd(), "custom_blogs.json");
+
+const readCustomBlogs = (): any[] => {
+  try {
+    if (fs.existsSync(CUSTOM_BLOGS_FILE)) {
+      const data = fs.readFileSync(CUSTOM_BLOGS_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error("Error reading custom_blogs.json:", error);
+  }
+  return [];
+};
+
+const writeCustomBlogs = (blogs: any[]) => {
+  try {
+    fs.writeFileSync(CUSTOM_BLOGS_FILE, JSON.stringify(blogs, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Error writing custom_blogs.json:", error);
+  }
+};
+
+// API: Get all custom blogs
+app.get("/api/blogs", (req, res) => {
+  const blogs = readCustomBlogs();
+  res.json({ blogs });
+});
+
+// API: Delete a custom blog
+app.delete("/api/blogs/:id", (req, res) => {
+  const { id } = req.params;
+  const blogs = readCustomBlogs();
+  const filtered = blogs.filter((b: any) => b.id !== id);
+  writeCustomBlogs(filtered);
+  res.json({ success: true });
+});
+
+// API: Verify GITHUB_TOKEN
+app.get("/api/verify-github-token", async (req, res) => {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    return res.json({
+      valid: false,
+      token_present: false,
+      message: "No GITHUB_TOKEN found in environment variables. Please add it to your secrets panel."
+    });
+  }
+
+  try {
+    // Perform a tiny test call to the GitHub Models API (Azure AI Inference) to verify the token works
+    const testResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: "ping" }],
+        model: "gpt-4o-mini",
+        max_tokens: 1
+      })
+    });
+
+    if (testResponse.ok) {
+      return res.json({
+        valid: true,
+        token_present: true,
+        message: "GITHUB_TOKEN is valid! Verified successfully with GitHub Models (gpt-4o-mini)."
+      });
+    } else {
+      const errText = await testResponse.text();
+      return res.json({
+        valid: false,
+        token_present: true,
+        message: `GitHub Models API rejected the token. Status: ${testResponse.status}`,
+        details: errText
+      });
+    }
+  } catch (err: any) {
+    return res.json({
+      valid: false,
+      token_present: true,
+      message: `Failed to connect to GitHub Models API: ${err.message || err}`
+    });
+  }
+});
 
 // API: Generate Blog Post from arXiv
 app.post("/api/blog/generate", async (req, res) => {
@@ -124,36 +212,102 @@ Source Text/Abstract: ${paperSummary}
 
 The response must be valid JSON according to the schema provided. Make sure the 'content' field contains rich, deeply written Markdown text with multiple sections, technical explanations, and the required LaTeX equations.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING, description: "Highly engaging, academic blog title" },
-            excerpt: { type: Type.STRING, description: "A highly polished, captivating 1-sentence excerpt summarizing the post" },
-            readingTime: { type: Type.STRING, description: "Reading time estimate, e.g. '8 min read'" },
-            arxivLink: { type: Type.STRING, description: "Link to the source Arxiv paper" },
-            bannerSvg: { type: Type.STRING, description: "Complete responsive SVG code string starting with <svg viewBox='0 0 800 400'> and ending with </svg>. Dark space/navy background (#0a1128) with neon-glow geometric accents." },
-            content: { type: Type.STRING, description: "Comprehensive, publication-grade scholarly blog content in Markdown format, containing sections, paragraphs, bullet points, and at least 3 typeset LaTeX formulas." },
-            author: { type: Type.STRING, description: "Author name, default to 'Meridian Research'" },
-            tags: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING },
-              description: "3-5 relevant technical tags, e.g., ['Quantum Computing', 'Physics']"
-            }
-          },
-          required: ["title", "excerpt", "readingTime", "arxivLink", "bannerSvg", "content", "author", "tags"]
-        }
-      }
-    });
+    const modelsToTry = [
+      "gemini-3.5-flash",
+      "gemini-3.1-pro-preview",
+      "gemini-flash-latest",
+      "gemini-3.1-flash-lite"
+    ];
 
-    const resultText = response.text;
+    let response = null;
+    let lastError: any = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`Attempting blog generation with model: ${modelName}`);
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING, description: "Highly engaging, academic blog title" },
+                excerpt: { type: Type.STRING, description: "A highly polished, captivating 1-sentence excerpt summarizing the post" },
+                readingTime: { type: Type.STRING, description: "Reading time estimate, e.g. '8 min read'" },
+                arxivLink: { type: Type.STRING, description: "Link to the source Arxiv paper" },
+                bannerSvg: { type: Type.STRING, description: "Complete responsive SVG code string starting with <svg viewBox='0 0 800 400'> and ending with </svg>. Dark space/navy background (#0a1128) with neon-glow geometric accents." },
+                content: { type: Type.STRING, description: "Comprehensive, publication-grade scholarly blog content in Markdown format, containing sections, paragraphs, bullet points, and at least 3 typeset LaTeX formulas." },
+                author: { type: Type.STRING, description: "Author name, default to 'Meridian Research'" },
+                tags: { 
+                  type: Type.ARRAY, 
+                  items: { type: Type.STRING },
+                  description: "3-5 relevant technical tags, e.g., ['Quantum Computing', 'Physics']"
+                }
+              },
+              required: ["title", "excerpt", "readingTime", "arxivLink", "bannerSvg", "content", "author", "tags"]
+            }
+          }
+        });
+        
+        if (response && response.text) {
+          console.log(`Successfully generated content using model: ${modelName}`);
+          break;
+        }
+      } catch (err: any) {
+        console.warn(`Model ${modelName} failed or was overloaded:`, err.message || err);
+        lastError = err;
+      }
+    }
+
+    let resultText = "";
+    if (response && response.text) {
+      resultText = response.text;
+    } else if (process.env.GITHUB_TOKEN) {
+      console.log("Gemini models failed or overloaded. Attempting fallback via GitHub Models (Azure AI Inference)...");
+      try {
+        const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: "system", content: systemInstruction },
+              { role: "user", content: prompt }
+            ],
+            model: "gpt-4o-mini",
+            response_format: { type: "json_object" }
+          })
+        });
+
+        if (githubResponse.ok) {
+          const data: any = await githubResponse.json();
+          if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+            resultText = data.choices[0].message.content;
+            console.log("Successfully generated content using GitHub Models (gpt-4o-mini)");
+          } else {
+            console.warn("Invalid response structure from GitHub Models:", data);
+            throw new Error("Invalid response structure from GitHub Models");
+          }
+        } else {
+          const errText = await githubResponse.text();
+          console.warn(`GitHub Models API returned status ${githubResponse.status}: ${errText}`);
+          throw new Error(`GitHub Models API error: ${errText}`);
+        }
+      } catch (githubErr: any) {
+        console.error("Failed to query GitHub Models API:", githubErr);
+        throw lastError || githubErr || new Error("All fallback models are currently experiencing high demand. Please try again shortly.");
+      }
+    } else {
+      throw lastError || new Error("All fallback models are currently experiencing high demand. Please provide a GITHUB_TOKEN in your secrets panel for robust fallback or try again shortly.");
+    }
+
     if (!resultText) {
-      throw new Error("No text returned from Gemini API");
+      throw new Error("No text returned from API generators");
     }
 
     const parsedBlog = JSON.parse(resultText.trim());
@@ -166,15 +320,20 @@ The response must be valid JSON according to the schema provided. Make sure the 
       .replace(/(^-|-$)/g, "");
 
     const newBlog = {
+      ...parsedBlog,
       id: `generated-${timestamp}`,
       slug: `${slug}-${timestamp.toString().slice(-4)}`,
-      date: new Date().toLocaleDateString("en-US", {
+      date: parsedBlog.date || new Date().toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
         year: "numeric"
-      }),
-      ...parsedBlog
+      })
     };
+
+    // Save generated blog to server-side JSON file
+    const blogs = readCustomBlogs();
+    blogs.push(newBlog);
+    writeCustomBlogs(blogs);
 
     res.json({ blog: newBlog });
   } catch (error: any) {
