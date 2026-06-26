@@ -9,6 +9,9 @@ import { BlogPostCard } from "./components/BlogPostCard";
 import { MathRenderer } from "./components/MathRenderer";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
+import { GoogleCalendarWidget } from "./components/GoogleCalendarWidget";
+
+import { LinkedInShareModal } from "./components/LinkedInShareModal";
 
 export default function App() {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -17,6 +20,56 @@ export default function App() {
   const [activeAudioBlog, setActiveAudioBlog] = useState<BlogPost | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
+
+  const handleDownloadPng = (blog: BlogPost) => {
+    if (!blog?.bannerSvg) return;
+    
+    let svgString = blog.bannerSvg;
+    if (!svgString.includes("xmlns=")) {
+      svgString = svgString.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    
+    const img = new Image();
+    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1200;
+      canvas.height = 675;
+      const ctx = canvas.getContext("2d");
+      
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.fillStyle = "#090d16";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        canvas.toBlob((pngBlob) => {
+          if (pngBlob) {
+            const pngUrl = URL.createObjectURL(pngBlob);
+            const downloadLink = document.createElement("a");
+            downloadLink.href = pngUrl;
+            downloadLink.download = `${blog.slug || "meridian-banner"}.png`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            URL.revokeObjectURL(pngUrl);
+          }
+        }, "image/png");
+      }
+      URL.revokeObjectURL(url);
+    };
+    
+    img.onerror = (e) => {
+      console.error("SVG to PNG conversion image failed to load:", e);
+      URL.revokeObjectURL(url);
+    };
+    
+    img.src = url;
+  };
 
   // Load preloaded articles and any custom user generated articles from Server & LocalStorage fallback
   useEffect(() => {
@@ -175,46 +228,55 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Grid or Empty state */}
-              {filteredBlogs.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredBlogs.map((blog) => (
-                    <div key={blog.id} className="relative group">
-                      <BlogPostCard blog={blog} onClick={() => {
-                        setActiveBlog(blog);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }} />
-                      {/* Delete button for custom generated blogs */}
-                      {blog.id.startsWith("generated") && (
-                        <button
-                          onClick={(e) => handleRemoveBlog(blog.id, e)}
-                          title="Delete generated post"
-                          className="absolute top-4 right-4 p-2.5 bg-neutral-900/90 hover:bg-black text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 border border-gray-700"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
+              {/* Grid or Empty state with Sidebar layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="lg:col-span-8 space-y-8">
+                  {filteredBlogs.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {filteredBlogs.map((blog) => (
+                        <div key={blog.id} className="relative group">
+                          <BlogPostCard blog={blog} onClick={() => {
+                            setActiveBlog(blog);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }} />
+                          {/* Delete button for custom generated blogs */}
+                          {blog.id.startsWith("generated") && (
+                            <button
+                              onClick={(e) => handleRemoveBlog(blog.id, e)}
+                              title="Delete generated post"
+                              className="absolute top-4 right-4 p-2.5 bg-neutral-900/90 hover:bg-black text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 border border-gray-700"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
+                      <Newspaper className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-md font-bold text-gray-900 font-serif italic">No publications found</h3>
+                      <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                        We couldn't find any articles matching your filters. Try checking spelling or click below to generate a new post from arXiv.
+                      </p>
+                      <button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="mt-6 px-6 py-3 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all flex items-center gap-2 mx-auto cursor-pointer shadow-sm"
+                      >
+                        <Sparkles className="w-4 h-4 text-white fill-white/20" />
+                        Generate brand new post
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
-                  <Newspaper className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-md font-bold text-gray-900 font-serif italic">No publications found</h3>
-                  <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                    We couldn't find any articles matching your filters. Try checking spelling or click below to generate a new post from arXiv.
-                  </p>
-                  <button
-                    onClick={() => setIsCreateOpen(true)}
-                    className="mt-6 px-6 py-3 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all flex items-center gap-2 mx-auto cursor-pointer shadow-sm"
-                  >
-                    <Sparkles className="w-4 h-4 text-white fill-white/20" />
-                    Generate brand new post
-                  </button>
+
+                {/* Homepage Google Calendar & Study Companion Sidebar */}
+                <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
+                  <GoogleCalendarWidget />
                 </div>
-              )}
+              </div>
             </motion.div>
           ) : (
             /* DETAILED SINGLE PUBLICATION SHEET VIEW */
@@ -328,24 +390,46 @@ export default function App() {
                         />
                       </div>
                       
-                      <button
-                        onClick={() => {
-                          if (!activeBlog?.bannerSvg) return;
-                          const blob = new Blob([activeBlog.bannerSvg], { type: "image/svg+xml" });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = `${activeBlog.slug || "meridian-banner"}.svg`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                        }}
-                        className="flex items-center gap-2 px-5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Download Banner Image
-                      </button>
+                      <div className="flex flex-col w-full max-w-[440px] gap-3">
+                        <div className="grid grid-cols-2 gap-3 w-full">
+                          <button
+                            onClick={() => {
+                              if (!activeBlog?.bannerSvg) return;
+                              const blob = new Blob([activeBlog.bannerSvg], { type: "image/svg+xml" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `${activeBlog.slug || "meridian-banner"}.svg`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download SVG
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDownloadPng(activeBlog)}
+                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download PNG
+                          </button>
+                        </div>
+                        
+                        <button
+                          onClick={() => setIsLinkedInModalOpen(true)}
+                          className="flex items-center justify-center gap-2 w-full px-5 py-2.5 bg-[#0077b5] hover:bg-[#006297] text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-[#0077b5]/10"
+                        >
+                          <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                          </svg>
+                          Draft & Share on LinkedIn
+                        </button>
+                      </div>
                     </div>
 
                   </div>
@@ -353,42 +437,58 @@ export default function App() {
                 </div>
               </div>
 
-              {/* MAIN SCHOLARLY ARTICLE BODY VIEW CONTAINER */}
-              <div className="max-w-4xl mx-auto px-2 sm:px-8 py-12 md:py-16">
-                <article className="prose prose-slate max-w-none md:prose-lg bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/10 p-4 sm:p-12 relative overflow-hidden">
+              {/* MAIN SCHOLARLY ARTICLE BODY VIEW CONTAINER WITH STUDY SIDEBAR */}
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                   
-                  {/* Abstract quote callout */}
-                  <div className="absolute top-0 left-0 w-1.5 h-full bg-black" />
-                  
-                  <div className="flex items-center gap-2 text-[10px] font-bold font-mono text-black uppercase tracking-widest mb-6">
-                    <Newspaper className="w-4 h-4 text-black" />
-                    Full Editorial Analysis
+                  {/* Article content (2/3 width) */}
+                  <div className="lg:col-span-8">
+                    <article className="prose prose-slate max-w-none md:prose-lg bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/10 p-4 sm:p-12 relative overflow-hidden">
+                      
+                      {/* Abstract quote callout */}
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-black" />
+                      
+                      <div className="flex items-center gap-2 text-[10px] font-bold font-mono text-black uppercase tracking-widest mb-6">
+                        <Newspaper className="w-4 h-4 text-black" />
+                        Full Editorial Analysis
+                      </div>
+
+                      {/* Render the math rich markdown article */}
+                      <MathRenderer text={activeBlog.content} />
+                      
+                      {/* Article footer sign-off */}
+                      <div className="border-t border-gray-100 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-md font-bold font-serif italic">M</div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-800">Meridian Research Editorial</p>
+                            <p className="text-[10px] text-gray-400">Copyright © {new Date().getFullYear()} Meridian. All rights reserved.</p>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => {
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                            setActiveBlog(null);
+                          }}
+                          className="px-6 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm"
+                        >
+                          Back to Publications
+                        </button>
+                      </div>
+                    </article>
                   </div>
 
-                  {/* Render the math rich markdown article */}
-                  <MathRenderer text={activeBlog.content} />
-                  
-                  {/* Article footer sign-off */}
-                  <div className="border-t border-gray-100 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-md font-bold font-serif italic">M</div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-800">Meridian Research Editorial</p>
-                        <p className="text-[10px] text-gray-400">Copyright © {new Date().getFullYear()} Meridian. All rights reserved.</p>
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={() => {
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                        setActiveBlog(null);
-                      }}
-                      className="px-6 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm"
-                    >
-                      Back to Publications
-                    </button>
+                  {/* Calendar & Study Companion Sidebar (1/3 width) */}
+                  <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
+                    <GoogleCalendarWidget 
+                      paperTitle={activeBlog.title}
+                      paperUrl={activeBlog.arxivLink}
+                      paperSlug={activeBlog.slug}
+                    />
                   </div>
-                </article>
+
+                </div>
               </div>
 
             </motion.div>
@@ -409,6 +509,18 @@ export default function App() {
         <ArxivGenerator
           onClose={() => setIsCreateOpen(false)}
           onBlogGenerated={handleBlogGenerated}
+        />
+      )}
+
+      {/* LINKEDIN SHARE COMPANION OVERLAY */}
+      {activeBlog && (
+        <LinkedInShareModal
+          isOpen={isLinkedInModalOpen}
+          onClose={() => setIsLinkedInModalOpen(false)}
+          title={activeBlog.title}
+          excerpt={activeBlog.excerpt}
+          arxivLink={activeBlog.arxivLink}
+          onDownloadPng={() => handleDownloadPng(activeBlog)}
         />
       )}
     </div>
