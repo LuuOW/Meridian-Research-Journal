@@ -9,9 +9,10 @@ import { BlogPostCard } from "./components/BlogPostCard";
 import { MathRenderer } from "./components/MathRenderer";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
-import { GoogleCalendarWidget } from "./components/GoogleCalendarWidget";
 
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
+import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
+import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
 export default function App() {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -71,10 +72,10 @@ export default function App() {
     img.src = url;
   };
 
-  // Load preloaded articles and any custom user generated articles from Server & LocalStorage fallback
+  // Load preloaded articles and any custom user generated articles from Firestore, Server, and LocalStorage
   useEffect(() => {
     const loadBlogs = async () => {
-      // 1. Get initial local custom blogs from localStorage
+      // 1. Get initial local custom blogs from localStorage as a local cache
       let localCustomBlogs: BlogPost[] = [];
       const saved = localStorage.getItem("meridian_blogs_saved");
       if (saved) {
@@ -86,35 +87,91 @@ export default function App() {
         }
       }
 
+      let firestoreBlogs: BlogPost[] = [];
+      let firestoreError = false;
+
+      // 2. Fetch custom blogs from secure Firestore cloud database
       try {
-        // 2. Call the server sync endpoint to merge server-side and client-side custom blogs
-        const response = await fetch("/api/blogs/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ blogs: localCustomBlogs })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.blogs) {
-            const syncedCustomBlogs = data.blogs.filter((cb: BlogPost) => cb && cb.id && !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
-            setBlogs([...syncedCustomBlogs, ...PRELOADED_BLOGS]);
-            localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedCustomBlogs));
-            return;
+        const querySnapshot = await getDocs(collection(db, "blogs"));
+        querySnapshot.forEach((docSnap) => {
+          const blogData = docSnap.data() as BlogPost;
+          if (blogData && blogData.id) {
+            firestoreBlogs.push(blogData);
           }
-        }
+        });
       } catch (err) {
-        console.error("Failed to sync custom blogs with server, using local list:", err);
+        console.error("Failed to fetch custom blogs from Firestore:", err);
+        firestoreError = true;
+        handleFirestoreError(err, OperationType.GET, "blogs");
       }
 
-      // 3. Fallback: if server call completely failed, just render the local custom blogs combined with preloaded blogs
-      setBlogs([...localCustomBlogs, ...PRELOADED_BLOGS]);
+      // 3. Merge lists using a Map keyed by id to avoid duplicates
+      const mergedMap = new Map<string, BlogPost>();
+      
+      // Add local blogs first
+      localCustomBlogs.forEach(blog => {
+        mergedMap.set(blog.id, blog);
+      });
+
+      // Add firestore blogs (they take precedence or supplement)
+      firestoreBlogs.forEach(blog => {
+        mergedMap.set(blog.id, blog);
+      });
+
+      const mergedCustomBlogs = Array.from(mergedMap.values());
+
+      // Sort them by id descending (newer timestamped generated IDs first)
+      mergedCustomBlogs.sort((a, b) => {
+        const timeA = parseInt(a.id.replace("generated-", "")) || 0;
+        const timeB = parseInt(b.id.replace("generated-", "")) || 0;
+        return timeB - timeA;
+      });
+
+      // 4. Proactively upload any local-only cache blogs to Firestore so they are never lost
+      if (!firestoreError) {
+        for (const blog of mergedCustomBlogs) {
+          const isOnlyLocal = !firestoreBlogs.some(fb => fb.id === blog.id);
+          if (isOnlyLocal) {
+            try {
+              await setDoc(doc(db, "blogs", blog.id), blog);
+              console.log(`Successfully backed up local blog "${blog.title}" to cloud Firestore.`);
+            } catch (err) {
+              console.error(`Failed to back up local blog "${blog.title}" to Firestore:`, err);
+              handleFirestoreError(err, OperationType.WRITE, `blogs/${blog.id}`);
+            }
+          }
+        }
+      }
+
+      // Update state and local storage immediately with the synced list
+      setBlogs([...mergedCustomBlogs, ...PRELOADED_BLOGS]);
+      localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
+
+      // 5. Call the server sync endpoint to ensure the server's ephemeral JSON backup is also in sync
+      try {
+        await fetch("/api/blogs/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blogs: mergedCustomBlogs })
+        });
+      } catch (err) {
+        console.error("Failed to sync server backup JSON:", err);
+      }
     };
 
     loadBlogs();
   }, []);
 
-  const handleBlogGenerated = (newBlog: BlogPost) => {
+  const handleBlogGenerated = async (newBlog: BlogPost) => {
+    // 1. Save to cloud Firestore immediately
+    try {
+      await setDoc(doc(db, "blogs", newBlog.id), newBlog);
+      console.log("Successfully saved new blog to Cloud Firestore.");
+    } catch (err) {
+      console.error("Failed to save new blog to Firestore:", err);
+      handleFirestoreError(err, OperationType.WRITE, `blogs/${newBlog.id}`);
+    }
+
     const updatedBlogs = [newBlog, ...blogs.filter(b => b.id !== newBlog.id)];
     setBlogs(updatedBlogs);
     
@@ -140,11 +197,20 @@ export default function App() {
         setActiveAudioBlog(null);
       }
 
-      // Delete from server persistent storage
+      // 1. Delete from Cloud Firestore
+      try {
+        await deleteDoc(doc(db, "blogs", id));
+        console.log("Successfully deleted blog from Cloud Firestore.");
+      } catch (err) {
+        console.error("Failed to delete blog from Firestore:", err);
+        handleFirestoreError(err, OperationType.DELETE, `blogs/${id}`);
+      }
+
+      // 2. Delete from server persistent JSON fallback
       try {
         await fetch(`/api/blogs/${id}`, { method: "DELETE" });
       } catch (err) {
-        console.error("Failed to delete blog from server:", err);
+        console.error("Failed to delete blog from server JSON:", err);
       }
     }
   };
@@ -234,11 +300,11 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Grid or Empty state with Sidebar layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-8 space-y-8">
+              {/* Grid or Empty state layout */}
+              <div className="max-w-7xl mx-auto w-full">
+                <div className="space-y-8">
                   {filteredBlogs.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {filteredBlogs.map((blog) => (
                         <div key={blog.id} className="relative group">
                           <BlogPostCard blog={blog} onClick={() => {
@@ -276,11 +342,6 @@ export default function App() {
                       </button>
                     </div>
                   )}
-                </div>
-
-                {/* Homepage Google Calendar & Study Companion Sidebar */}
-                <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
-                  <GoogleCalendarWidget />
                 </div>
               </div>
             </motion.div>
@@ -443,58 +504,42 @@ export default function App() {
                 </div>
               </div>
 
-              {/* MAIN SCHOLARLY ARTICLE BODY VIEW CONTAINER WITH STUDY SIDEBAR */}
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* MAIN SCHOLARLY ARTICLE BODY VIEW CONTAINER */}
+              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+                <article className="prose prose-slate max-w-none md:prose-lg bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/10 p-4 sm:p-12 relative overflow-hidden">
                   
-                  {/* Article content (2/3 width) */}
-                  <div className="lg:col-span-8">
-                    <article className="prose prose-slate max-w-none md:prose-lg bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/10 p-4 sm:p-12 relative overflow-hidden">
-                      
-                      {/* Abstract quote callout */}
-                      <div className="absolute top-0 left-0 w-1.5 h-full bg-black" />
-                      
-                      <div className="flex items-center gap-2 text-[10px] font-bold font-mono text-black uppercase tracking-widest mb-6">
-                        <Newspaper className="w-4 h-4 text-black" />
-                        Full Editorial Analysis
-                      </div>
-
-                      {/* Render the math rich markdown article */}
-                      <MathRenderer text={activeBlog.content} />
-                      
-                      {/* Article footer sign-off */}
-                      <div className="border-t border-gray-100 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-md font-bold font-serif italic">M</div>
-                          <div>
-                            <p className="text-xs font-bold text-gray-800">Meridian Research Editorial</p>
-                            <p className="text-[10px] text-gray-400">Copyright © {new Date().getFullYear()} Meridian. All rights reserved.</p>
-                          </div>
-                        </div>
-                        
-                        <button
-                          onClick={() => {
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                            setActiveBlog(null);
-                          }}
-                          className="px-6 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm"
-                        >
-                          Back to Publications
-                        </button>
-                      </div>
-                    </article>
+                  {/* Abstract quote callout */}
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-black" />
+                  
+                  <div className="flex items-center gap-2 text-[10px] font-bold font-mono text-black uppercase tracking-widest mb-6">
+                    <Newspaper className="w-4 h-4 text-black" />
+                    Full Editorial Analysis
                   </div>
 
-                  {/* Calendar & Study Companion Sidebar (1/3 width) */}
-                  <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
-                    <GoogleCalendarWidget 
-                      paperTitle={activeBlog.title}
-                      paperUrl={activeBlog.arxivLink}
-                      paperSlug={activeBlog.slug}
-                    />
+                  {/* Render the math rich markdown article */}
+                  <MathRenderer text={activeBlog.content} />
+                  
+                  {/* Article footer sign-off */}
+                  <div className="border-t border-gray-100 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-md font-bold font-serif italic">M</div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-800">Meridian Research Editorial</p>
+                        <p className="text-[10px] text-gray-400">Copyright © {new Date().getFullYear()} Meridian. All rights reserved.</p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                        setActiveBlog(null);
+                      }}
+                      className="px-6 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm"
+                    >
+                      Back to Publications
+                    </button>
                   </div>
-
-                </div>
+                </article>
               </div>
 
             </motion.div>

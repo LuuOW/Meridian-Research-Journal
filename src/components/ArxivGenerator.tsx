@@ -324,9 +324,14 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold uppercase tracking-widest shadow-sm transition-all flex items-center justify-center gap-2 group active:scale-[0.98] cursor-pointer"
+                disabled={isGenerating}
+                className={`w-full py-3.5 text-white rounded-full text-xs font-bold uppercase tracking-widest shadow-sm transition-all flex items-center justify-center gap-2 group active:scale-[0.98] ${
+                  isGenerating 
+                    ? "bg-neutral-400 cursor-not-allowed opacity-75" 
+                    : "bg-black hover:bg-neutral-800 cursor-pointer"
+                }`}
               >
-                <span>Generate Brand New Blog</span>
+                <span>{isGenerating ? "Generating..." : "Generate Brand New Blog"}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </form>

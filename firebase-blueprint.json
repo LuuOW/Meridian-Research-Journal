@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "BlogPost": {
+      "title": "BlogPost",
+      "description": "A scientific blog post generated from an arXiv paper.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the blog post"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the blog post"
+        },
+        "slug": {
+          "type": "string",
+          "description": "URL-friendly slug"
+        },
+        "excerpt": {
+          "type": "string",
+          "description": "Short summary or excerpt"
+        },
+        "date": {
+          "type": "string",
+          "description": "Publication date"
+        },
+        "readingTime": {
+          "type": "string",
+          "description": "Estimated reading time"
+        },
+        "arxivLink": {
+          "type": "string",
+          "description": "URL to the arXiv paper"
+        },
+        "bannerSvg": {
+          "type": "string",
+          "description": "Inline SVG banner"
+        },
+        "content": {
+          "type": "string",
+          "description": "Full Markdown content of the blog"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author of the article"
+        }
+      },
+      "required": ["id", "title", "slug", "content"]
+    }
+  },
+  "firestore": {
+    "/blogs/{blogId}": {
+      "schema": "BlogPost",
+      "description": "Collection of research blogs"
+    }
+  }
+}
