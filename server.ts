@@ -98,6 +98,41 @@ app.delete("/api/blogs/:id", (req, res) => {
   res.json({ success: true });
 });
 
+// API: Sync custom blogs from client and server
+app.post("/api/blogs/sync", (req, res) => {
+  const clientBlogs = req.body.blogs || [];
+  const serverBlogs = readCustomBlogs();
+  
+  // Merge lists using a Map keyed by id to avoid duplicates
+  const mergedMap = new Map<string, any>();
+  
+  // First add all server-side blogs
+  serverBlogs.forEach((blog: any) => {
+    if (blog && blog.id) {
+      mergedMap.set(blog.id, blog);
+    }
+  });
+  
+  // Then add client-side blogs (which might have been created offline or saved in localStorage)
+  clientBlogs.forEach((blog: any) => {
+    if (blog && blog.id) {
+      mergedMap.set(blog.id, blog);
+    }
+  });
+  
+  const mergedBlogs = Array.from(mergedMap.values());
+  
+  // Sort them so newer generated blogs are first
+  mergedBlogs.sort((a: any, b: any) => {
+    const timeA = parseInt(a.id.replace("generated-", "")) || 0;
+    const timeB = parseInt(b.id.replace("generated-", "")) || 0;
+    return timeB - timeA; // Newer first
+  });
+  
+  writeCustomBlogs(mergedBlogs);
+  res.json({ blogs: mergedBlogs });
+});
+
 // API: Verify GITHUB_TOKEN
 app.get("/api/verify-github-token", async (req, res) => {
   const token = process.env.GITHUB_TOKEN;
@@ -332,8 +367,17 @@ The response must be valid JSON according to the schema provided. Make sure the 
 
     // Save generated blog to server-side JSON file
     const blogs = readCustomBlogs();
-    blogs.push(newBlog);
-    writeCustomBlogs(blogs);
+    const isDuplicate = blogs.some((b: any) => 
+      (b.arxivLink && b.arxivLink === newBlog.arxivLink) || 
+      (b.title && b.title.toLowerCase() === newBlog.title.toLowerCase())
+    );
+    
+    if (!isDuplicate) {
+      blogs.push(newBlog);
+      writeCustomBlogs(blogs);
+    } else {
+      console.log("Duplicate blog detected (by title or arxivLink), skipping append to custom_blogs.json");
+    }
 
     res.json({ blog: newBlog });
   } catch (error: any) {

@@ -74,35 +74,41 @@ export default function App() {
   // Load preloaded articles and any custom user generated articles from Server & LocalStorage fallback
   useEffect(() => {
     const loadBlogs = async () => {
-      try {
-        const response = await fetch("/api/blogs");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.blogs) {
-            const customBlogs = data.blogs.filter((cb: BlogPost) => !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
-            setBlogs([...customBlogs, ...PRELOADED_BLOGS]);
-            localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
-            return;
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load custom blogs from server, falling back to LocalStorage:", err);
-      }
-
-      // Fallback to local storage if server call fails
+      // 1. Get initial local custom blogs from localStorage
+      let localCustomBlogs: BlogPost[] = [];
       const saved = localStorage.getItem("meridian_blogs_saved");
       if (saved) {
         try {
           const parsed = JSON.parse(saved) as BlogPost[];
-          const customBlogs = parsed.filter(cb => !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
-          setBlogs([...customBlogs, ...PRELOADED_BLOGS]);
+          localCustomBlogs = parsed.filter(cb => cb && cb.id && !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
         } catch (err) {
-          console.error("Failed to load custom blogs:", err);
-          setBlogs(PRELOADED_BLOGS);
+          console.error("Failed to parse local custom blogs:", err);
         }
-      } else {
-        setBlogs(PRELOADED_BLOGS);
       }
+
+      try {
+        // 2. Call the server sync endpoint to merge server-side and client-side custom blogs
+        const response = await fetch("/api/blogs/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blogs: localCustomBlogs })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.blogs) {
+            const syncedCustomBlogs = data.blogs.filter((cb: BlogPost) => cb && cb.id && !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
+            setBlogs([...syncedCustomBlogs, ...PRELOADED_BLOGS]);
+            localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedCustomBlogs));
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to sync custom blogs with server, using local list:", err);
+      }
+
+      // 3. Fallback: if server call completely failed, just render the local custom blogs combined with preloaded blogs
+      setBlogs([...localCustomBlogs, ...PRELOADED_BLOGS]);
     };
 
     loadBlogs();
