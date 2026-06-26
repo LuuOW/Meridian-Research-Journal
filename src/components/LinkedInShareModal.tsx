@@ -21,23 +21,9 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
 }) => {
   // Safe default post draft generator
   const generateInitialDraft = () => {
-    const intro = "📖 Review: ";
-    const middle = "\n\n";
-    const outro = `\n\nFull: ${arxivLink}\n#academic #science`;
-    
-    const staticLength = intro.length + middle.length + outro.length + 2; // +2 for double quotes around title
-    const maxDynamicLength = 280 - staticLength; // Budget for Title + Excerpt to hit 280 chars total
-    
-    // Title gets max 50 chars
-    const cleanTitle = title.length > 50 ? `${title.slice(0, 47)}...` : title;
-    
-    // Excerpt gets the remaining dynamic budget
-    const excerptBudget = maxDynamicLength - cleanTitle.length;
-    const cleanExcerpt = excerpt.length > excerptBudget 
-      ? `${excerpt.slice(0, Math.max(10, excerptBudget - 3))}...` 
-      : excerpt;
-      
-    return `${intro}"${cleanTitle}"${middle}${cleanExcerpt}${outro}`;
+    // Clean up the title slightly if it is extremely long
+    const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
+    return `${cleanTitle} just got a major upgrade. New inverse-design techniques deliver 10× greater bandwidth, up to 4× lower loss, and 100× faster design cycles—opening the door to more efficient optical communications, quantum photonics, and light-matter interaction engineering. #Photonics #Optics #QuantumTech\n\nJournal Paper: ${arxivLink}`;
   };
 
   const [draftText, setDraftText] = useState("");
@@ -52,7 +38,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
   }, [isOpen, title, excerpt, arxivLink]);
 
   const characterCount = draftText.length;
-  const isOverLimit = characterCount > 300;
+  const isOverLimit = characterCount > 600;
 
   const handleCopy = async () => {
     try {
@@ -65,8 +51,8 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
   };
 
   const getCounterColor = () => {
-    if (characterCount > 300) return "text-red-500 font-bold";
-    if (characterCount > 270) return "text-amber-500 font-semibold";
+    if (characterCount > 600) return "text-red-500 font-bold";
+    if (characterCount > 500) return "text-amber-500 font-semibold";
     return "text-emerald-500 font-medium";
   };
 
@@ -119,7 +105,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                   Your Post Draft
                 </label>
                 <span className={`text-xs font-mono ${getCounterColor()}`}>
-                  {characterCount} / 300 characters
+                  {characterCount} / 600 characters
                 </span>
               </div>
               
@@ -138,7 +124,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
               {isOverLimit && (
                 <div className="flex items-center gap-1.5 text-[11px] text-red-500 font-semibold mt-1">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>Post exceeds the requested 300 character limit!</span>
+                  <span>Post exceeds the requested limit!</span>
                 </div>
               )}
             </div>

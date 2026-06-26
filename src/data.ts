@@ -1,6 +1,6 @@
 import { BlogPost } from "./types";
 
-export const PRELOADED_BLOGS: BlogPost[] = [
+const RAW_PRELOADED_BLOGS: BlogPost[] = [
   {
     "id": "quantum-split-step-fourier-nonlinear-optical-waveguides",
     "title": "The Quantum Split-Step Fourier Algorithm for Nonlinear Optical Waveguides",
@@ -526,3 +526,28 @@ export const PRELOADED_BLOGS: BlogPost[] = [
     "content": "2026-05-04 · 5 min read\n    \n      Real RAG with Cloudflare Vectorize + AI Gateway in 80 lines\n    \n\n    \n\n> **Update:** **Update 2026-05-06.** ask-meridian.uk has since migrated\n      off Cloudflare entirely. The architecture below still works as written\n      — Vectorize and AI Gateway are excellent — but it's no longer the stack\n      Meridian itself runs on. See [/docs/](https://ask-meridian.uk/docs/) for the\n      current GitHub-only architecture.\n\n    \n\nMost \"build RAG\" tutorials in 2026 walk you through Pinecone + OpenAI embeddings +\n      LangChain. Pinecone is paid from day 1. OpenAI ada-002 embeddings cost ~$0.02 per\n      million tokens. LangChain adds ~600 KB to your bundle.\n\n    \n\nThe Cloudflare equivalent — Vectorize + Workers AI bge-m3 + AI Gateway — is free up\n      to 30M stored vectors and 50M queries/month, runs at the edge with no cold-start fee,\n      and ships in ~80 lines of code total. This post is the wiring.\n\n    \n\n## What you need\n\n    \n\n- A Cloudflare account (free)\n      \n- A Workers/Pages project (already deployed, see our\n        [previous post](https://ask-meridian.uk/blog/production-mcp-server-cloudflare-workers/))\n      \n- Wrangler CLI\n\n    \n\n## Create the Vectorize index\n\n    \n\n```\nwrangler vectorize create my-rag --dimensions=1024 --metric=cosine\n```\n\n    \n\n`1024`  dims because that's what bge-m3 emits.  `cosine`  metric\n      because that's what bge-m3 was trained on. If you switch embedding models later, the\n      dim has to match — recreate the index.\n\n    \n\n## Bind it\n\n    \n\nAdd to  `wrangler.toml` :\n\n    \n\n```\n[[vectorize]]\nbinding    = \"VECTORIZE\"\nindex_name = \"my-rag\"\n```\n\n    \n\nNow your Worker has  `env.VECTORIZE`  available.\n\n    \n\n## Embedding via Workers AI\n\n    \n\n```\nconst out = await env.AI.run('@cf/baai/bge-m3', { text: ['your query here'] })\nconst vec = out.data[0]   // Float32Array of 1024 values\n```\n\n    \n\nWorkers AI free tier covers a lot of bge-m3 calls — typically 10k+ per day with no\n      cost. If you ever cross the free tier, it's $0.011 per 1M input tokens. Compare to\n      OpenAI ada-002 at $0.10 per 1M tokens.\n\n    \n\n## Upsert to the index\n\n    \n\n```\nawait env.VECTORIZE.upsert([{\n  id:       'doc-001',\n  values:   Array.from(vec),       // Vectorize wants plain arrays\n  metadata: { slug: 'doc-001', title: 'Whatever you want to look up later' },\n}])\n```\n\n    \n\nYou can include arbitrary metadata. Vectorize returns it on query, so use it to\n      avoid a second roundtrip to KV/D1 for \"what was the actual content of this doc\".\n\n    \n\n## Query\n\n    \n\n```\nconst matches = await env.VECTORIZE.query(Array.from(qVec), {\n  topK: 5, returnMetadata: true,\n})\n// matches.matches = [{ id, score, metadata }, ...]\n```\n\n    \n\nVectorize is read-after-write consistent within a few seconds. Same caveat as KV —\n      don't depend on \"I just upserted, query immediately\" being available everywhere.\n\n    \n\n## The full RAG pattern\n\n    \n\n```\nasync function rag(env, query, kFromIndex = 3) {\n  // 1. Embed the query\n  const out = await env.AI.run('@cf/baai/bge-m3', { text: [query] })\n  const qVec = out.data[0]\n\n  // 2. Retrieve similar past documents\n  const matches = await env.VECTORIZE.query(Array.from(qVec), {\n    topK: kFromIndex, returnMetadata: true,\n  })\n  const context = matches.matches\n    .filter(m => m.score >= 0.55)\n    .map(m => `[${m.metadata.slug}] ${m.metadata.title}`)\n    .join('\\n')\n\n  // 3. Generate with LLM (Llama-3.3-70B on Workers AI, free up to N calls/day)\n  const llm = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {\n    messages: [\n      { role: 'system', content: 'Use the prior context as inspiration. Author a fresh response.' },\n      { role: 'user',   content: `Prior context:\\n${context}\\n\\nUser query: ${query}` },\n    ],\n  })\n\n  // 4. Upsert this query+response back into the index for future hits\n  await env.VECTORIZE.upsert([{\n    id:       crypto.randomUUID(),\n    values:   Array.from(qVec),\n    metadata: { slug: query.slice(0, 50), title: llm.response.slice(0, 200) },\n  }])\n\n  return llm.response\n}\n```\n\n    \n\n~25 lines of actual logic. The embedding + index + LLM are all bound to the\n      same Worker via  `env` . Total external call: 0 (everything runs on\n      Cloudflare).\n\n    \n\n## AI Gateway in front of it\n\n    \n\nCloudflare AI Gateway is a free observability + caching layer. Create a gateway\n      in the dashboard (AI &rarr; AI Gateway), then configure your  `env.AI.run` \n      calls to route through it:\n\n    \n\n```\nawait env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {\n  messages,\n}, {\n  gateway: { id: 'my-gateway' }\n})\n```\n\n    \n\nSet  `cache_ttl=86400`  in the gateway settings. Now identical\n       `messages`  arrays dedupe at the gateway — saving the LLM call entirely.\n      Combined with our own KV-based response cache, repeat queries hit in ~5ms.\n\n    \n\n## Cost ceiling\n\n    \n\nFree tier ceilings, May 2026:\n\n    \n\n- Workers: 100k requests/day\n      \n- Workers AI bge-m3: typically 10k+ embed calls/day\n      \n- Workers AI Llama-70B: limited but generous (a few k/day)\n      \n- Vectorize: 30M stored vectors, 50M queries/month\n      \n- AI Gateway: free, no usage cap on the cache layer itself\n\n    \n\nFor a typical MCP service with ~100 paying users, you'll never approach any of\n      these. Migrating off later (if you ever need to) is a thin-abstraction job —\n      we wrap Vectorize behind a 30-line  `_vector.ts`  in the buyer guide\n      so swapping to Upstash Vector / pgvector is one file.\n\n    \n      \n\n### Get every line of this — wired into a working MCP server template\n\n      \n\nThe full guide on Gumroad ships the RAG layer above pre-wired into the Worker\n        template, plus the AI Gateway integration, plus SSE streaming for live progress\n        events. $29.\n\n      [Build Your Own MCP Server — $29 →](https://ask-meridian.uk/products/build-your-own-mcp/)"
   }
 ];
+
+const today = new Date();
+const formatDate = (d: Date) => {
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+};
+
+export const PRELOADED_BLOGS: BlogPost[] = RAW_PRELOADED_BLOGS.map((blog, index) => {
+  const d = new Date(today);
+  if (index === 0) {
+    // Today
+  } else if (index === 1 || index === 2) {
+    // Yesterday
+    d.setDate(today.getDate() - 1);
+  } else if (index === 3 || index === 4) {
+    // 2 days ago
+    d.setDate(today.getDate() - 2);
+  } else {
+    // Older
+    d.setDate(today.getDate() - (index - 1));
+  }
+  return {
+    ...blog,
+    date: formatDate(d)
+  };
+});

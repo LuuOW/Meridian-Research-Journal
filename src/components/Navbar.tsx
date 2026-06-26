@@ -11,16 +11,35 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreate }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         
         {/* Brand Logo & Compass */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.location.reload()}>
-          <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center shadow-md">
-            <Compass className="w-5 h-5 animate-spin-slow text-white" style={{ animationDuration: "20s" }} />
+        <div 
+          className="flex items-center gap-3 cursor-pointer group" 
+          onClick={() => window.location.reload()}
+        >
+          {/* Elite Geometric Emblazoned Logo */}
+          <div className="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-[1px] shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-105">
+            <div className="w-full h-full bg-black rounded-[11px] flex items-center justify-center overflow-hidden relative">
+              {/* Decorative background grid line */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.15)_1px,_transparent_1px)] bg-[size:6px_6px] opacity-40"></div>
+              {/* Core rotating compass */}
+              <Compass 
+                className="w-5 h-5 text-white transition-all duration-1000 ease-in-out group-hover:rotate-[360deg] relative z-10" 
+              />
+              {/* Outer orbit circle */}
+              <div className="absolute w-8 h-8 rounded-full border border-white/10 animate-pulse"></div>
+            </div>
           </div>
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold tracking-tighter italic font-serif text-black">Meridian.</span>
-              <span className="px-2 py-0.5 bg-neutral-100 text-neutral-800 text-[9px] font-bold rounded-full font-mono uppercase tracking-widest">Research Journal</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold tracking-tighter italic font-serif text-black group-hover:text-neutral-800 transition-colors">
+                Meridian.
+              </span>
+              <span className="px-2 py-0.5 bg-neutral-950 text-white text-[8px] font-extrabold rounded-md font-mono uppercase tracking-widest shadow-sm">
+                Journal
+              </span>
             </div>
-            <p className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Symmetry & Quantum Informatics</p>
+            <p className="text-[9px] text-gray-500 font-bold tracking-widest uppercase font-mono">
+              Symmetry &amp; Quantum Informatics
+            </p>
           </div>
         </div>
 

@@ -21,7 +21,42 @@ export default function App() {
   const [activeAudioBlog, setActiveAudioBlog] = useState<BlogPost | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState<"all" | "today" | "yesterday" | "week">("all");
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
+
+  const getBlogDate = (b: BlogPost): Date | null => {
+    if (b.id.startsWith("generated-")) {
+      const ts = parseInt(b.id.replace("generated-", ""));
+      if (!isNaN(ts)) return new Date(ts);
+    }
+    const parsed = Date.parse(b.date);
+    if (!isNaN(parsed)) return new Date(parsed);
+    return null;
+  };
+
+  const isToday = (b: BlogPost) => {
+    const blogDate = getBlogDate(b);
+    if (!blogDate) return false;
+    const today = new Date();
+    return blogDate.toDateString() === today.toDateString();
+  };
+
+  const isYesterday = (b: BlogPost) => {
+    const blogDate = getBlogDate(b);
+    if (!blogDate) return false;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return blogDate.toDateString() === yesterday.toDateString();
+  };
+
+  const isThisWeek = (b: BlogPost) => {
+    const blogDate = getBlogDate(b);
+    if (!blogDate) return false;
+    const now = new Date();
+    const startOfWeek = new Date();
+    startOfWeek.setDate(now.getDate() - 7);
+    return blogDate >= startOfWeek && blogDate <= now;
+  };
 
   const handleDownloadPng = (blog: BlogPost) => {
     if (!blog?.bannerSvg) return;
@@ -225,7 +260,17 @@ export default function App() {
       b.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTag = selectedTag ? b.tags.includes(selectedTag) : true;
-    return matchesSearch && matchesTag;
+    
+    let matchesTime = true;
+    if (selectedTimeFilter === "today") {
+      matchesTime = isToday(b);
+    } else if (selectedTimeFilter === "yesterday") {
+      matchesTime = isYesterday(b);
+    } else if (selectedTimeFilter === "week") {
+      matchesTime = isThisWeek(b);
+    }
+    
+    return matchesSearch && matchesTag && matchesTime;
   });
 
   return (
@@ -260,43 +305,113 @@ export default function App() {
               </div>
 
               {/* Advanced Search and Filter Bar */}
-              <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm mb-12 flex flex-col md:flex-row items-center gap-4">
-                <div className="relative w-full md:flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search publications by keyword, equations, or models..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 rounded-2xl bg-neutral-50/60 border border-gray-100 outline-none focus:ring-2 focus:ring-black/5 focus:border-black focus:bg-white text-sm transition-all"
-                  />
-                </div>
-                
-                {/* Scrollable tag list */}
-                <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto no-scrollbar py-1">
-                  <button
-                    onClick={() => setSelectedTag(null)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
-                      !selectedTag
-                        ? "bg-black text-white shadow-sm"
-                        : "bg-neutral-100 text-gray-600 hover:bg-neutral-200"
-                    }`}
-                  >
-                    All Topics
-                  </button>
-                  {allTags.map((tag) => (
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mb-12 space-y-4">
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                  <div className="relative w-full md:flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search publications by keyword, equations, or models..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3 rounded-2xl bg-neutral-50/60 border border-gray-100 outline-none focus:ring-2 focus:ring-black/5 focus:border-black focus:bg-white text-sm transition-all"
+                    />
+                  </div>
+                  
+                  {/* Scrollable tag list */}
+                  <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto no-scrollbar py-1">
                     <button
-                      key={tag}
-                      onClick={() => setSelectedTag(tag)}
+                      onClick={() => setSelectedTag(null)}
                       className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
-                        selectedTag === tag
+                        !selectedTag
                           ? "bg-black text-white shadow-sm"
                           : "bg-neutral-100 text-gray-600 hover:bg-neutral-200"
                       }`}
                     >
-                      {tag}
+                      All Topics
                     </button>
-                  ))}
+                    {allTags.map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTag(tag)}
+                        className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
+                          selectedTag === tag
+                            ? "bg-black text-white shadow-sm"
+                            : "bg-neutral-100 text-gray-600 hover:bg-neutral-200"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recency Time Filter Selector */}
+                <div className="flex flex-wrap items-center justify-between pt-3 border-t border-gray-50/80 gap-3 text-xs">
+                  <div className="flex items-center gap-1.5 text-gray-400 font-mono text-[10px] uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full"></span>
+                    Publication Recency:
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => setSelectedTimeFilter("all")}
+                      className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        selectedTimeFilter === "all"
+                          ? "bg-neutral-100 text-neutral-900 border border-neutral-200"
+                          : "text-gray-500 hover:text-black hover:bg-neutral-50"
+                      }`}
+                    >
+                      All Time
+                      <span className="bg-neutral-200/60 text-neutral-700 px-1.5 py-0.5 rounded-md text-[9px] font-mono">
+                        {blogs.length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedTimeFilter("today")}
+                      className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        selectedTimeFilter === "today"
+                          ? "bg-blue-50 text-blue-800 border border-blue-200/50"
+                          : "text-gray-500 hover:text-black hover:bg-neutral-50"
+                      }`}
+                    >
+                      💡 Today
+                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
+                        selectedTimeFilter === "today" ? "bg-blue-200/70 text-blue-900" : "bg-neutral-100 text-neutral-600"
+                      }`}>
+                        {blogs.filter(isToday).length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedTimeFilter("yesterday")}
+                      className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        selectedTimeFilter === "yesterday"
+                          ? "bg-purple-50 text-purple-800 border border-purple-200/50"
+                          : "text-gray-500 hover:text-black hover:bg-neutral-50"
+                      }`}
+                    >
+                      ⏳ Yesterday
+                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
+                        selectedTimeFilter === "yesterday" ? "bg-purple-200/70 text-purple-900" : "bg-neutral-100 text-neutral-600"
+                      }`}>
+                        {blogs.filter(isYesterday).length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedTimeFilter("week")}
+                      className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        selectedTimeFilter === "week"
+                          ? "bg-amber-50 text-amber-800 border border-amber-200/50"
+                          : "text-gray-500 hover:text-black hover:bg-neutral-50"
+                      }`}
+                    >
+                      🌟 This Week
+                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
+                        selectedTimeFilter === "week" ? "bg-amber-200/70 text-amber-900" : "bg-neutral-100 text-neutral-600"
+                      }`}>
+                        {blogs.filter(isThisWeek).length}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -457,44 +572,44 @@ export default function App() {
                         />
                       </div>
                       
-                      <div className="flex flex-col w-full max-w-[440px] gap-3">
-                        <div className="grid grid-cols-2 gap-3 w-full">
-                          <button
-                            onClick={() => {
-                              if (!activeBlog?.bannerSvg) return;
-                              const blob = new Blob([activeBlog.bannerSvg], { type: "image/svg+xml" });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement("a");
-                              a.href = url;
-                              a.download = `${activeBlog.slug || "meridian-banner"}.svg`;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              URL.revokeObjectURL(url);
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            Download SVG
-                          </button>
-                          
-                          <button
-                            onClick={() => handleDownloadPng(activeBlog)}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            Download PNG
-                          </button>
-                        </div>
+                      <div className="flex items-center justify-center gap-2 w-full max-w-[440px]">
+                        <button
+                          onClick={() => {
+                            if (!activeBlog?.bannerSvg) return;
+                            const blob = new Blob([activeBlog.bannerSvg], { type: "image/svg+xml" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${activeBlog.slug || "meridian-banner"}.svg`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          }}
+                          title="Download banner as SVG"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          SVG
+                        </button>
                         
                         <button
-                          onClick={() => setIsLinkedInModalOpen(true)}
-                          className="flex items-center justify-center gap-2 w-full px-5 py-2.5 bg-[#0077b5] hover:bg-[#006297] text-white rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-[#0077b5]/10"
+                          onClick={() => handleDownloadPng(activeBlog)}
+                          title="Download banner as PNG"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-black hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
                         >
-                          <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <Download className="w-3.5 h-3.5" />
+                          PNG
+                        </button>
+
+                        <button
+                          onClick={() => setIsLinkedInModalOpen(true)}
+                          title="Draft & Share on LinkedIn"
+                          className="p-2.5 bg-[#0077b5] hover:bg-[#006297] text-white rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer border border-[#0077b5]/10 flex items-center justify-center shrink-0"
+                        >
+                          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                           </svg>
-                          Draft & Share on LinkedIn
                         </button>
                       </div>
                     </div>
