@@ -11,6 +11,7 @@ import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
 
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
+import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
@@ -23,6 +24,7 @@ export default function App() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<"all" | "today" | "yesterday" | "week">("all");
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
+  const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
 
   const getBlogDate = (b: BlogPost): Date | null => {
     if (b.id.startsWith("generated-")) {
@@ -218,36 +220,44 @@ export default function App() {
     setActiveBlog(newBlog); // Automatically open the new blog
   };
 
-  const handleRemoveBlog = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm("Are you sure you want to delete this generated blog post?")) {
-      const updatedBlogs = blogs.filter(b => b.id !== id);
-      setBlogs(updatedBlogs);
-      const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
-      localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
-      if (activeBlog?.id === id) {
-        setActiveBlog(null);
+  const handleRemoveBlog = async (id: string, password?: string): Promise<boolean> => {
+    // 1. Delete from server persistent JSON fallback, verifying password
+    try {
+      const response = await fetch(`/api/blogs/${id}`, { 
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Deletion-Password": password || ""
+        }
+      });
+      if (!response.ok) {
+        return false;
       }
-      if (activeAudioBlog?.id === id) {
-        setActiveAudioBlog(null);
-      }
-
-      // 1. Delete from Cloud Firestore
-      try {
-        await deleteDoc(doc(db, "blogs", id));
-        console.log("Successfully deleted blog from Cloud Firestore.");
-      } catch (err) {
-        console.error("Failed to delete blog from Firestore:", err);
-        handleFirestoreError(err, OperationType.DELETE, `blogs/${id}`);
-      }
-
-      // 2. Delete from server persistent JSON fallback
-      try {
-        await fetch(`/api/blogs/${id}`, { method: "DELETE" });
-      } catch (err) {
-        console.error("Failed to delete blog from server JSON:", err);
-      }
+    } catch (err) {
+      console.error("Failed to delete blog from server JSON:", err);
+      return false;
     }
+
+    // 2. Delete from Cloud Firestore
+    try {
+      await deleteDoc(doc(db, "blogs", id));
+      console.log("Successfully deleted blog from Cloud Firestore.");
+    } catch (err) {
+      console.error("Failed to delete blog from Firestore:", err);
+      handleFirestoreError(err, OperationType.DELETE, `blogs/${id}`);
+    }
+
+    const updatedBlogs = blogs.filter(b => b.id !== id);
+    setBlogs(updatedBlogs);
+    const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+    localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+    if (activeBlog?.id === id) {
+      setActiveBlog(null);
+    }
+    if (activeAudioBlog?.id === id) {
+      setActiveAudioBlog(null);
+    }
+    return true;
   };
 
   // Get all unique tags from active blogs
@@ -429,9 +439,12 @@ export default function App() {
                           {/* Delete button for custom generated blogs */}
                           {blog.id.startsWith("generated") && (
                             <button
-                              onClick={(e) => handleRemoveBlog(blog.id, e)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteBlogId(blog.id);
+                              }}
                               title="Delete generated post"
-                              className="absolute top-4 right-4 p-2.5 bg-neutral-900/90 hover:bg-black text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 border border-gray-700"
+                              className="absolute top-4 right-4 p-2.5 bg-neutral-900/90 hover:bg-black text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 border border-gray-700 cursor-pointer"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -689,6 +702,16 @@ export default function App() {
           onDownloadPng={() => handleDownloadPng(activeBlog)}
         />
       )}
+
+      {/* DELETION PASSWORD VERIFICATION MODAL */}
+      <DeletePasswordModal
+        isOpen={deleteBlogId !== null}
+        onClose={() => setDeleteBlogId(null)}
+        onConfirm={async (password) => {
+          if (!deleteBlogId) return false;
+          return await handleRemoveBlog(deleteBlogId, password);
+        }}
+      />
     </div>
   );
 }

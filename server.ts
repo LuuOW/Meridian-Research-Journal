@@ -92,6 +92,13 @@ app.get("/api/blogs", (req, res) => {
 // API: Delete a custom blog
 app.delete("/api/blogs/:id", (req, res) => {
   const { id } = req.params;
+  const password = req.headers["x-deletion-password"] || req.query.password || req.body?.password;
+  const expectedPassword = process.env.GENERATION_PASSWORD || "meridian";
+  
+  if (!password || password !== expectedPassword) {
+    return res.status(403).json({ error: "Unauthorized: Incorrect deletion password." });
+  }
+
   const blogs = readCustomBlogs();
   const filtered = blogs.filter((b: any) => b.id !== id);
   writeCustomBlogs(filtered);
