@@ -3,9 +3,10 @@ import { Sparkles, Compass } from "lucide-react";
 
 interface NavbarProps {
   onOpenCreate: () => void;
+  onOpenAbout: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenCreate }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenCreate, onOpenAbout }) => {
   return (
     <header id="app-header" className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-gray-100 z-40 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -45,10 +46,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreate }) => {
 
         {/* Navigation Links (As seen in the Design HTML) */}
         <div className="hidden md:flex gap-8 text-xs font-bold tracking-widest uppercase text-gray-400">
-          <span className="text-black border-b-2 border-black pb-1 cursor-pointer">Blog</span>
+          <span className="text-black border-b-2 border-black pb-1 cursor-pointer" onClick={() => window.location.reload()}>Blog</span>
           <span className="hover:text-black cursor-pointer transition-colors pb-1">Research</span>
           <span className="hover:text-black cursor-pointer transition-colors pb-1">Tools</span>
-          <span className="hover:text-black cursor-pointer transition-colors pb-1">About</span>
+          <span className="hover:text-black cursor-pointer transition-colors pb-1 text-neutral-500 hover:border-b-2 hover:border-black" onClick={onOpenAbout}>About</span>
         </div>
 
         {/* Action Button */}

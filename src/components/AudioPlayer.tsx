@@ -12,12 +12,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
   const [playbackSpeed, setPlaybackSpeed] = useState(1.1); // Slightly faster default is standard for text readers
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [timeElapsed, setTimeElapsed] = useState(0);
   
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const estimatedDurationRef = useRef<number>(300); // in seconds, default 5 mins
-  const timeElapsedRef = useRef<number>(0);
+  const sentencesRef = useRef<string[]>([]);
+  const currentSentenceIndexRef = useRef<number>(0);
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
 
   // Strip markdown & LaTeX to make a beautifully readable narration script
   const getSpeechScript = (content: string, title: string): string => {
@@ -28,7 +30,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
       // Remove LaTeX block equations
       .replace(/\$\$([\s\S]*?)\$\$/g, " [equation mathematical formula] ")
       // Remove inline equations
-      .replace(/\$([\s\S]*?)\$/g, " $1 ")
+      .replace(/\$([\s\S]*?)\$\$/g, " ")
+      .replace(/\$([^$]+)\$/g, " $1 ")
       // Remove markdown headings
       .replace(/###\s*(.*)/g, "$1. ")
       .replace(/##\s*(.*)/g, "$1. ")
@@ -46,30 +49,85 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
     return text + cleanText;
   };
 
+  const getSentences = (text: string): string[] => {
+    const matches = text.match(/[^.!?\n]+[.!?\n]*/g);
+    if (!matches) return [text];
+    return matches
+      .map((s) => s.trim())
+      .filter((s) => s.length > 1);
+  };
+
   useEffect(() => {
     synthRef.current = window.speechSynthesis;
     
-    // Estimate duration based on word count (avg reading speed 150 words/min)
+    // Cancel any current speech synthesis globally to free the audio device
+    if (synthRef.current) {
+      synthRef.current.cancel();
+    }
+
     const textToSpeak = getSpeechScript(blog.content, blog.title);
+    const splitSentences = getSentences(textToSpeak);
+    sentencesRef.current = splitSentences;
+    
+    setCurrentSentenceIndex(0);
+    currentSentenceIndexRef.current = 0;
+    setProgress(0);
+    setTimeElapsed(0);
+    setIsPlaying(false);
+
     const words = textToSpeak.split(/\s+/).length;
     estimatedDurationRef.current = Math.ceil((words / 150) * 60);
 
+    // Auto-play on mount with a safe delay to allow the browser to load voices and user gesture context
+    const timer = setTimeout(() => {
+      startSpeech(0);
+    }, 250);
+
     return () => {
-      stopSpeech();
+      clearTimeout(timer);
+      if (synthRef.current) {
+        synthRef.current.cancel();
+      }
     };
   }, [blog]);
 
-  const startSpeech = () => {
+  // Keep track of active playback elapsed timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        setTimeElapsed((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPlaying]);
+
+  const startSpeech = (index: number) => {
     if (!synthRef.current) return;
     
-    // Cancel any ongoing speech
     synthRef.current.cancel();
 
-    const textToSpeak = getSpeechScript(blog.content, blog.title);
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    if (index >= sentencesRef.current.length) {
+      setIsPlaying(false);
+      setProgress(100);
+      setCurrentSentenceIndex(0);
+      currentSentenceIndexRef.current = 0;
+      return;
+    }
+
+    currentSentenceIndexRef.current = index;
+    setCurrentSentenceIndex(index);
+    
+    const pct = Math.round((index / sentencesRef.current.length) * 100);
+    setProgress(pct);
+
+    const sentence = sentencesRef.current[index];
+    const utterance = new SpeechSynthesisUtterance(sentence);
     utteranceRef.current = utterance;
 
-    // Pick an English voice
+    // Resolve voices safely
     const voices = synthRef.current.getVoices();
     const premiumVoice = voices.find(
       (v) => v.lang.startsWith("en-") && (v.name.includes("Google") || v.name.includes("Natural"))
@@ -83,40 +141,31 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
     utterance.volume = isMuted ? 0 : 1;
 
     utterance.onend = () => {
-      setIsPlaying(false);
-      setProgress(100);
-      stopInterval();
+      const nextIndex = currentSentenceIndexRef.current + 1;
+      startSpeech(nextIndex);
     };
 
     utterance.onerror = (e) => {
-      console.warn("Speech synthesis error:", e);
-      setIsPlaying(false);
-      stopInterval();
+      console.warn("Speech Synthesis error:", e);
+      if (e.error !== "interrupted") {
+        const nextIndex = currentSentenceIndexRef.current + 1;
+        startSpeech(nextIndex);
+      }
     };
 
     synthRef.current.speak(utterance);
     setIsPlaying(true);
-    startInterval();
   };
 
   const pauseSpeech = () => {
     if (!synthRef.current) return;
-    if (synthRef.current.speaking && !synthRef.current.paused) {
-      synthRef.current.pause();
-      setIsPlaying(false);
-      stopInterval();
-    }
+    synthRef.current.cancel(); // Cancel current utterance to release engine lock, but keep the index
+    setIsPlaying(false);
   };
 
   const resumeSpeech = () => {
     if (!synthRef.current) return;
-    if (synthRef.current.paused) {
-      synthRef.current.resume();
-      setIsPlaying(true);
-      startInterval();
-    } else {
-      startSpeech();
-    }
+    startSpeech(currentSentenceIndexRef.current);
   };
 
   const stopSpeech = () => {
@@ -125,8 +174,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
     }
     setIsPlaying(false);
     setProgress(0);
-    timeElapsedRef.current = 0;
-    stopInterval();
+    setTimeElapsed(0);
+    setCurrentSentenceIndex(0);
+    currentSentenceIndexRef.current = 0;
   };
 
   const handlePlayPause = () => {
@@ -137,32 +187,15 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
     }
   };
 
-  // Timeline Progress Emulation (Since Web Speech Synthesis does not have native progress callbacks)
-  const startInterval = () => {
-    stopInterval();
-    progressIntervalRef.current = setInterval(() => {
-      timeElapsedRef.current += 1;
-      const pct = Math.min((timeElapsedRef.current / (estimatedDurationRef.current / playbackSpeed)) * 100, 99);
-      setProgress(pct);
-    }, 1000);
-  };
-
-  const stopInterval = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-  };
-
   // Control Speed
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);
     if (isPlaying) {
-      // Must restart speech to apply new rate in some browsers
-      stopSpeech();
+      // Apply speed rate update immediately
+      pauseSpeech();
       setTimeout(() => {
         setPlaybackSpeed(speed);
-        startSpeech();
+        startSpeech(currentSentenceIndexRef.current);
       }, 100);
     }
   };
@@ -171,22 +204,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
   const handleToggleMute = () => {
     const nextMute = !isMuted;
     setIsMuted(nextMute);
-    if (utteranceRef.current && synthRef.current) {
-      // Directly alter volume of current stream
-      utteranceRef.current.volume = nextMute ? 0 : 1;
-      // In some speech engines we need to reload to apply
-      if (isPlaying) {
-        synthRef.current.cancel();
-        const textToSpeak = getSpeechScript(blog.content, blog.title);
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utteranceRef.current = utterance;
-        utterance.rate = playbackSpeed;
-        utterance.volume = nextMute ? 0 : 1;
-        const voices = synthRef.current.getVoices();
-        const premiumVoice = voices.find(v => v.lang.startsWith("en-")) || voices[0];
-        if (premiumVoice) utterance.voice = premiumVoice;
-        synthRef.current.speak(utterance);
-      }
+    if (isPlaying) {
+      pauseSpeech();
+      setTimeout(() => {
+        setIsMuted(nextMute);
+        startSpeech(currentSentenceIndexRef.current);
+      }, 50);
     }
   };
 
@@ -197,7 +220,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  const timeElapsed = Math.floor(timeElapsedRef.current);
   const totalDuration = Math.ceil(estimatedDurationRef.current / playbackSpeed);
 
   return (
@@ -231,22 +253,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
         <div className="flex items-center justify-center gap-4">
           <button
             onClick={() => {
-              timeElapsedRef.current = Math.max(0, timeElapsedRef.current - 15);
-              if (isPlaying) {
-                // Emulate rewind by restarting utterance from a general point
-                stopSpeech();
-                setTimeout(() => startSpeech(), 150);
-              }
+              const prevIndex = Math.max(0, currentSentenceIndexRef.current - 2);
+              startSpeech(prevIndex);
             }}
-            className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-full transition-colors"
-            title="Rewind 15s"
+            className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+            title="Rewind 2 sentences"
           >
             <SkipBack className="w-5 h-5" />
           </button>
 
           <button
             onClick={handlePlayPause}
-            className="p-3 bg-cyan-500 text-slate-950 rounded-full hover:bg-cyan-400 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-cyan-500/20"
+            className="p-3 bg-cyan-500 text-slate-950 rounded-full hover:bg-cyan-400 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-cyan-500/20 cursor-pointer"
             title={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-0.5" />}
@@ -254,14 +272,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
 
           <button
             onClick={() => {
-              timeElapsedRef.current = Math.min(totalDuration, timeElapsedRef.current + 15);
-              if (isPlaying) {
-                stopSpeech();
-                setTimeout(() => startSpeech(), 150);
-              }
+              const nextIndex = Math.min(sentencesRef.current.length - 1, currentSentenceIndexRef.current + 2);
+              startSpeech(nextIndex);
             }}
-            className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-full transition-colors"
-            title="Forward 15s"
+            className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+            title="Forward 2 sentences"
           >
             <SkipForward className="w-5 h-5" />
           </button>
@@ -269,9 +284,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
           <button
             onClick={() => {
               stopSpeech();
-              timeElapsedRef.current = 0;
             }}
-            className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-full transition-colors"
+            className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
             title="Reset"
           >
             <RotateCcw className="w-4 h-4" />

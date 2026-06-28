@@ -12,6 +12,7 @@ import { ArxivGenerator } from "./components/ArxivGenerator";
 
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
+import { AboutModal } from "./components/AboutModal";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
@@ -19,6 +20,7 @@ export default function App() {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [activeBlog, setActiveBlog] = useState<BlogPost | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [activeAudioBlog, setActiveAudioBlog] = useState<BlogPost | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -139,7 +141,11 @@ export default function App() {
       } catch (err) {
         console.error("Failed to fetch custom blogs from Firestore:", err);
         firestoreError = true;
-        handleFirestoreError(err, OperationType.GET, "blogs");
+        try {
+          handleFirestoreError(err, OperationType.GET, "blogs");
+        } catch (thrownErr) {
+          console.warn("Firestore fetch failed. Operating in offline-first mode using cached or preloaded content.");
+        }
       }
 
       // 3. Merge lists using a Map keyed by id to avoid duplicates
@@ -174,15 +180,30 @@ export default function App() {
               console.log(`Successfully backed up local blog "${blog.title}" to cloud Firestore.`);
             } catch (err) {
               console.error(`Failed to back up local blog "${blog.title}" to Firestore:`, err);
-              handleFirestoreError(err, OperationType.WRITE, `blogs/${blog.id}`);
+              try {
+                handleFirestoreError(err, OperationType.WRITE, `blogs/${blog.id}`);
+              } catch (thrownErr) {
+                console.warn("Could not save backup copy to Firestore in offline mode.");
+              }
             }
           }
         }
       }
 
       // Update state and local storage immediately with the synced list
-      setBlogs([...mergedCustomBlogs, ...PRELOADED_BLOGS]);
+      const allBlogs = [...mergedCustomBlogs, ...PRELOADED_BLOGS];
+      setBlogs(allBlogs);
       localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
+
+      // Handle deep linking if a blog parameter is in the URL on load
+      const searchParams = new URLSearchParams(window.location.search);
+      const blogId = searchParams.get("blog") || searchParams.get("id");
+      if (blogId) {
+        const found = allBlogs.find(b => b.id === blogId || b.slug === blogId);
+        if (found) {
+          setActiveBlog(found);
+        }
+      }
 
       // 5. Call the server sync endpoint to ensure the server's ephemeral JSON backup is also in sync
       try {
@@ -198,6 +219,20 @@ export default function App() {
 
     loadBlogs();
   }, []);
+
+  // Update URL search parameters when activeBlog changes
+  useEffect(() => {
+    if (activeBlog) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("blog", activeBlog.id);
+      window.history.replaceState({}, "", url.toString());
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("blog");
+      url.searchParams.delete("id");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [activeBlog]);
 
   const handleBlogGenerated = async (newBlog: BlogPost) => {
     // 1. Save to cloud Firestore immediately
@@ -285,7 +320,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans selection:bg-neutral-200 selection:text-black pb-16">
-      <Navbar onOpenCreate={() => setIsCreateOpen(true)} />
+      <Navbar onOpenCreate={() => setIsCreateOpen(true)} onOpenAbout={() => setIsAboutOpen(true)} />
 
       {/* Main Content Body */}
       <main className="flex-1">
@@ -699,6 +734,7 @@ export default function App() {
           title={activeBlog.title}
           excerpt={activeBlog.excerpt}
           arxivLink={activeBlog.arxivLink}
+          blogId={activeBlog.id}
           onDownloadPng={() => handleDownloadPng(activeBlog)}
         />
       )}
@@ -711,6 +747,12 @@ export default function App() {
           if (!deleteBlogId) return false;
           return await handleRemoveBlog(deleteBlogId, password);
         }}
+      />
+
+      {/* ABOUT MODAL DETAIL */}
+      <AboutModal
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
       />
     </div>
   );

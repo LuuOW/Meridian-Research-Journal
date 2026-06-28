@@ -8,6 +8,7 @@ interface LinkedInShareModalProps {
   title: string;
   excerpt: string;
   arxivLink?: string;
+  blogId?: string;
   onDownloadPng?: () => void;
 }
 
@@ -17,13 +18,15 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
   title,
   excerpt,
   arxivLink = "https://arxiv.org",
+  blogId,
   onDownloadPng
 }) => {
   // Safe default post draft generator
   const generateInitialDraft = () => {
     // Clean up the title slightly if it is extremely long
     const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
-    return `${cleanTitle} just got a major upgrade. New inverse-design techniques deliver 10× greater bandwidth, up to 4× lower loss, and 100× faster design cycles—opening the door to more efficient optical communications, quantum photonics, and light-matter interaction engineering. #Photonics #Optics #QuantumTech\n\nJournal Paper: ${arxivLink}`;
+    const blogUrl = blogId ? `${window.location.origin}/?blog=${blogId}` : window.location.origin;
+    return `${cleanTitle} just got a major upgrade. New inverse-design techniques deliver 10× greater bandwidth, up to 4× lower loss, and 100× faster design cycles—opening the door to more efficient optical communications, quantum photonics, and light-matter interaction engineering. #Photonics #Optics #QuantumTech\n\nRead on Meridian: ${blogUrl}\nJournal Paper: ${arxivLink}`;
   };
 
   const [draftText, setDraftText] = useState("");
@@ -35,7 +38,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
       setDraftText(generateInitialDraft());
       setCopied(false);
     }
-  }, [isOpen, title, excerpt, arxivLink]);
+  }, [isOpen, title, excerpt, arxivLink, blogId]);
 
   const characterCount = draftText.length;
   const isOverLimit = characterCount > 600;
