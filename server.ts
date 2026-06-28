@@ -93,16 +93,28 @@ app.get("/api/blogs", (req, res) => {
 app.delete("/api/blogs/:id", (req, res) => {
   const { id } = req.params;
   const password = req.headers["x-deletion-password"] || req.query.password || req.body?.password;
-  const expectedPassword = process.env.GENERATION_PASSWORD || "meridian";
+  const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
   
   if (!password || password !== expectedPassword) {
-    return res.status(403).json({ error: "Unauthorized: Incorrect deletion password." });
+    return res.status(403).json({ error: "Unauthorized: Incorrect editor password." });
   }
 
   const blogs = readCustomBlogs();
   const filtered = blogs.filter((b: any) => b.id !== id);
   writeCustomBlogs(filtered);
   res.json({ success: true });
+});
+
+// API: Verify Editor Password
+app.post("/api/verify-editor-password", (req, res) => {
+  const { password } = req.body;
+  const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+  
+  if (password === expectedPassword) {
+    res.json({ success: true });
+  } else {
+    res.status(403).json({ error: "Incorrect password." });
+  }
 });
 
 // API: Sync custom blogs from client and server
@@ -194,9 +206,9 @@ app.get("/api/verify-github-token", async (req, res) => {
 app.post("/api/blog/generate", async (req, res) => {
   const { arxivInput, rawText, password } = req.body;
 
-  const expectedPassword = process.env.GENERATION_PASSWORD || "meridian";
+  const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
   if (!password || password !== expectedPassword) {
-    return res.status(403).json({ error: "Unauthorized: Incorrect generation password." });
+    return res.status(403).json({ error: "Unauthorized: Incorrect editor password." });
   }
 
   if (!arxivInput && !rawText) {

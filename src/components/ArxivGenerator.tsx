@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { X, Cpu, Sparkles, BookOpen, FileText, ArrowRight, CheckCircle2, ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
+import { X, Cpu, Sparkles, BookOpen, FileText, ArrowRight, CheckCircle2 } from "lucide-react";
 import { BlogPost } from "../types";
 
 interface ArxivGeneratorProps {
   onClose: () => void;
   onBlogGenerated: (blog: BlogPost) => void;
+  editorPassword?: string;
 }
 
 const PRESET_EXAMPLES = [
@@ -36,40 +37,14 @@ const LOADING_STEPS = [
   "Finalizing Meridian editorial polish..."
 ];
 
-export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogGenerated }) => {
+export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogGenerated, editorPassword = "meridian" }) => {
   const [arxivInput, setArxivInput] = useState("");
   const [rawText, setRawText] = useState("");
-  const [password, setPassword] = useState("");
   const [activeTab, setActiveTab] = useState<"arxiv" | "raw">("arxiv");
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingStepIdx, setLoadingStepIdx] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const [isVerifyingToken, setIsVerifyingToken] = useState(false);
-  const [tokenStatus, setTokenStatus] = useState<{ valid: boolean; token_present: boolean; message: string } | null>(null);
-
-  const verifyGithubToken = async () => {
-    setIsVerifyingToken(true);
-    try {
-      const res = await fetch("/api/verify-github-token");
-      const data = await res.json();
-      setTokenStatus(data);
-    } catch (err: any) {
-      setTokenStatus({
-        valid: false,
-        token_present: false,
-        message: `Failed to connect: ${err.message || err}`
-      });
-    } finally {
-      setIsVerifyingToken(false);
-    }
-  };
-
-  // Run initial token check on mount
-  useEffect(() => {
-    verifyGithubToken();
-  }, []);
 
   // Cycle through reassuring loading messages during generation
   useEffect(() => {
@@ -101,11 +76,6 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
       return;
     }
 
-    if (!password.trim()) {
-      setErrorMsg("Please provide the generation security password.");
-      return;
-    }
-
     setIsGenerating(true);
 
     try {
@@ -115,7 +85,7 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
         body: JSON.stringify({
           arxivInput: inputVal,
           rawText: textVal,
-          password: password.trim()
+          password: editorPassword
         }),
       });
 
@@ -233,86 +203,6 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
                   </p>
                 </div>
               )}
-
-              {/* Password Input Block */}
-              <div className="space-y-2">
-                <label htmlFor="gen-password" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Generation Password
-                </label>
-                <input
-                  id="gen-password"
-                  type="password"
-                  placeholder="Enter security password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-100 outline-none focus:ring-2 focus:ring-black/5 focus:border-black font-mono text-sm transition-all bg-neutral-50/50 focus:bg-white"
-                  required
-                />
-                <p className="text-[11px] text-gray-400">
-                  Password is required for security. (Default is <code className="bg-neutral-100 px-1 rounded text-black font-bold">meridian</code>).
-                </p>
-              </div>
-
-              {/* GitHub Models Token Fallback status */}
-              <div className="p-4 rounded-2xl border border-gray-100 bg-neutral-50/30 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Cpu className="w-3.5 h-3.5 text-neutral-500" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                      GitHub Models Fallback
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={verifyGithubToken}
-                    disabled={isVerifyingToken}
-                    className="text-[10px] font-bold text-black hover:underline cursor-pointer disabled:opacity-50 flex items-center gap-1"
-                  >
-                    {isVerifyingToken ? (
-                      <>
-                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      "Re-verify"
-                    )}
-                  </button>
-                </div>
-
-                {isVerifyingToken ? (
-                  <div className="flex items-center gap-2 py-1">
-                    <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />
-                    <span className="text-xs text-neutral-500 font-medium">Verifying fallback token on server...</span>
-                  </div>
-                ) : tokenStatus ? (
-                  <div className="space-y-1.5">
-                    {tokenStatus.valid ? (
-                      <div className="flex items-start gap-2 text-emerald-700 bg-emerald-50/60 border border-emerald-100/50 p-2.5 rounded-xl text-xs">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-semibold">GitHub Token Active</p>
-                          <p className="text-[11px] text-emerald-600/90 mt-0.5 leading-relaxed">{tokenStatus.message}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-2 text-amber-800 bg-amber-50/60 border border-amber-100/50 p-2.5 rounded-xl text-xs">
-                        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-semibold">GitHub Fallback Offline</p>
-                          <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">{tokenStatus.message}</p>
-                          {!tokenStatus.token_present && (
-                            <p className="text-[10px] text-amber-600 mt-1">
-                              Add <code className="bg-amber-100/60 px-1 rounded font-bold font-mono">GITHUB_TOKEN</code> to your application secrets to enable seamless GPT-4o-mini generation when Gemini is at capacity.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-xs text-neutral-400">Status unknown. Click Re-verify to check.</div>
-                )}
-              </div>
 
               {/* Error Block */}
               {errorMsg && (

@@ -13,6 +13,7 @@ import { ArxivGenerator } from "./components/ArxivGenerator";
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
+import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
@@ -21,12 +22,56 @@ export default function App() {
   const [activeBlog, setActiveBlog] = useState<BlogPost | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isEditorMode, setIsEditorMode] = useState<boolean>(false);
+  const [hiddenBlogIds, setHiddenBlogIds] = useState<string[]>([]);
   const [activeAudioBlog, setActiveAudioBlog] = useState<BlogPost | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<"all" | "today" | "yesterday" | "week">("all");
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
+  const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
+  const [editorPassword, setEditorPassword] = useState<string>("");
+
+  // Inactivity detection: Disable Editor Mode after 5 minutes of inactivity
+  useEffect(() => {
+    if (!isEditorMode) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsEditorMode(false);
+        setEditorPassword("");
+      }, 5 * 60 * 1000); // 5 minutes (300,000 ms)
+    };
+
+    // Initialize timer
+    resetTimer();
+
+    // Setup event listeners for user interaction
+    const events = ["mousemove", "keydown", "mousedown", "scroll", "touchstart"];
+    events.forEach((event) => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach((event) => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [isEditorMode]);
+
+  const handleToggleEditorMode = () => {
+    if (!isEditorMode) {
+      setIsEditorPasswordModalOpen(true);
+    } else {
+      setIsEditorMode(false);
+      setEditorPassword("");
+    }
+  };
 
   const getBlogDate = (b: BlogPost): Date | null => {
     if (b.id.startsWith("generated-")) {
@@ -234,6 +279,26 @@ export default function App() {
     }
   }, [activeBlog]);
 
+  // Load hidden blog IDs from LocalStorage
+  useEffect(() => {
+    const savedHidden = localStorage.getItem("meridian_hidden_blogs");
+    if (savedHidden) {
+      try {
+        setHiddenBlogIds(JSON.parse(savedHidden));
+      } catch (err) {
+        console.error("Failed to parse hidden blog IDs:", err);
+      }
+    }
+  }, []);
+
+  const handleToggleHideBlog = (id: string) => {
+    setHiddenBlogIds((prev) => {
+      const updated = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      localStorage.setItem("meridian_hidden_blogs", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const handleBlogGenerated = async (newBlog: BlogPost) => {
     // 1. Save to cloud Firestore immediately
     try {
@@ -298,8 +363,11 @@ export default function App() {
   // Get all unique tags from active blogs
   const allTags = Array.from(new Set(blogs.flatMap((b) => b.tags)));
 
-  // Filtered list based on search and selected tags
+  // Filtered list based on search and selected tags, omitting hidden blogs
   const filteredBlogs = blogs.filter((b) => {
+    // Skip hidden blogs from the public feed unless in editor mode
+    if (!isEditorMode && hiddenBlogIds.includes(b.id)) return false;
+
     const matchesSearch =
       b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -320,7 +388,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans selection:bg-neutral-200 selection:text-black pb-16">
-      <Navbar onOpenCreate={() => setIsCreateOpen(true)} onOpenAbout={() => setIsAboutOpen(true)} />
+      <Navbar 
+        onOpenCreate={() => setIsCreateOpen(true)} 
+        onOpenAbout={() => setIsAboutOpen(true)} 
+        isEditorMode={isEditorMode}
+        onToggleEditorMode={handleToggleEditorMode}
+      />
 
       {/* Main Content Body */}
       <main className="flex-1">
@@ -465,29 +538,76 @@ export default function App() {
                 <div className="space-y-8">
                   {filteredBlogs.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredBlogs.map((blog) => (
-                        <div key={blog.id} className="relative group">
-                          <BlogPostCard blog={blog} onClick={() => {
-                            setActiveBlog(blog);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          }} />
-                          {/* Delete button for custom generated blogs */}
-                          {blog.id.startsWith("generated") && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteBlogId(blog.id);
-                              }}
-                              title="Delete generated post"
-                              className="absolute top-4 right-4 p-2.5 bg-neutral-900/90 hover:bg-black text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 border border-gray-700 cursor-pointer"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                      {filteredBlogs.map((blog) => {
+                        const isHidden = hiddenBlogIds.includes(blog.id);
+                        const isPreloaded = !blog.id.startsWith("generated");
+                        return (
+                          <div 
+                            key={blog.id} 
+                            className={`relative group transition-all duration-300 ${
+                              isHidden ? "opacity-60 saturate-50" : ""
+                            }`}
+                          >
+                            <BlogPostCard blog={blog} onClick={() => {
+                              setActiveBlog(blog);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }} />
+
+                            {/* Hidden Status indicator badge */}
+                            {isHidden && (
+                              <div className="absolute top-4 left-4 px-3 py-1 bg-amber-500/90 text-white text-[9px] font-extrabold rounded-full font-mono uppercase tracking-widest shadow-sm pointer-events-none z-10">
+                                Hidden from Feed
+                              </div>
+                            )}
+
+                            {/* Action overlay controls when Editor Mode is active */}
+                            {isEditorMode && (
+                              <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 animate-fade-in">
+                                {isPreloaded ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleHideBlog(blog.id);
+                                    }}
+                                    title={isHidden ? "Restore/Unhide publication" : "Hide publication"}
+                                    className={`p-2.5 rounded-full shadow-lg border cursor-pointer transition-all ${
+                                      isHidden
+                                        ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
+                                        : "bg-neutral-900/90 border-neutral-800 text-white hover:bg-black"
+                                    }`}
+                                  >
+                                    {isHidden ? (
+                                      // Unhide/restore icon (eye)
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                    ) : (
+                                      // Trash/hide icon
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteBlogId(blog.id);
+                                    }}
+                                    title="Delete custom publication"
+                                    className="p-2.5 bg-red-600 border border-red-500 hover:bg-red-700 text-white rounded-full shadow-lg cursor-pointer transition-colors"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
@@ -723,6 +843,7 @@ export default function App() {
         <ArxivGenerator
           onClose={() => setIsCreateOpen(false)}
           onBlogGenerated={handleBlogGenerated}
+          editorPassword={editorPassword}
         />
       )}
 
@@ -753,6 +874,19 @@ export default function App() {
       <AboutModal
         isOpen={isAboutOpen}
         onClose={() => setIsAboutOpen(false)}
+        isEditorMode={isEditorMode}
+      />
+
+      {/* EDITOR PASSWORD MODAL */}
+      <EditorPasswordModal
+        isOpen={isEditorPasswordModalOpen}
+        onClose={() => setIsEditorPasswordModalOpen(false)}
+        titleText="Activate Editor Mode"
+        onConfirm={(pwd) => {
+          setIsEditorMode(true);
+          setEditorPassword(pwd);
+          setIsEditorPasswordModalOpen(false);
+        }}
       />
     </div>
   );

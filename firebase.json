@@ -1,0 +1,12 @@
+{
+  "firestore": [
+    {
+      "database": "(default)",
+      "rules": "firestore.rules"
+    },
+    {
+      "database": "ai-studio-meridianblog-10a31456-1014-47b6-9ab6-80e4b5cfcd56",
+      "rules": "firestore.rules"
+    }
+  ]
+}
