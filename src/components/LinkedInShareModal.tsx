@@ -25,7 +25,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
   const generateInitialDraft = () => {
     // Clean up the title slightly if it is extremely long
     const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
-    const blogUrl = blogId ? `${window.location.origin}/?blog=${blogId}` : window.location.origin;
+    const blogUrl = blogId ? `${window.location.origin}/blog/${blogId}` : window.location.origin;
     return `${cleanTitle} just got a major upgrade. New inverse-design techniques deliver 10× greater bandwidth, up to 4× lower loss, and 100× faster design cycles—opening the door to more efficient optical communications, quantum photonics, and light-matter interaction engineering. #Photonics #Optics #QuantumTech\n\nRead on Meridian: ${blogUrl}\nJournal Paper: ${arxivLink}`;
   };
 

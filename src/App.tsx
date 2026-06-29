@@ -240,9 +240,17 @@ export default function App() {
       setBlogs(allBlogs);
       localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
 
-      // Handle deep linking if a blog parameter is in the URL on load
-      const searchParams = new URLSearchParams(window.location.search);
-      const blogId = searchParams.get("blog") || searchParams.get("id");
+      // Handle deep linking via path /blog/:id or query parameter on load
+      const getBlogIdFromUrl = () => {
+        const pathParts = window.location.pathname.split("/");
+        if (pathParts[1] === "blog" && pathParts[2]) {
+          return decodeURIComponent(pathParts[2]);
+        }
+        const searchParams = new URLSearchParams(window.location.search);
+        return searchParams.get("blog") || searchParams.get("id");
+      };
+
+      const blogId = getBlogIdFromUrl();
       if (blogId) {
         const found = allBlogs.find(b => b.id === blogId || b.slug === blogId);
         if (found) {
@@ -265,19 +273,51 @@ export default function App() {
     loadBlogs();
   }, []);
 
-  // Update URL search parameters when activeBlog changes
+  // Update URL pathname / search parameters when activeBlog changes
   useEffect(() => {
+    const currentPath = window.location.pathname;
+    const currentSearch = window.location.search;
+    
     if (activeBlog) {
-      const url = new URL(window.location.href);
-      url.searchParams.set("blog", activeBlog.id);
-      window.history.replaceState({}, "", url.toString());
+      const targetPath = `/blog/${activeBlog.slug || activeBlog.id}`;
+      // Push history only if path is different or we are switching away from search parameters
+      if (currentPath !== targetPath || currentSearch !== "") {
+        window.history.pushState({}, "", targetPath);
+      }
     } else {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("blog");
-      url.searchParams.delete("id");
-      window.history.replaceState({}, "", url.toString());
+      const targetPath = "/";
+      if (currentPath !== targetPath || currentSearch !== "") {
+        window.history.pushState({}, "", targetPath);
+      }
     }
   }, [activeBlog]);
+
+  // Synchronize activeBlog with browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      if (blogs.length === 0) return;
+      const pathParts = window.location.pathname.split("/");
+      let targetBlogId = "";
+      if (pathParts[1] === "blog" && pathParts[2]) {
+        targetBlogId = decodeURIComponent(pathParts[2]);
+      } else {
+        const searchParams = new URLSearchParams(window.location.search);
+        targetBlogId = searchParams.get("blog") || searchParams.get("id") || "";
+      }
+
+      if (targetBlogId) {
+        const found = blogs.find(b => b.id === targetBlogId || b.slug === targetBlogId);
+        if (found) {
+          setActiveBlog(found);
+          return;
+        }
+      }
+      setActiveBlog(null);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [blogs]);
 
   // Load hidden blog IDs from LocalStorage
   useEffect(() => {
@@ -855,7 +895,7 @@ export default function App() {
           title={activeBlog.title}
           excerpt={activeBlog.excerpt}
           arxivLink={activeBlog.arxivLink}
-          blogId={activeBlog.id}
+          blogId={activeBlog.slug || activeBlog.id}
           onDownloadPng={() => handleDownloadPng(activeBlog)}
         />
       )}
