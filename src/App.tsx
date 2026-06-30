@@ -433,6 +433,7 @@ export default function App() {
         onOpenAbout={() => setIsAboutOpen(true)} 
         isEditorMode={isEditorMode}
         onToggleEditorMode={handleToggleEditorMode}
+        onHome={() => setActiveBlog(null)}
       />
 
       {/* Main Content Body */}

@@ -6,14 +6,24 @@ interface NavbarProps {
   onOpenAbout: () => void;
   isEditorMode: boolean;
   onToggleEditorMode: () => void;
+  onHome?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
   onOpenCreate, 
   onOpenAbout, 
   isEditorMode, 
-  onToggleEditorMode 
+  onToggleEditorMode,
+  onHome
 }) => {
+  const handleHomeClick = () => {
+    if (onHome) {
+      onHome();
+    } else {
+      window.location.reload();
+    }
+  };
+
   return (
     <header id="app-header" className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-gray-100 z-40 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center">
@@ -22,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex-1 flex justify-start">
           <div 
             className="flex items-center gap-3 cursor-pointer group" 
-            onClick={() => window.location.reload()}
+            onClick={handleHomeClick}
           >
             {/* Elite Geometric Emblazoned Logo */}
             <div className="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-[1px] shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-105">
@@ -55,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Navigation Links (As seen in the Design HTML) */}
         <div className="hidden md:flex gap-8 text-xs font-bold tracking-widest uppercase text-gray-400 justify-center shrink-0">
-          <span className="text-black border-b-2 border-black pb-1 cursor-pointer" onClick={() => window.location.reload()}>Blog</span>
+          <span className="text-black border-b-2 border-black pb-1 cursor-pointer" onClick={handleHomeClick}>Blog</span>
           <span className="hover:text-black cursor-pointer transition-colors pb-1 text-neutral-500 hover:border-b-2 hover:border-black" onClick={onOpenAbout}>About</span>
         </div>
 
