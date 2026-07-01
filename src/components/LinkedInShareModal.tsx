@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Copy, Check, ExternalLink, MessageSquare, AlertCircle, Sparkles } from "lucide-react";
+import { X, Copy, Check, ExternalLink, MessageSquare } from "lucide-react";
 
 interface LinkedInShareModalProps {
   isOpen: boolean;
@@ -40,9 +40,6 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
     }
   }, [isOpen, title, excerpt, arxivLink, blogId]);
 
-  const characterCount = draftText.length;
-  const isOverLimit = characterCount > 600;
-
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(draftText);
@@ -51,12 +48,6 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }
-  };
-
-  const getCounterColor = () => {
-    if (characterCount > 600) return "text-red-500 font-bold";
-    if (characterCount > 500) return "text-amber-500 font-semibold";
-    return "text-emerald-500 font-medium";
   };
 
   return (
@@ -96,7 +87,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                 <span className="font-serif font-bold italic text-md text-gray-900">LinkedIn Share Companion</span>
               </div>
               <p className="text-xs text-gray-500">
-                Meridian drafts a scannable, engaging post within your requested limit.
+                Meridian drafts a scannable, engaging post ready for sharing.
               </p>
             </div>
 
@@ -107,9 +98,6 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                   <MessageSquare className="w-3.5 h-3.5" />
                   Your Post Draft
                 </label>
-                <span className={`text-xs font-mono ${getCounterColor()}`}>
-                  {characterCount} / 600 characters
-                </span>
               </div>
               
               <div className="relative">
@@ -117,53 +105,10 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
                   rows={6}
-                  className={`w-full bg-neutral-50 hover:bg-neutral-100/75 focus:bg-white text-xs border rounded-2xl p-4 outline-none transition-all resize-none font-sans leading-relaxed ${
-                    isOverLimit ? "border-red-300 focus:border-red-400 ring-2 ring-red-500/10" : "border-gray-200 focus:border-black"
-                  }`}
+                  className="w-full bg-neutral-50 hover:bg-neutral-100/75 focus:bg-white text-xs border border-gray-200 rounded-2xl p-4 outline-none transition-all resize-none font-sans leading-relaxed focus:border-black"
                   placeholder="Draft your LinkedIn post..."
                 />
               </div>
-
-              {isOverLimit && (
-                <div className="flex items-center gap-1.5 text-[11px] text-red-500 font-semibold mt-1">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>Post exceeds the requested limit!</span>
-                </div>
-              )}
-            </div>
-
-            {/* Helper Steps Card */}
-            <div className="bg-neutral-50 border border-neutral-100 rounded-2xl p-4 space-y-3">
-              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                Recommended Workflow
-              </h4>
-              
-              <ol className="text-xs text-gray-600 space-y-2 list-decimal list-inside leading-relaxed pl-1">
-                <li>
-                  {onDownloadPng ? (
-                    <button
-                      onClick={onDownloadPng}
-                      className="text-black font-bold underline hover:text-neutral-700 transition-colors cursor-pointer text-left inline-flex items-center gap-1"
-                    >
-                      Download modern PNG Banner
-                    </button>
-                  ) : (
-                    <span>Download your PNG banner image</span>
-                  )}
-                </li>
-                <li>
-                  <button
-                    onClick={handleCopy}
-                    className="text-black font-bold underline hover:text-neutral-700 transition-colors cursor-pointer text-left inline-flex items-center gap-1"
-                  >
-                    Copy your 300-char draft text
-                  </button>
-                </li>
-                <li>
-                  <span>Open LinkedIn to upload the banner and paste your draft</span>
-                </li>
-              </ol>
             </div>
 
             {/* Actions Footer */}
