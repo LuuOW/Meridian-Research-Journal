@@ -505,16 +505,16 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
       if (fullMatch.startsWith("`") && fullMatch.endsWith("`")) {
         const codeText = fullMatch.slice(1, -1);
         parts.push(
-          <code key={`code-${matchIndex}`} className="px-1.5 py-0.5 font-mono text-xs bg-slate-100 rounded text-slate-800">
+          <code key={`code-${matchIndex}`} className="px-1.5 py-0.5 font-mono text-xs bg-slate-100 dark:bg-neutral-800 rounded text-slate-800 dark:text-neutral-200">
             {codeText}
           </code>
         );
       } else if (fullMatch.startsWith("**") && fullMatch.endsWith("**")) {
         const boldText = match[2];
-        parts.push(<strong key={`bold-${matchIndex}`} className="font-bold text-slate-900">{boldText}</strong>);
+        parts.push(<strong key={`bold-${matchIndex}`} className="font-bold text-slate-900 dark:text-white">{boldText}</strong>);
       } else if (fullMatch.startsWith("__") && fullMatch.endsWith("__")) {
         const boldText = match[3];
-        parts.push(<strong key={`bold-${matchIndex}`} className="font-bold text-slate-900">{boldText}</strong>);
+        parts.push(<strong key={`bold-${matchIndex}`} className="font-bold text-slate-900 dark:text-white">{boldText}</strong>);
       } else if (fullMatch.startsWith("[") && fullMatch.includes("](")) {
         const linkText = match[4];
         const linkUrl = match[5];
@@ -524,17 +524,17 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
             href={linkUrl} 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-cyan-600 hover:text-cyan-800 underline inline-flex items-center gap-0.5 font-medium transition-colors"
+            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300 underline inline-flex items-center gap-0.5 font-medium transition-colors"
           >
             {linkText}
           </a>
         );
       } else if (fullMatch.startsWith("*") && fullMatch.endsWith("*")) {
         const italicText = match[6];
-        parts.push(<em key={`italic-${matchIndex}`} className="italic text-slate-800">{italicText}</em>);
+        parts.push(<em key={`italic-${matchIndex}`} className="italic text-slate-800 dark:text-slate-200">{italicText}</em>);
       } else if (fullMatch.startsWith("_") && fullMatch.endsWith("_")) {
         const italicText = match[7];
-        parts.push(<em key={`italic-${matchIndex}`} className="italic text-slate-800">{italicText}</em>);
+        parts.push(<em key={`italic-${matchIndex}`} className="italic text-slate-800 dark:text-slate-200">{italicText}</em>);
       } else {
         parts.push(fullMatch);
       }
@@ -573,7 +573,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
           parts.push(
             <span
               key={`inline-${matchIndex}`}
-              className="inline-block px-1 font-mono text-slate-900"
+              className="inline-block px-1 font-mono text-slate-900 dark:text-white"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           );
@@ -614,7 +614,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
       parts.push(
         <div
           key={`block-placeholder-${matchIndex}`}
-          className="my-6 w-full overflow-x-auto py-2 text-slate-800"
+          className="my-6 w-full overflow-x-auto py-2 text-slate-800 dark:text-neutral-200"
           dangerouslySetInnerHTML={{ __html: mathObj.html }}
         />
       );
@@ -750,7 +750,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
   flushList();
 
   return (
-    <div className="academic-body text-slate-700 leading-relaxed space-y-4">
+    <div className="academic-body text-slate-700 dark:text-neutral-300 leading-relaxed space-y-4">
       {blocks.map((block, bIdx) => {
         switch (block.type) {
           case "empty":
@@ -776,40 +776,40 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
             const level = block.level || 3;
             if (level === 1) {
               return (
-                <h1 key={`h1-${bIdx}`} className="text-3xl md:text-4xl font-serif font-bold text-slate-900 mt-12 mb-6 tracking-tight border-b border-slate-100 pb-3">
+                <h1 key={`h1-${bIdx}`} className="text-3xl md:text-4xl font-serif font-bold text-slate-900 dark:text-white mt-12 mb-6 tracking-tight border-b border-slate-100 dark:border-neutral-800 pb-3">
                   {renderLine(block.content)}
                 </h1>
               );
             }
             if (level === 2) {
               return (
-                <h2 key={`h2-${bIdx}`} className="text-2xl md:text-3xl font-bold text-slate-900 mt-10 mb-4 font-display tracking-tight border-b border-slate-100 pb-2">
+                <h2 key={`h2-${bIdx}`} className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mt-10 mb-4 font-display tracking-tight border-b border-slate-100 dark:border-neutral-800 pb-2">
                   {renderLine(block.content)}
                 </h2>
               );
             }
             if (level === 3) {
               return (
-                <h3 key={`h3-${bIdx}`} className="text-xl md:text-2xl font-bold text-slate-900 mt-8 mb-4 font-display tracking-tight border-b border-slate-100 pb-2 flex items-center">
+                <h3 key={`h3-${bIdx}`} className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mt-8 mb-4 font-display tracking-tight border-b border-slate-100 dark:border-neutral-800 pb-2 flex items-center">
                   {renderLine(block.content)}
                 </h3>
               );
             }
             return (
-              <h4 key={`h4-${bIdx}`} className="text-lg md:text-xl font-bold text-slate-900 mt-6 mb-3 tracking-tight">
+              <h4 key={`h4-${bIdx}`} className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mt-6 mb-3 tracking-tight">
                 {renderLine(block.content)}
               </h4>
             );
           }
           
           case "horizontal-rule":
-            return <hr key={`hr-${bIdx}`} className="my-8 border-slate-200" />;
+            return <hr key={`hr-${bIdx}`} className="my-8 border-slate-200 dark:border-neutral-800" />;
             
           case "list-unordered":
             return (
               <ul key={`ul-${bIdx}`} className="list-disc pl-6 space-y-2 my-4">
                 {(block.items || []).map((item, iIdx) => (
-                  <li key={`li-${iIdx}`} className="text-slate-700">{renderLine(item)}</li>
+                  <li key={`li-${iIdx}`} className="text-slate-700 dark:text-neutral-300">{renderLine(item)}</li>
                 ))}
               </ul>
             );
@@ -818,14 +818,14 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
             return (
               <ol key={`ol-${bIdx}`} className="list-decimal pl-6 space-y-2 my-4">
                 {(block.items || []).map((item, iIdx) => (
-                  <li key={`li-${iIdx}`} className="text-slate-700">{renderLine(item)}</li>
+                  <li key={`li-${iIdx}`} className="text-slate-700 dark:text-neutral-300">{renderLine(item)}</li>
                 ))}
               </ol>
             );
             
           case "blockquote":
             return (
-              <blockquote key={`quote-${bIdx}`} className="border-l-4 border-cyan-500 bg-slate-50 pl-4 py-3 pr-3 my-4 rounded-r-md italic text-slate-600 font-sans">
+              <blockquote key={`quote-${bIdx}`} className="border-l-4 border-cyan-500 bg-slate-50 dark:bg-neutral-900/60 pl-4 py-3 pr-3 my-4 rounded-r-md italic text-slate-600 dark:text-neutral-400 font-sans">
                 {renderLine(block.content)}
               </blockquote>
             );

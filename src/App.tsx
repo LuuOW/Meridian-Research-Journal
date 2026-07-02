@@ -32,6 +32,45 @@ export default function App() {
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>("");
+  const [scrollProgress, setScrollProgress] = useState<number>(0);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    return (localStorage.getItem("theme") as "light" | "dark") || "light";
+  });
+
+  // Keep HTML element sync'd with current theme
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  // Track scroll progress for the active blog
+  useEffect(() => {
+    if (!activeBlog) {
+      setScrollProgress(0);
+      return;
+    }
+
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalHeight > 0) {
+        const progress = (window.scrollY / totalHeight) * 100;
+        setScrollProgress(Math.min(100, Math.max(0, progress)));
+      } else {
+        setScrollProgress(0);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll(); // Initialize on mount/change
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [activeBlog]);
 
   // Inactivity detection: Disable Editor Mode after 5 minutes of inactivity
   useEffect(() => {
@@ -427,14 +466,26 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans selection:bg-neutral-200 selection:text-black pb-16">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-neutral-950 flex flex-col font-sans selection:bg-neutral-200 dark:selection:bg-neutral-800 selection:text-black dark:selection:text-white pb-16 text-neutral-900 dark:text-neutral-100 transition-colors duration-300">
       <Navbar 
         onOpenCreate={() => setIsCreateOpen(true)} 
         onOpenAbout={() => setIsAboutOpen(true)} 
         isEditorMode={isEditorMode}
         onToggleEditorMode={handleToggleEditorMode}
         onHome={() => setActiveBlog(null)}
+        theme={theme}
+        onToggleTheme={() => setTheme(prev => prev === "light" ? "dark" : "light")}
       />
+
+      {/* Dynamic Scroll Progress Indicator for active blog reading */}
+      {activeBlog && (
+        <div className="fixed top-20 left-0 w-full h-[3.5px] bg-neutral-100/70 dark:bg-neutral-900/50 z-50 pointer-events-none shadow-sm">
+          <div 
+            className="h-full bg-gradient-to-r from-neutral-800 via-neutral-950 to-black dark:from-neutral-400 dark:via-neutral-200 dark:to-white transition-all duration-100 ease-out rounded-r-full"
+            style={{ width: `${scrollProgress}%` }}
+          />
+        </div>
+      )}
 
       {/* Main Content Body */}
       <main className="flex-1">
@@ -451,20 +502,20 @@ export default function App() {
             >
               {/* Scholarly Hero Header */}
               <div className="text-center max-w-3xl mx-auto mb-14 space-y-5">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-neutral-50 border border-gray-100 rounded-full text-neutral-600 text-[10px] font-bold tracking-widest uppercase">
-                  <Compass className="w-3.5 h-3.5 text-black animate-spin-slow" />
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-neutral-50 dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-full text-neutral-600 dark:text-neutral-300 text-[10px] font-bold tracking-widest uppercase">
+                  <Compass className="w-3.5 h-3.5 text-black dark:text-white animate-spin-slow" />
                   Active Peer-Reviewed Translations
                 </div>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold italic text-black tracking-tight leading-[1.1]">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold italic text-black dark:text-white tracking-tight leading-[1.1]">
                   Symmetry-Preserving Research Blog
                 </h1>
-                <p className="text-gray-500 text-sm sm:text-base md:text-lg leading-relaxed font-light max-w-2xl mx-auto">
+                <p className="text-gray-500 dark:text-neutral-400 text-sm sm:text-base md:text-lg leading-relaxed font-light max-w-2xl mx-auto">
                   Bridging complex physics, deep learning, and advanced quantum optimization papers into highly visual, technical editorial publications.
                 </p>
               </div>
 
               {/* Advanced Search and Filter Bar */}
-              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mb-12 space-y-4">
+              <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm mb-12 space-y-4">
                 <div className="flex flex-col md:flex-row items-center gap-4">
                   <div className="relative w-full md:flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -473,7 +524,7 @@ export default function App() {
                       placeholder="Search publications by keyword, equations, or models..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 rounded-2xl bg-neutral-50/60 border border-gray-100 outline-none focus:ring-2 focus:ring-black/5 focus:border-black focus:bg-white text-sm transition-all"
+                      className="w-full pl-11 pr-4 py-3 rounded-2xl bg-neutral-50/60 dark:bg-neutral-950/40 border border-gray-100 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-neutral-700 focus:bg-white dark:focus:bg-neutral-950 text-sm transition-all dark:text-neutral-100 dark:placeholder-neutral-500"
                     />
                   </div>
                   
@@ -483,8 +534,8 @@ export default function App() {
                       onClick={() => setSelectedTag(null)}
                       className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
                         !selectedTag
-                          ? "bg-black text-white shadow-sm"
-                          : "bg-neutral-100 text-gray-600 hover:bg-neutral-200"
+                          ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
+                          : "bg-neutral-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-750"
                       }`}
                     >
                       All Topics
@@ -495,8 +546,8 @@ export default function App() {
                         onClick={() => setSelectedTag(tag)}
                         className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
                           selectedTag === tag
-                            ? "bg-black text-white shadow-sm"
-                            : "bg-neutral-100 text-gray-600 hover:bg-neutral-200"
+                            ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
+                            : "bg-neutral-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-750"
                         }`}
                       >
                         {tag}
@@ -505,10 +556,10 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Recency Time Filter Selector */}
-                <div className="flex flex-wrap items-center justify-between pt-3 border-t border-gray-50/80 gap-3 text-xs">
-                  <div className="flex items-center gap-1.5 text-gray-400 font-mono text-[10px] uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full"></span>
+                 {/* Recency Time Filter Selector */}
+                <div className="flex flex-wrap items-center justify-between pt-3 border-t border-gray-50/80 dark:border-neutral-800 gap-3 text-xs">
+                  <div className="flex items-center gap-1.5 text-gray-400 dark:text-neutral-500 font-mono text-[10px] uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-600 rounded-full"></span>
                     Publication Recency:
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -516,12 +567,12 @@ export default function App() {
                       onClick={() => setSelectedTimeFilter("all")}
                       className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                         selectedTimeFilter === "all"
-                          ? "bg-neutral-100 text-neutral-900 border border-neutral-200"
-                          : "text-gray-500 hover:text-black hover:bg-neutral-50"
+                          ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700"
+                          : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                       }`}
                     >
                       All Time
-                      <span className="bg-neutral-200/60 text-neutral-700 px-1.5 py-0.5 rounded-md text-[9px] font-mono">
+                      <span className="bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-700 dark:text-neutral-300 px-1.5 py-0.5 rounded-md text-[9px] font-mono">
                         {blogs.length}
                       </span>
                     </button>
@@ -529,13 +580,13 @@ export default function App() {
                       onClick={() => setSelectedTimeFilter("today")}
                       className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                         selectedTimeFilter === "today"
-                          ? "bg-blue-50 text-blue-800 border border-blue-200/50"
-                          : "text-gray-500 hover:text-black hover:bg-neutral-50"
+                          ? "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200/50 dark:border-blue-900/40"
+                          : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                       }`}
                     >
                       💡 Today
                       <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
-                        selectedTimeFilter === "today" ? "bg-blue-200/70 text-blue-900" : "bg-neutral-100 text-neutral-600"
+                        selectedTimeFilter === "today" ? "bg-blue-200/70 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
                       }`}>
                         {blogs.filter(isToday).length}
                       </span>
@@ -544,13 +595,13 @@ export default function App() {
                       onClick={() => setSelectedTimeFilter("yesterday")}
                       className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                         selectedTimeFilter === "yesterday"
-                          ? "bg-purple-50 text-purple-800 border border-purple-200/50"
-                          : "text-gray-500 hover:text-black hover:bg-neutral-50"
+                          ? "bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border border-purple-200/50 dark:border-purple-900/40"
+                          : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                       }`}
                     >
                       ⏳ Yesterday
                       <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
-                        selectedTimeFilter === "yesterday" ? "bg-purple-200/70 text-purple-900" : "bg-neutral-100 text-neutral-600"
+                        selectedTimeFilter === "yesterday" ? "bg-purple-200/70 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
                       }`}>
                         {blogs.filter(isYesterday).length}
                       </span>
@@ -559,13 +610,13 @@ export default function App() {
                       onClick={() => setSelectedTimeFilter("week")}
                       className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                         selectedTimeFilter === "week"
-                          ? "bg-amber-50 text-amber-800 border border-amber-200/50"
-                          : "text-gray-500 hover:text-black hover:bg-neutral-50"
+                          ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/50 dark:border-amber-900/40"
+                          : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                       }`}
                     >
                       🌟 This Week
                       <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
-                        selectedTimeFilter === "week" ? "bg-amber-200/70 text-amber-900" : "bg-neutral-100 text-neutral-600"
+                        selectedTimeFilter === "week" ? "bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
                       }`}>
                         {blogs.filter(isThisWeek).length}
                       </span>
@@ -651,17 +702,17 @@ export default function App() {
                       })}
                     </div>
                   ) : (
-                    <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
-                      <Newspaper className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-md font-bold text-gray-900 font-serif italic">No publications found</h3>
-                      <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                    <div className="bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
+                      <Newspaper className="w-12 h-12 text-gray-300 dark:text-neutral-700 mx-auto mb-4" />
+                      <h3 className="text-md font-bold text-gray-900 dark:text-neutral-100 font-serif italic">No publications found</h3>
+                      <p className="text-xs text-gray-500 dark:text-neutral-400 mt-2 leading-relaxed">
                         We couldn't find any articles matching your filters. Try checking spelling or click below to generate a new post from arXiv.
                       </p>
                       <button
                         onClick={() => setIsCreateOpen(true)}
-                        className="mt-6 px-6 py-3 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all flex items-center gap-2 mx-auto cursor-pointer shadow-sm"
+                        className="mt-6 px-6 py-3 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold transition-all flex items-center gap-2 mx-auto cursor-pointer shadow-sm active:scale-95"
                       >
-                        <Sparkles className="w-4 h-4 text-white fill-white/20" />
+                        <Sparkles className="w-4 h-4 text-white dark:text-black fill-white/20" />
                         Generate brand new post
                       </button>
                     </div>
@@ -681,9 +732,9 @@ export default function App() {
             >
               
               {/* PREMIUM SCHOLARLY FULL-BLEED HEADER BANNER */}
-              <div className="w-full bg-white text-black py-12 md:py-16 relative overflow-hidden border-b border-gray-100">
+              <div className="w-full bg-white dark:bg-neutral-900/20 text-black dark:text-white py-12 md:py-16 relative overflow-hidden border-b border-gray-100 dark:border-neutral-900 transition-colors">
                 {/* Ambient soft vector grid background */}
-                <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
+                <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#262626_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                   
@@ -691,13 +742,13 @@ export default function App() {
                   <div className="flex items-center justify-between mb-10">
                     <button
                       onClick={() => setActiveBlog(null)}
-                      className="inline-flex items-center gap-2 px-5 py-2 bg-white hover:bg-neutral-50 rounded-full text-xs text-black transition-all font-mono font-bold uppercase tracking-wider border border-gray-200 shadow-sm cursor-pointer"
+                      className="inline-flex items-center gap-2 px-5 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-full text-xs text-black dark:text-white transition-all font-mono font-bold uppercase tracking-wider border border-gray-200 dark:border-neutral-800 shadow-sm cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       Back to Publications
                     </button>
                     
-                    <span className="font-mono text-[10px] sm:text-xs text-black font-extrabold uppercase tracking-widest bg-neutral-100 px-3.5 py-1.5 rounded-full border border-gray-200">
+                    <span className="font-mono text-[10px] sm:text-xs text-black dark:text-white font-extrabold uppercase tracking-widest bg-neutral-100 dark:bg-neutral-800 px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-neutral-800 transition-colors">
                       MERIDIAN PUBLICATION REVIEW // PEER TRANSLATED
                     </span>
                   </div>
@@ -711,11 +762,11 @@ export default function App() {
                       {/* Tags chips */}
                       <div className="flex flex-wrap gap-2">
                         {activeBlog.tags.map((tag, idx) => {
-                          const colors = idx % 2 === 0 ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600";
+                          const colors = idx % 2 === 0 ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300" : "bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-300";
                           return (
                             <span
                               key={tag}
-                              className={`px-3.5 py-1 ${colors} text-[10px] font-bold uppercase tracking-widest rounded-full`}
+                              className={`px-3.5 py-1 ${colors} text-[10px] font-bold uppercase tracking-widest rounded-full transition-colors`}
                             >
                               {tag}
                             </span>
@@ -724,27 +775,27 @@ export default function App() {
                       </div>
 
                       {/* Header Title & Subtitle */}
-                      <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold italic tracking-tight leading-[1.1] text-black">
+                      <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold italic tracking-tight leading-[1.1] text-black dark:text-white">
                         {activeBlog.title}
                       </h1>
                       
-                      <p className="text-gray-600 text-sm sm:text-base leading-relaxed font-light">
+                      <p className="text-gray-600 dark:text-neutral-300 text-sm sm:text-base leading-relaxed font-light">
                         {activeBlog.excerpt}
                       </p>
 
                       {/* Publication author details */}
-                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] font-bold font-mono text-gray-400 uppercase tracking-widest pt-2">
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] font-bold font-mono text-gray-400 dark:text-neutral-500 uppercase tracking-widest pt-2">
                         <div>
-                          <span className="text-gray-400 mr-1.5">Reviewer:</span>
-                          <span className="text-black font-extrabold">{activeBlog.author}</span>
+                          <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Reviewer:</span>
+                          <span className="text-black dark:text-white font-extrabold">{activeBlog.author}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400 mr-1.5">Date:</span>
-                          <span className="text-black">{activeBlog.date}</span>
+                          <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Date:</span>
+                          <span className="text-black dark:text-white">{activeBlog.date}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400 mr-1.5">Duration:</span>
-                          <span className="text-black">{activeBlog.readingTime}</span>
+                          <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Duration:</span>
+                          <span className="text-black dark:text-white">{activeBlog.readingTime}</span>
                         </div>
                       </div>
 
@@ -752,9 +803,9 @@ export default function App() {
                       <div className="flex flex-wrap items-center gap-4 pt-3">
                         <button
                           onClick={() => setActiveAudioBlog(activeBlog)}
-                          className="flex items-center gap-2 bg-black text-white px-6 py-2.5 rounded-full text-xs font-bold hover:bg-neutral-800 transition-all shadow-sm active:scale-95 cursor-pointer"
+                          className="flex items-center gap-2 bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full text-xs font-bold hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-all shadow-sm active:scale-95 cursor-pointer"
                         >
-                          <Headset className="w-4 h-4 text-white fill-current" />
+                          <Headset className="w-4 h-4 text-white dark:text-black fill-current" />
                           Listen to this Article
                         </button>
                         
@@ -762,11 +813,11 @@ export default function App() {
                           href={activeBlog.arxivLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 border border-black px-6 py-2.5 rounded-full text-xs font-bold hover:bg-gray-50 transition-all cursor-pointer"
+                          className="flex items-center gap-2 border border-black dark:border-neutral-700 px-6 py-2.5 rounded-full text-xs font-bold hover:bg-gray-50 dark:hover:bg-neutral-900 text-black dark:text-white transition-all cursor-pointer"
                         >
-                          <BookOpen className="w-4 h-4 text-black" />
+                          <BookOpen className="w-4 h-4 text-black dark:text-white" />
                           Source arXiv Paper
-                          <ExternalLink className="w-3.5 h-3.5 text-gray-500" />
+                          <ExternalLink className="w-3.5 h-3.5 text-gray-500 dark:text-neutral-400" />
                         </a>
                       </div>
 
@@ -774,7 +825,7 @@ export default function App() {
 
                     {/* Right Column: Dynamic Glowing Banner SVG Illustration */}
                     <div className="lg:col-span-5 flex flex-col items-center gap-4 justify-center">
-                      <div className="w-full max-w-[440px] h-auto p-2 bg-white rounded-3xl border border-gray-100 shadow-xl transition-all duration-300 transform hover:scale-[1.01]">
+                      <div className="w-full max-w-[440px] h-auto p-2 bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-xl transition-all duration-300 transform hover:scale-[1.01]">
                         <div 
                           className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none"
                           dangerouslySetInnerHTML={{ __html: activeBlog.bannerSvg }}
@@ -796,7 +847,7 @@ export default function App() {
                             URL.revokeObjectURL(url);
                           }}
                           title="Download banner as SVG"
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 hover:text-black rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60 dark:border-neutral-700/60"
                         >
                           <Download className="w-3.5 h-3.5" />
                           SVG
@@ -805,7 +856,7 @@ export default function App() {
                         <button
                           onClick={() => handleDownloadPng(activeBlog)}
                           title="Download banner as PNG"
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-black hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5" />
                           PNG
@@ -830,13 +881,13 @@ export default function App() {
 
               {/* MAIN SCHOLARLY ARTICLE BODY VIEW CONTAINER */}
               <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-                <article className="prose prose-slate max-w-none md:prose-lg bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/10 p-4 sm:p-12 relative overflow-hidden">
+                <article className="prose prose-slate max-w-none md:prose-lg bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-xl shadow-gray-200/10 dark:shadow-none p-4 sm:p-12 relative overflow-hidden transition-colors">
                   
                   {/* Abstract quote callout */}
-                  <div className="absolute top-0 left-0 w-1.5 h-full bg-black" />
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-black dark:bg-white" />
                   
-                  <div className="flex items-center gap-2 text-[10px] font-bold font-mono text-black uppercase tracking-widest mb-6">
-                    <Newspaper className="w-4 h-4 text-black" />
+                  <div className="flex items-center gap-2 text-[10px] font-bold font-mono text-black dark:text-white uppercase tracking-widest mb-6">
+                    <Newspaper className="w-4 h-4 text-black dark:text-white" />
                     Full Editorial Analysis
                   </div>
 
@@ -844,12 +895,12 @@ export default function App() {
                   <MathRenderer text={activeBlog.content} />
                   
                   {/* Article footer sign-off */}
-                  <div className="border-t border-gray-100 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="border-t border-gray-100 dark:border-neutral-800 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-md font-bold font-serif italic">M</div>
+                      <div className="w-9 h-9 rounded-full bg-black dark:bg-neutral-800 flex items-center justify-center text-white dark:text-neutral-100 text-md font-bold font-serif italic">M</div>
                       <div>
-                        <p className="text-xs font-bold text-gray-800">Meridian Research Editorial</p>
-                        <p className="text-[10px] text-gray-400">Copyright © {new Date().getFullYear()} Meridian. All rights reserved.</p>
+                        <p className="text-xs font-bold text-gray-800 dark:text-neutral-200">Meridian Research Editorial</p>
+                        <p className="text-[10px] text-gray-400 dark:text-neutral-500">Copyright © {new Date().getFullYear()} Meridian. All rights reserved.</p>
                       </div>
                     </div>
                     
@@ -858,7 +909,7 @@ export default function App() {
                         window.scrollTo({ top: 0, behavior: "smooth" });
                         setActiveBlog(null);
                       }}
-                      className="px-6 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm"
+                      className="px-6 py-2.5 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
                     >
                       Back to Publications
                     </button>

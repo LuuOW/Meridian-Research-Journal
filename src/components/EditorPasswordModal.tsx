@@ -69,21 +69,21 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
       />
 
       {/* Modal Card */}
-      <div className="bg-white border border-neutral-200/80 rounded-2xl w-full max-w-sm shadow-2xl relative z-10 overflow-hidden transform transition-all duration-300 scale-100 flex flex-col">
+      <div className="bg-white dark:bg-zinc-900 border border-neutral-200/80 dark:border-neutral-800 rounded-2xl w-full max-w-sm shadow-2xl relative z-10 overflow-hidden transform transition-all duration-300 scale-100 flex flex-col">
         {/* Header */}
-        <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
+        <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center text-cyan-600">
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
               <Lock className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-900 font-sans tracking-tight">{titleText}</h3>
-              <p className="text-[10px] text-neutral-400 font-medium">Authentication required</p>
+              <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 font-sans tracking-tight">{titleText}</h3>
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">Authentication required</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 hover:bg-neutral-100 text-neutral-400 hover:text-neutral-950 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 dark:text-neutral-500 hover:text-neutral-950 dark:hover:text-neutral-100 rounded-lg transition-colors cursor-pointer"
             disabled={isVerifying}
           >
             <X className="w-4 h-4" />
@@ -93,7 +93,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         {/* Content */}
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-extrabold text-neutral-500 uppercase tracking-wider font-mono">
+            <label className="text-[10px] font-extrabold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-mono">
               Editor Password
             </label>
             <div className="relative">
@@ -106,14 +106,14 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
                   setErrorMsg(null);
                 }}
                 disabled={isVerifying}
-                className="w-full pl-3 pr-10 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-1.5 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-sans"
+                className="w-full pl-3 pr-10 py-2.5 bg-neutral-50 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900 focus:outline-none focus:ring-1.5 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-sans"
                 autoFocus
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isVerifying}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 transition-colors p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors p-1"
               >
                 {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
@@ -121,7 +121,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
           </div>
 
           {errorMsg && (
-            <div className="flex items-center gap-2 text-red-600 text-[11px] font-semibold bg-red-50 p-2.5 rounded-lg border border-red-100">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-[11px] font-semibold bg-red-50 dark:bg-red-950/20 p-2.5 rounded-lg border border-red-100 dark:border-red-900/40">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -133,23 +133,23 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isVerifying}
-              className="flex-1 py-2.5 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-800 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              className="flex-1 py-2.5 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isVerifying}
-              className="flex-1 py-2.5 bg-neutral-950 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="flex-1 py-2.5 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isVerifying ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white/80" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white/80 dark:text-black/85" />
                   <span>Verifying...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5 text-white/80" />
+                  <Sparkles className="w-3.5 h-3.5 text-white/80 dark:text-black/80" />
                   <span>Verify</span>
                 </>
               )}

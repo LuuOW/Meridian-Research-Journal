@@ -172,25 +172,25 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
       />
 
       {/* Modal Card */}
-      <div className="bg-white border border-neutral-200/80 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden transform transition-all duration-300 scale-100 flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-zinc-900 border border-neutral-200/80 dark:border-neutral-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden transform transition-all duration-300 scale-100 flex flex-col max-h-[90vh]">
         
         {/* Header decoration */}
         <div className="h-2 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-600" />
 
         {/* Header */}
-        <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+        <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-950 flex items-center justify-center text-white">
+            <div className="w-10 h-10 rounded-xl bg-neutral-950 dark:bg-neutral-800 flex items-center justify-center text-white">
               <Compass className="w-5 h-5 text-white animate-spin-slow" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-neutral-900 font-sans tracking-tight">About Meridian Journal</h3>
-              <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-widest font-mono">Symmetry &amp; Quantum Informatics</p>
+              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 font-sans tracking-tight">About Meridian Journal</h3>
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium uppercase tracking-widest font-mono">Symmetry &amp; Quantum Informatics</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 hover:bg-neutral-100 text-neutral-400 hover:text-neutral-950 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-950 dark:hover:text-neutral-100 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -201,27 +201,27 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
           
           {/* Mission Section */}
           <div className="space-y-3">
-            <h4 className="text-xs font-extrabold text-neutral-500 uppercase tracking-widest font-mono flex items-center gap-2">
-              <BookOpen className="w-3.5 h-3.5 text-neutral-950" /> Our Editorial Mission
+            <h4 className="text-xs font-extrabold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-mono flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5 text-neutral-950 dark:text-neutral-100" /> Our Editorial Mission
             </h4>
-            <p className="text-sm text-neutral-600 leading-relaxed font-sans">
+            <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans">
               Welcome to <strong>Meridian Journal</strong>, an advanced translations companion that bridges the gap between intricate, mathematical, and cutting-edge quantum informatics, deep learning, and chemical physics papers (e.g., from arXiv) and highly legible, beautifully written editorial briefs.
             </p>
-            <p className="text-sm text-neutral-600 leading-relaxed font-sans">
+            <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans">
               Our core design paradigm values <strong>precision, transparency, and architectural elegance</strong>, preserving complex LaTeX-formatted scientific formulations while highlighting practical engineering constraints and physical insights.
             </p>
           </div>
 
           {/* Founder Section */}
-          <div className="border-t border-neutral-100 pt-6 space-y-6">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-neutral-50/50 p-5 rounded-3xl border border-neutral-100">
+          <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6 space-y-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-neutral-50/50 dark:bg-neutral-950/20 p-5 rounded-3xl border border-neutral-100 dark:border-neutral-800">
               <div 
                 className={`relative w-32 h-32 sm:w-40 sm:h-40 rounded-2xl shrink-0 group overflow-hidden border-2 transition-all duration-300 ${
                   isEditorMode 
                     ? isDragging 
-                      ? "border-neutral-950 bg-neutral-100 scale-105 shadow-lg cursor-pointer" 
-                      : "border-neutral-200/80 shadow-md hover:shadow-lg cursor-pointer"
-                    : "border-neutral-200/80 shadow-sm"
+                      ? "border-neutral-950 dark:border-neutral-200 bg-neutral-100 dark:bg-neutral-800 scale-105 shadow-lg cursor-pointer" 
+                      : "border-neutral-200/80 dark:border-neutral-700 shadow-md hover:shadow-lg cursor-pointer"
+                    : "border-neutral-200/80 dark:border-neutral-800 shadow-sm"
                 }`}
                 onClick={() => {
                   if (isEditorMode) {
@@ -293,7 +293,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
               <div className="text-center sm:text-left space-y-2.5 py-1 flex-1 flex flex-col justify-between h-full">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <span className="inline-block px-3 py-1 bg-neutral-950 text-white rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono">
+                    <span className="inline-block px-3 py-1 bg-neutral-950 dark:bg-white text-white dark:text-neutral-950 rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono">
                       Journal Founder
                     </span>
                     {isEditorMode && profileImg !== lucasProfileImg && (
@@ -302,26 +302,26 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
                           e.stopPropagation();
                           handleReset();
                         }}
-                        className="inline-flex items-center gap-1 px-2 py-1 border border-red-200 hover:bg-red-50 text-red-600 rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2 py-1 border border-red-200 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono transition-colors cursor-pointer"
                         title="Reset to default original image"
                       >
                         <Trash2 className="w-2.5 h-2.5" /> Reset Image
                       </button>
                     )}
                   </div>
-                  <h4 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 font-sans tracking-tight">Lucas Kempe</h4>
-                  <p className="text-base sm:text-lg font-semibold text-neutral-700 font-sans leading-snug">
+                  <h4 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 dark:text-neutral-100 font-sans tracking-tight">Lucas Kempe</h4>
+                  <p className="text-base sm:text-lg font-semibold text-neutral-700 dark:text-neutral-300 font-sans leading-snug">
                     Founder &amp; Principal Director of Meridian Informatics
                   </p>
                 </div>
-                <p className="text-sm text-neutral-500 font-mono flex items-center justify-center sm:justify-start gap-2 pt-2">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 font-mono flex items-center justify-center sm:justify-start gap-2 pt-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
                   lucas.kempe@icloud.com
                 </p>
               </div>
             </div>
 
-            <p className="text-base sm:text-lg text-neutral-600 leading-relaxed font-sans italic border-l-4 border-neutral-950 pl-4 py-1">
+            <p className="text-base sm:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans italic border-l-4 border-neutral-950 dark:border-neutral-200 pl-4 py-1">
               Meridian is spearheaded by Lucas Kempe. Lucas's work centers on creating performant on-device compiler pipelines, deploying high-throughput local AI models, and optimizing neural engines to process complex multi-modal physics and structural chemistry streams cleanly.
             </p>
 
@@ -332,18 +332,18 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
                 href="https://www.linkedin.com/in/lucaskempe/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-5 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/60 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
+                className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-850 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-[#0077b5] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
                     <Linkedin className="w-6 h-6 fill-current" />
                   </div>
                   <div>
-                    <span className="text-sm font-extrabold text-neutral-800 block group-hover:text-black transition-colors">LinkedIn Profile</span>
-                    <span className="text-xs text-neutral-400 font-mono block">@lucaskempe</span>
+                    <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">LinkedIn Profile</span>
+                    <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">@lucaskempe</span>
                   </div>
                 </div>
-                <div className="text-neutral-400 group-hover:text-neutral-900 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
+                <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
                   Connect &rarr;
                 </div>
               </a>
@@ -353,18 +353,18 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
                 href="https://wa.me/541170666236"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-5 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/60 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
+                className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-850 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-[#25D366] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
                     <PhoneCall className="w-5 h-5 text-white fill-current" />
                   </div>
                   <div>
-                    <span className="text-sm font-extrabold text-neutral-800 block group-hover:text-black transition-colors">Direct WhatsApp</span>
-                    <span className="text-xs text-neutral-400 font-mono block">wa.me/541170666...</span>
+                    <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">Direct WhatsApp</span>
+                    <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">wa.me/541170666...</span>
                   </div>
                 </div>
-                <div className="text-neutral-400 group-hover:text-neutral-900 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
+                <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
                   Chat &rarr;
                 </div>
               </a>
@@ -372,11 +372,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
           </div>
 
           {/* Technical Integrity Badge */}
-          <div className="bg-neutral-50 border border-neutral-100 rounded-2xl p-4 flex gap-3.5 text-neutral-800">
-            <Shield className="w-5 h-5 shrink-0 text-neutral-900 mt-0.5" />
+          <div className="bg-neutral-50 dark:bg-neutral-950/30 border border-neutral-100 dark:border-neutral-850 rounded-2xl p-4 flex gap-3.5 text-neutral-800 dark:text-neutral-300">
+            <Shield className="w-5 h-5 shrink-0 text-neutral-900 dark:text-neutral-100 mt-0.5" />
             <div className="flex flex-col gap-0.5">
               <p className="text-xs font-bold font-sans">Open, Offline-First Security Paradigm</p>
-              <p className="text-[11px] text-neutral-500 leading-relaxed font-sans">
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-sans">
                 Meridian's architecture leverages secure client-side Firestore integration paired with offline-first persistence keys. Our scientific translations run transparently with clean sandboxed parameters, giving researchers absolute ownership of their translation telemetry.
               </p>
             </div>
@@ -385,7 +385,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between text-[10px] text-neutral-400 px-6">
+        <div className="p-4 bg-neutral-50 dark:bg-neutral-950/40 border-t border-neutral-100 dark:border-neutral-850 flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500 px-6">
           <span className="font-mono uppercase tracking-widest font-bold">Ver. 2.1 // Production Node</span>
           <span>© {new Date().getFullYear()} Meridian. All rights reserved.</span>
         </div>
