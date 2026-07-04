@@ -143,7 +143,9 @@ export default function App() {
     const now = new Date();
     const startOfWeek = new Date();
     startOfWeek.setDate(now.getDate() - 7);
-    return blogDate >= startOfWeek && blogDate <= now;
+    // Set to start of day (midnight) to perform clean calendar day comparisons
+    startOfWeek.setHours(0, 0, 0, 0);
+    return blogDate >= startOfWeek;
   };
 
   const handleDownloadPng = (blog: BlogPost) => {
@@ -442,8 +444,8 @@ export default function App() {
   // Get all unique tags from active blogs
   const allTags = Array.from(new Set(blogs.flatMap((b) => b.tags)));
 
-  // Filtered list based on search and selected tags, omitting hidden blogs
-  const filteredBlogs = blogs.filter((b) => {
+  // Base filtered list (excluding time-based filters to compute accurate context counts)
+  const baseFilteredBlogs = blogs.filter((b) => {
     // Skip hidden blogs from the public feed unless in editor mode
     if (!isEditorMode && hiddenBlogIds.includes(b.id)) return false;
 
@@ -453,16 +455,19 @@ export default function App() {
       b.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTag = selectedTag ? b.tags.includes(selectedTag) : true;
     
-    let matchesTime = true;
+    return matchesSearch && matchesTag;
+  });
+
+  // Filtered list with active time filter applied
+  const filteredBlogs = baseFilteredBlogs.filter((b) => {
     if (selectedTimeFilter === "today") {
-      matchesTime = isToday(b);
+      return isToday(b);
     } else if (selectedTimeFilter === "yesterday") {
-      matchesTime = isYesterday(b);
+      return isYesterday(b);
     } else if (selectedTimeFilter === "week") {
-      matchesTime = isThisWeek(b);
+      return isThisWeek(b);
     }
-    
-    return matchesSearch && matchesTag && matchesTime;
+    return true;
   });
 
   return (
@@ -573,7 +578,7 @@ export default function App() {
                     >
                       All Time
                       <span className="bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-700 dark:text-neutral-300 px-1.5 py-0.5 rounded-md text-[9px] font-mono">
-                        {blogs.length}
+                        {baseFilteredBlogs.length}
                       </span>
                     </button>
                     <button
@@ -588,7 +593,7 @@ export default function App() {
                       <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
                         selectedTimeFilter === "today" ? "bg-blue-200/70 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
                       }`}>
-                        {blogs.filter(isToday).length}
+                        {baseFilteredBlogs.filter(isToday).length}
                       </span>
                     </button>
                     <button
@@ -603,7 +608,7 @@ export default function App() {
                       <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
                         selectedTimeFilter === "yesterday" ? "bg-purple-200/70 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
                       }`}>
-                        {blogs.filter(isYesterday).length}
+                        {baseFilteredBlogs.filter(isYesterday).length}
                       </span>
                     </button>
                     <button
@@ -618,7 +623,7 @@ export default function App() {
                       <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
                         selectedTimeFilter === "week" ? "bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
                       }`}>
-                        {blogs.filter(isThisWeek).length}
+                        {baseFilteredBlogs.filter(isThisWeek).length}
                       </span>
                     </button>
                   </div>
