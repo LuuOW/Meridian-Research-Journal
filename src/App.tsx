@@ -212,12 +212,39 @@ export default function App() {
         }
       }
 
+      // Immediately render local cache + preloaded blogs so the user sees blogs instantly
+      const initialBlogs = [...localCustomBlogs, ...PRELOADED_BLOGS];
+      setBlogs(initialBlogs);
+
+      // Handle deep linking via path /blog/:id or query parameter on load (initial pass)
+      const getBlogIdFromUrl = () => {
+        const pathParts = window.location.pathname.split("/");
+        if (pathParts[1] === "blog" && pathParts[2]) {
+          return decodeURIComponent(pathParts[2]);
+        }
+        const searchParams = new URLSearchParams(window.location.search);
+        return searchParams.get("blog") || searchParams.get("id");
+      };
+
+      const blogId = getBlogIdFromUrl();
+      if (blogId) {
+        const found = initialBlogs.find(b => b.id === blogId || b.slug === blogId);
+        if (found) {
+          setActiveBlog(found);
+        }
+      }
+
       let firestoreBlogs: BlogPost[] = [];
       let firestoreError = false;
 
-      // 2. Fetch custom blogs from secure Firestore cloud database
+      // 2. Fetch custom blogs from secure Firestore cloud database with a 2.5s timeout
       try {
-        const querySnapshot = await getDocs(collection(db, "blogs"));
+        const getDocsPromise = getDocs(collection(db, "blogs"));
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Firestore fetch timed out")), 2500)
+        );
+
+        const querySnapshot = await Promise.race([getDocsPromise, timeoutPromise]);
         querySnapshot.forEach((docSnap) => {
           const blogData = docSnap.data() as BlogPost;
           if (blogData && blogData.id) {
@@ -225,7 +252,7 @@ export default function App() {
           }
         });
       } catch (err) {
-        console.error("Failed to fetch custom blogs from Firestore:", err);
+        console.error("Failed to fetch custom blogs from Firestore (will operate offline):", err);
         firestoreError = true;
         try {
           handleFirestoreError(err, OperationType.GET, "blogs");
@@ -281,19 +308,10 @@ export default function App() {
       setBlogs(allBlogs);
       localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
 
-      // Handle deep linking via path /blog/:id or query parameter on load
-      const getBlogIdFromUrl = () => {
-        const pathParts = window.location.pathname.split("/");
-        if (pathParts[1] === "blog" && pathParts[2]) {
-          return decodeURIComponent(pathParts[2]);
-        }
-        const searchParams = new URLSearchParams(window.location.search);
-        return searchParams.get("blog") || searchParams.get("id");
-      };
-
-      const blogId = getBlogIdFromUrl();
-      if (blogId) {
-        const found = allBlogs.find(b => b.id === blogId || b.slug === blogId);
+      // Handle deep linking again in case new blogs were fetched from Firestore
+      const refreshedBlogId = getBlogIdFromUrl();
+      if (refreshedBlogId) {
+        const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
         if (found) {
           setActiveBlog(found);
         }

@@ -82,91 +82,6 @@ const writeCustomBlogs = (blogs: any[]) => {
     console.error("Error writing custom_blogs.json:", error);
   }
 };
-
-const syncToGitHub = async (blogs: any[], commitMessage: string) => {
-  const repo = process.env.GITHUB_SYNC_REPO;
-  const token = process.env.GITHUB_SYNC_TOKEN || process.env.GITHUB_TOKEN;
-  const branch = process.env.GITHUB_SYNC_BRANCH || "main";
-  const filePath = "custom_blogs.json";
-
-  if (!repo || !token) {
-    console.log("[GitHub Sync] Disabled: GITHUB_SYNC_REPO or GITHUB_SYNC_TOKEN/GITHUB_TOKEN is missing.");
-    return;
-  }
-
-  try {
-    console.log(`[GitHub Sync] Syncing custom_blogs.json to ${repo} on branch "${branch}"...`);
-    const getUrl = `https://api.github.com/repos/${repo}/contents/${filePath}?ref=${branch}`;
-    const getRes = await fetch(getUrl, {
-      headers: {
-        "Authorization": `token ${token}`,
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "Ask-Meridian-Sync"
-      }
-    });
-
-    let sha: string | undefined = undefined;
-    if (getRes.status === 200) {
-      const fileData: any = await getRes.json();
-      sha = fileData.sha;
-      console.log(`[GitHub Sync] custom_blogs.json exists with SHA: ${sha}`);
-    } else if (getRes.status === 404) {
-      console.log("[GitHub Sync] custom_blogs.json does not exist. Creating a new file.");
-    } else {
-      const errText = await getRes.text();
-      console.warn(`[GitHub Sync] Warning: Failed to check repo status (${getRes.status}):`, errText);
-    }
-
-    const contentString = JSON.stringify(blogs, null, 2);
-    const contentBase64 = Buffer.from(contentString, "utf-8").toString("base64");
-
-    const putUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`;
-    const putBody: any = {
-      message: commitMessage,
-      content: contentBase64,
-      branch: branch
-    };
-    if (sha) {
-      putBody.sha = sha;
-    }
-
-    const putRes = await fetch(putUrl, {
-      method: "PUT",
-      headers: {
-        "Authorization": `token ${token}`,
-        "Content-Type": "application/json",
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "Ask-Meridian-Sync"
-      },
-      body: JSON.stringify(putBody)
-    });
-
-    if (putRes.ok) {
-      const putData: any = await putRes.json();
-      console.log(`[GitHub Sync] Successfully pushed custom_blogs.json to GitHub! Commit: ${putData.commit.sha}`);
-    } else {
-      const errText = await putRes.text();
-      console.error(`[GitHub Sync] Failed to update file on GitHub (${putRes.status}):`, errText);
-    }
-  } catch (err: any) {
-    console.error("[GitHub Sync] Error during GitHub sync operation:", err.message || err);
-  }
-};
-
-// API: Get GitHub Sync Configuration & Status
-app.get("/api/github-sync/status", (req, res) => {
-  const repo = process.env.GITHUB_SYNC_REPO || "";
-  const token = process.env.GITHUB_SYNC_TOKEN || process.env.GITHUB_TOKEN || "";
-  const branch = process.env.GITHUB_SYNC_BRANCH || "main";
-
-  res.json({
-    configured: !!(repo && token),
-    repo: repo,
-    branch: branch,
-    hasToken: !!token
-  });
-});
-
 // API: Get all custom blogs
 app.get("/api/blogs", (req, res) => {
   const blogs = readCustomBlogs();
@@ -189,7 +104,6 @@ app.delete("/api/blogs/:id", (req, res) => {
   const commitMsg = deletedBlog ? `Delete blog post: "${deletedBlog.title}"` : `Delete blog post ${id}`;
   
   writeCustomBlogs(filtered);
-  syncToGitHub(filtered, commitMsg).catch(err => console.error("GitHub Sync error:", err));
   
   res.json({ success: true });
 });
@@ -238,7 +152,6 @@ app.post("/api/blogs/sync", (req, res) => {
   });
   
   writeCustomBlogs(mergedBlogs);
-  syncToGitHub(mergedBlogs, "Sync and merge custom blog posts").catch(err => console.error("GitHub Sync error:", err));
   res.json({ blogs: mergedBlogs });
 });
 
@@ -484,7 +397,6 @@ The response must be valid JSON according to the schema provided. Make sure the 
     if (!isDuplicate) {
       blogs.push(newBlog);
       writeCustomBlogs(blogs);
-      syncToGitHub(blogs, `Add generated blog post: "${newBlog.title}"`).catch(err => console.error("GitHub Sync error:", err));
     } else {
       console.log("Duplicate blog detected (by title or arxivLink), skipping append to custom_blogs.json");
     }
