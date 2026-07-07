@@ -489,7 +489,11 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-neutral-950 flex flex-col font-sans selection:bg-neutral-200 dark:selection:bg-neutral-800 selection:text-black dark:selection:text-white pb-16 text-neutral-900 dark:text-neutral-100 transition-colors duration-300">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-neutral-950 flex flex-col font-sans selection:bg-neutral-200 dark:selection:bg-neutral-800 selection:text-black dark:selection:text-white pb-16 text-neutral-900 dark:text-neutral-100 transition-colors duration-300 relative overflow-hidden">
+      {/* Technical background grid & ambient light accents */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808007_1px,transparent_1px),linear-gradient(to_bottom,#80808007_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[450px] bg-gradient-to-b from-neutral-200/15 via-transparent to-transparent dark:from-neutral-900/10 pointer-events-none -z-10 blur-3xl" />
+
       <Navbar 
         onOpenCreate={() => setIsCreateOpen(true)} 
         onOpenAbout={() => setIsAboutOpen(true)} 
@@ -511,7 +515,7 @@ export default function App() {
       )}
 
       {/* Main Content Body */}
-      <main className="flex-1">
+      <main className="flex-1 relative z-10">
         <AnimatePresence mode="wait">
           {!activeBlog ? (
             /* HOMEPAGE VIEW: Grid list of publications */
@@ -524,17 +528,29 @@ export default function App() {
               className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
             >
               {/* Scholarly Hero Header */}
-              <div className="text-center max-w-3xl mx-auto mb-14 space-y-5">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-neutral-50 dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-full text-neutral-600 dark:text-neutral-300 text-[10px] font-bold tracking-widest uppercase">
+              <div className="text-center max-w-3xl mx-auto mb-14 space-y-6 relative">
+                {/* Micro Ambient Glow */}
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-64 h-64 bg-neutral-200/40 dark:bg-neutral-800/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800 rounded-full text-neutral-600 dark:text-neutral-300 text-[10px] font-bold tracking-widest uppercase shadow-sm">
                   <Compass className="w-3.5 h-3.5 text-black dark:text-white animate-spin-slow" />
                   Active Peer-Reviewed Translations
                 </div>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold italic text-black dark:text-white tracking-tight leading-[1.1]">
-                  Symmetry-Preserving Research Blog
+                
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold italic text-black dark:text-white tracking-tight leading-[1.12]">
+                  Symmetry-Preserving <span className="not-italic font-sans font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-500 dark:from-white dark:to-neutral-400">Research</span> Journal
                 </h1>
+                
                 <p className="text-gray-500 dark:text-neutral-400 text-sm sm:text-base md:text-lg leading-relaxed font-light max-w-2xl mx-auto">
                   Bridging complex physics, deep learning, and advanced quantum optimization papers into highly visual, technical editorial publications.
                 </p>
+
+                {/* Elegant academic dual rule separator */}
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <div className="h-[1px] w-12 bg-neutral-200 dark:bg-neutral-800" />
+                  <div className="w-1.5 h-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 bg-transparent" />
+                  <div className="h-[1px] w-12 bg-neutral-200 dark:bg-neutral-800" />
+                </div>
               </div>
 
               {/* Advanced Search and Filter Bar */}
@@ -649,81 +665,232 @@ export default function App() {
               </div>
 
               {/* Grid or Empty state layout */}
-              <div className="max-w-7xl mx-auto w-full">
+              <div className="max-w-7xl mx-auto w-full relative">
                 <div className="space-y-8">
                   {filteredBlogs.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredBlogs.map((blog) => {
-                        const isHidden = hiddenBlogIds.includes(blog.id);
-                        const isPreloaded = !blog.id.startsWith("generated");
-                        return (
-                          <div 
-                            key={blog.id} 
-                            className={`relative group transition-all duration-300 ${
-                              isHidden ? "opacity-60 saturate-50" : ""
-                            }`}
-                          >
-                            <BlogPostCard blog={blog} onClick={() => {
-                              setActiveBlog(blog);
-                              window.scrollTo({ top: 0, behavior: "smooth" });
-                            }} />
+                    <>
+                      {/* Premium Featured Section (Only when no search or topic filter is active) */}
+                      {!searchQuery && !selectedTag && selectedTimeFilter === "all" && (
+                        <div className="mb-12">
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="flex h-2 w-2 relative">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <h4 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">
+                              Featured Editorial Publication
+                            </h4>
+                          </div>
 
-                            {/* Hidden Status indicator badge */}
-                            {isHidden && (
-                              <div className="absolute top-4 left-4 px-3 py-1 bg-amber-500/90 text-white text-[9px] font-extrabold rounded-full font-mono uppercase tracking-widest shadow-sm pointer-events-none z-10">
-                                Hidden from Feed
-                              </div>
-                            )}
+                          {(() => {
+                            const blog = filteredBlogs[0];
+                            const isHidden = hiddenBlogIds.includes(blog.id);
+                            const isPreloaded = !blog.id.startsWith("generated");
+                            return (
+                              <div className={`relative group transition-all duration-300 ${isHidden ? "opacity-60 saturate-50" : ""}`}>
+                                <div
+                                  onClick={() => {
+                                    setActiveBlog(blog);
+                                    window.scrollTo({ top: 0, behavior: "smooth" });
+                                  }}
+                                  className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 hover:border-neutral-200/70 dark:hover:border-neutral-700/60 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 md:p-8 flex flex-col lg:flex-row gap-8 items-stretch cursor-pointer min-h-[380px] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]"
+                                >
+                                  {/* Featured Graphic Thumbnail */}
+                                  <div className="w-full lg:w-[48%] rounded-2xl overflow-hidden bg-[#0a1128] flex-shrink-0 aspect-[16/10] lg:aspect-auto flex items-center justify-center relative min-h-[240px]">
+                                    <div 
+                                      className="w-full h-full transform group-hover:scale-[1.02] transition-transform duration-500 pointer-events-none"
+                                      dangerouslySetInnerHTML={{ __html: blog.bannerSvg }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+                                  </div>
 
-                            {/* Action overlay controls when Editor Mode is active */}
-                            {isEditorMode && (
-                              <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 animate-fade-in">
-                                {isPreloaded ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleHideBlog(blog.id);
-                                    }}
-                                    title={isHidden ? "Restore/Unhide publication" : "Hide publication"}
-                                    className={`p-2.5 rounded-full shadow-lg border cursor-pointer transition-all ${
-                                      isHidden
-                                        ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
-                                        : "bg-neutral-900/90 border-neutral-800 text-white hover:bg-black"
-                                    }`}
-                                  >
-                                    {isHidden ? (
-                                      // Unhide/restore icon (eye)
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                      </svg>
+                                  {/* Featured Content details */}
+                                  <div className="flex-1 flex flex-col justify-between py-1">
+                                    <div className="space-y-4">
+                                      {/* Tags and badge */}
+                                      <div className="flex flex-wrap gap-2 items-center">
+                                        <span className="px-2.5 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-extrabold uppercase tracking-widest rounded-full border border-amber-500/10">
+                                          ★ Current Issue
+                                        </span>
+                                        {blog.tags.slice(0, 2).map((tag) => (
+                                          <span
+                                            key={tag}
+                                            className="px-2.5 py-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[9px] font-extrabold uppercase tracking-widest rounded-full border border-neutral-200/20"
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
+                                      </div>
+
+                                      {/* Title */}
+                                      <h3 className="text-2xl sm:text-3xl font-serif font-bold italic tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-black dark:group-hover:text-white transition-colors leading-[1.25]">
+                                        {blog.title}
+                                      </h3>
+
+                                      {/* Excerpt */}
+                                      <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-light line-clamp-4">
+                                        {blog.excerpt}
+                                      </p>
+                                    </div>
+
+                                    {/* Footer Details */}
+                                    <div className="border-t border-neutral-100 dark:border-neutral-800 pt-5 mt-6 flex flex-wrap gap-4 items-center justify-between text-[10px] font-bold font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+                                      <div className="flex gap-4">
+                                        <span>{blog.date}</span>
+                                        <span>•</span>
+                                        <span>{blog.readingTime}</span>
+                                      </div>
+                                      <span className="text-xs font-bold text-black dark:text-white border-b-2 border-transparent group-hover:border-black dark:group-hover:border-white transition-all flex items-center gap-1.5 pb-0.5 font-sans">
+                                        Read Featured Publication
+                                        <BookOpen className="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" />
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Hidden Status indicator badge */}
+                                {isHidden && (
+                                  <div className="absolute top-4 left-4 px-3 py-1 bg-amber-500/90 text-white text-[9px] font-extrabold rounded-full font-mono uppercase tracking-widest shadow-sm pointer-events-none z-10">
+                                    Hidden from Feed
+                                  </div>
+                                )}
+
+                                {/* Editor Actions Overlay */}
+                                {isEditorMode && (
+                                  <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 animate-fade-in">
+                                    {isPreloaded ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleHideBlog(blog.id);
+                                        }}
+                                        title={isHidden ? "Restore/Unhide publication" : "Hide publication"}
+                                        className={`p-2.5 rounded-full shadow-lg border cursor-pointer transition-all ${
+                                          isHidden
+                                            ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
+                                            : "bg-neutral-900/90 border-neutral-800 text-white hover:bg-black"
+                                        }`}
+                                      >
+                                        {isHidden ? (
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                          </svg>
+                                        ) : (
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                          </svg>
+                                        )}
+                                      </button>
                                     ) : (
-                                      // Trash/hide icon
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeleteBlogId(blog.id);
+                                        }}
+                                        title="Delete custom publication"
+                                        className="p-2.5 bg-red-600 border border-red-500 hover:bg-red-700 text-white rounded-full shadow-lg cursor-pointer transition-colors"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Heading for other publications */}
+                      {!searchQuery && !selectedTag && selectedTimeFilter === "all" && filteredBlogs.length > 1 && (
+                        <div className="flex items-center gap-3 pt-6 pb-2">
+                          <h4 className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">
+                            Recent Publications ({filteredBlogs.length - 1})
+                          </h4>
+                          <div className="flex-1 h-[1px] bg-neutral-200/60 dark:bg-neutral-800" />
+                        </div>
+                      )}
+
+                      {/* Standard Grid mapping */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {( !searchQuery && !selectedTag && selectedTimeFilter === "all"
+                          ? filteredBlogs.slice(1)
+                          : filteredBlogs
+                        ).map((blog) => {
+                          const isHidden = hiddenBlogIds.includes(blog.id);
+                          const isPreloaded = !blog.id.startsWith("generated");
+                          return (
+                            <div 
+                              key={blog.id} 
+                              className={`relative group transition-all duration-300 ${
+                                isHidden ? "opacity-60 saturate-50" : ""
+                              }`}
+                            >
+                              <BlogPostCard blog={blog} onClick={() => {
+                                setActiveBlog(blog);
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }} />
+
+                              {/* Hidden Status indicator badge */}
+                              {isHidden && (
+                                <div className="absolute top-4 left-4 px-3 py-1 bg-amber-500/90 text-white text-[9px] font-extrabold rounded-full font-mono uppercase tracking-widest shadow-sm pointer-events-none z-10">
+                                  Hidden from Feed
+                                </div>
+                              )}
+
+                              {/* Action overlay controls when Editor Mode is active */}
+                              {isEditorMode && (
+                                <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 animate-fade-in">
+                                  {isPreloaded ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleHideBlog(blog.id);
+                                      }}
+                                      title={isHidden ? "Restore/Unhide publication" : "Hide publication"}
+                                      className={`p-2.5 rounded-full shadow-lg border cursor-pointer transition-all ${
+                                        isHidden
+                                          ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
+                                          : "bg-neutral-900/90 border-neutral-800 text-white hover:bg-black"
+                                      }`}
+                                    >
+                                      {isHidden ? (
+                                        // Unhide/restore icon (eye)
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                      ) : (
+                                        // Trash/hide icon
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeleteBlogId(blog.id);
+                                      }}
+                                      title="Delete custom publication"
+                                      className="p-2.5 bg-red-600 border border-red-500 hover:bg-red-700 text-white rounded-full shadow-lg cursor-pointer transition-colors"
+                                    >
                                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                       </svg>
-                                    )}
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeleteBlogId(blog.id);
-                                    }}
-                                    title="Delete custom publication"
-                                    className="p-2.5 bg-red-600 border border-red-500 hover:bg-red-700 text-white rounded-full shadow-lg cursor-pointer transition-colors"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   ) : (
                     <div className="bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
                       <Newspaper className="w-12 h-12 text-gray-300 dark:text-neutral-700 mx-auto mb-4" />
