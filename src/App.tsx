@@ -237,28 +237,32 @@ export default function App() {
       let firestoreBlogs: BlogPost[] = [];
       let firestoreError = false;
 
-      // 2. Fetch custom blogs from secure Firestore cloud database with a 2.5s timeout
-      try {
-        const getDocsPromise = getDocs(collection(db, "blogs"));
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Firestore fetch timed out")), 2500)
-        );
-
-        const querySnapshot = await Promise.race([getDocsPromise, timeoutPromise]);
-        querySnapshot.forEach((docSnap) => {
-          const blogData = docSnap.data() as BlogPost;
-          if (blogData && blogData.id) {
-            firestoreBlogs.push(blogData);
-          }
-        });
-      } catch (err) {
-        console.error("Failed to fetch custom blogs from Firestore (will operate offline):", err);
-        firestoreError = true;
+      // 2. Fetch custom blogs from secure Firestore cloud database with a 2.5s timeout (only if db exists)
+      if (db) {
         try {
-          handleFirestoreError(err, OperationType.GET, "blogs");
-        } catch (thrownErr) {
-          console.warn("Firestore fetch failed. Operating in offline-first mode using cached or preloaded content.");
+          const getDocsPromise = getDocs(collection(db, "blogs"));
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Firestore fetch timed out")), 2500)
+          );
+
+          const querySnapshot = await Promise.race([getDocsPromise, timeoutPromise]);
+          querySnapshot.forEach((docSnap) => {
+            const blogData = docSnap.data() as BlogPost;
+            if (blogData && blogData.id) {
+              firestoreBlogs.push(blogData);
+            }
+          });
+        } catch (err) {
+          console.error("Failed to fetch custom blogs from Firestore (will operate offline):", err);
+          firestoreError = true;
+          try {
+            handleFirestoreError(err, OperationType.GET, "blogs");
+          } catch (thrownErr) {
+            console.warn("Firestore fetch failed. Operating in offline-first mode using cached or preloaded content.");
+          }
         }
+      } else {
+        console.info("Firestore database is unconfigured. Operating locally with offline-first persistence.");
       }
 
       // 3. Merge lists using a Map keyed by id to avoid duplicates
@@ -283,8 +287,8 @@ export default function App() {
         return timeB - timeA;
       });
 
-      // 4. Proactively upload any local-only cache blogs to Firestore so they are never lost
-      if (!firestoreError) {
+      // 4. Proactively upload any local-only cache blogs to Firestore so they are never lost (only if db exists)
+      if (db && !firestoreError) {
         for (const blog of mergedCustomBlogs) {
           const isOnlyLocal = !firestoreBlogs.some(fb => fb.id === blog.id);
           if (isOnlyLocal) {
@@ -399,13 +403,15 @@ export default function App() {
   };
 
   const handleBlogGenerated = async (newBlog: BlogPost) => {
-    // 1. Save to cloud Firestore immediately
-    try {
-      await setDoc(doc(db, "blogs", newBlog.id), newBlog);
-      console.log("Successfully saved new blog to Cloud Firestore.");
-    } catch (err) {
-      console.error("Failed to save new blog to Firestore:", err);
-      handleFirestoreError(err, OperationType.WRITE, `blogs/${newBlog.id}`);
+    // 1. Save to cloud Firestore immediately (only if db exists)
+    if (db) {
+      try {
+        await setDoc(doc(db, "blogs", newBlog.id), newBlog);
+        console.log("Successfully saved new blog to Cloud Firestore.");
+      } catch (err) {
+        console.error("Failed to save new blog to Firestore:", err);
+        handleFirestoreError(err, OperationType.WRITE, `blogs/${newBlog.id}`);
+      }
     }
 
     const updatedBlogs = [newBlog, ...blogs.filter(b => b.id !== newBlog.id)];
@@ -437,13 +443,15 @@ export default function App() {
       return false;
     }
 
-    // 2. Delete from Cloud Firestore
-    try {
-      await deleteDoc(doc(db, "blogs", id));
-      console.log("Successfully deleted blog from Cloud Firestore.");
-    } catch (err) {
-      console.error("Failed to delete blog from Firestore:", err);
-      handleFirestoreError(err, OperationType.DELETE, `blogs/${id}`);
+    // 2. Delete from Cloud Firestore (only if db exists)
+    if (db) {
+      try {
+        await deleteDoc(doc(db, "blogs", id));
+        console.log("Successfully deleted blog from Cloud Firestore.");
+      } catch (err) {
+        console.error("Failed to delete blog from Firestore:", err);
+        handleFirestoreError(err, OperationType.DELETE, `blogs/${id}`);
+      }
     }
 
     const updatedBlogs = blogs.filter(b => b.id !== id);

@@ -64,6 +64,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
 
     // 2. Fetch from Firestore
     const fetchCloudProfile = async () => {
+      if (!db) return;
       try {
         const docRef = doc(db, "settings", "profile");
         const docSnap = await getDoc(docRef);
@@ -100,13 +101,15 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
           localStorage.setItem("meridian_custom_profile_image", compressed);
 
           // Save to Firestore so it is persistent across browsers/deployments
-          try {
-            await setDoc(doc(db, "settings", "profile"), {
-              profileImage: compressed,
-              updatedAt: new Date().toISOString()
-            });
-          } catch (err) {
-            console.error("Failed to backup custom profile image to Firestore:", err);
+          if (db) {
+            try {
+              await setDoc(doc(db, "settings", "profile"), {
+                profileImage: compressed,
+                updatedAt: new Date().toISOString()
+              });
+            } catch (err) {
+              console.error("Failed to backup custom profile image to Firestore:", err);
+            }
           }
         }
         setIsUploading(false);
@@ -150,13 +153,15 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
     if (confirm("Reset profile picture to the default image?")) {
       setProfileImg(lucasProfileImg);
       localStorage.removeItem("meridian_custom_profile_image");
-      try {
-        await setDoc(doc(db, "settings", "profile"), {
-          profileImage: "",
-          updatedAt: new Date().toISOString()
-        });
-      } catch (err) {
-        console.error("Failed to remove profile image from Firestore:", err);
+      if (db) {
+        try {
+          await setDoc(doc(db, "settings", "profile"), {
+            profileImage: "",
+            updatedAt: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error("Failed to remove profile image from Firestore:", err);
+        }
       }
     }
   };

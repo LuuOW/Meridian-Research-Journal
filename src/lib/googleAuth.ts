@@ -1,13 +1,29 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, Auth } from "firebase/auth";
+import { initializeFirestore, Firestore } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId);
+export const isFirebaseEnabled = !!(firebaseConfig && firebaseConfig.projectId && firebaseConfig.projectId !== "");
+
+let appInstance = null;
+let authInstance: Auth | null = null;
+let dbInstance: Firestore | null = null;
+
+if (isFirebaseEnabled) {
+  try {
+    appInstance = initializeApp(firebaseConfig);
+    authInstance = getAuth(appInstance);
+    dbInstance = initializeFirestore(appInstance, {
+      experimentalForceLongPolling: true,
+    }, firebaseConfig.firestoreDatabaseId);
+  } catch (error) {
+    console.error("Failed to initialize Firebase:", error);
+  }
+}
+
+export const app = appInstance;
+export const auth = authInstance;
+export const db = dbInstance;
 
 const provider = new GoogleAuthProvider();
 
@@ -21,6 +37,10 @@ export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
+  if (!auth) {
+    if (onAuthFailure) onAuthFailure();
+    return () => {};
+  }
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
       if (cachedAccessToken) {
@@ -41,6 +61,10 @@ export const initAuth = (
 
 // Must be called from a button click or user interaction
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+  if (!auth) {
+    console.warn("Google Auth is disabled / unconfigured.");
+    return null;
+  }
   try {
     isSigningIn = true;
     const result = await signInWithPopup(auth, provider);
@@ -64,7 +88,9 @@ export const getAccessToken = async (): Promise<string | null> => {
 };
 
 export const logout = async () => {
-  await auth.signOut();
+  if (auth) {
+    await auth.signOut();
+  }
   cachedAccessToken = null;
 };
 
@@ -98,12 +124,12 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid || null,
-      email: auth.currentUser?.email || null,
-      emailVerified: auth.currentUser?.emailVerified || null,
-      isAnonymous: auth.currentUser?.isAnonymous || null,
-      tenantId: auth.currentUser?.tenantId || null,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+      userId: auth?.currentUser?.uid || null,
+      email: auth?.currentUser?.email || null,
+      emailVerified: auth?.currentUser?.emailVerified || null,
+      isAnonymous: auth?.currentUser?.isAnonymous || null,
+      tenantId: auth?.currentUser?.tenantId || null,
+      providerInfo: auth?.currentUser?.providerData?.map(provider => ({
         providerId: provider.providerId,
         email: provider.email,
       })) || []
