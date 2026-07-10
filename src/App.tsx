@@ -540,16 +540,24 @@ export default function App() {
                 {/* Micro Ambient Glow */}
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-64 h-64 bg-neutral-200/40 dark:bg-neutral-800/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800 rounded-full text-neutral-600 dark:text-neutral-300 text-[10px] font-bold tracking-widest uppercase shadow-sm">
-                  <Compass className="w-3.5 h-3.5 text-black dark:text-white animate-spin-slow" />
-                  Active Peer-Reviewed Translations
+                <div className="neon-ring-wrapper">
+                  <div className="neon-ring-content gap-2 px-4 py-1.5 text-neutral-600 dark:text-neutral-300 text-[10px] font-bold tracking-widest uppercase">
+                    <Compass className="w-3.5 h-3.5 text-black dark:text-white animate-spin-slow" />
+                    Active Peer-Reviewed Translations
+                  </div>
                 </div>
                 
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold italic text-black dark:text-white tracking-tight leading-[1.12]">
                   Symmetry-Preserving <span className="not-italic font-sans font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-500 dark:from-white dark:to-neutral-400">Research</span> Journal
                 </h1>
                 
-                <p className="text-gray-500 dark:text-neutral-400 text-sm sm:text-base md:text-lg leading-relaxed font-light max-w-2xl mx-auto">
+                <div className="glitch-wrapper">
+                  <div className="glitch-text" data-text="Code is Abundant. Operational Stability is Scarce.">
+                    Code is Abundant. Operational Stability is Scarce.
+                  </div>
+                </div>
+                
+                <p className="text-gray-500 dark:text-neutral-400 text-sm sm:text-base md:text-lg leading-relaxed font-light max-w-2xl mx-auto mt-2">
                   Bridging complex physics, deep learning, and advanced quantum optimization papers into highly visual, technical editorial publications.
                 </p>
 
