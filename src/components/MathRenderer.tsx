@@ -431,6 +431,9 @@ const CustomCodeOrDiagram: React.FC<CustomCodeOrDiagramProps> = ({ lang, code })
 export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
   if (!text) return null;
 
+  // Sequential key counter to prevent any duplicate key warnings when rendering formatted markdown/LaTeX elements
+  let keyCounter = 0;
+
   // Clean up escaped characters, literal backslash-n, and escaped quotes
   const cleanText = text
     .replace(/\\n/g, "\n")
@@ -505,22 +508,22 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
       if (fullMatch.startsWith("`") && fullMatch.endsWith("`")) {
         const codeText = fullMatch.slice(1, -1);
         parts.push(
-          <code key={`code-${matchIndex}`} className="px-1.5 py-0.5 font-mono text-xs bg-slate-100 dark:bg-neutral-800 rounded text-slate-800 dark:text-neutral-200">
+          <code key={`code-${keyCounter++}`} className="px-1.5 py-0.5 font-mono text-xs bg-slate-100 dark:bg-neutral-800 rounded text-slate-800 dark:text-neutral-200">
             {codeText}
           </code>
         );
       } else if (fullMatch.startsWith("**") && fullMatch.endsWith("**")) {
         const boldText = match[2];
-        parts.push(<strong key={`bold-${matchIndex}`} className="font-bold text-slate-900 dark:text-white">{boldText}</strong>);
+        parts.push(<strong key={`bold-${keyCounter++}`} className="font-bold text-slate-900 dark:text-white">{boldText}</strong>);
       } else if (fullMatch.startsWith("__") && fullMatch.endsWith("__")) {
         const boldText = match[3];
-        parts.push(<strong key={`bold-${matchIndex}`} className="font-bold text-slate-900 dark:text-white">{boldText}</strong>);
+        parts.push(<strong key={`bold-${keyCounter++}`} className="font-bold text-slate-900 dark:text-white">{boldText}</strong>);
       } else if (fullMatch.startsWith("[") && fullMatch.includes("](")) {
         const linkText = match[4];
         const linkUrl = match[5];
         parts.push(
           <a 
-            key={`link-${matchIndex}`} 
+            key={`link-${keyCounter++}`} 
             href={linkUrl} 
             target="_blank" 
             rel="noopener noreferrer" 
@@ -531,10 +534,10 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
         );
       } else if (fullMatch.startsWith("*") && fullMatch.endsWith("*")) {
         const italicText = match[6];
-        parts.push(<em key={`italic-${matchIndex}`} className="italic text-slate-800 dark:text-slate-200">{italicText}</em>);
+        parts.push(<em key={`italic-${keyCounter++}`} className="italic text-slate-800 dark:text-slate-200">{italicText}</em>);
       } else if (fullMatch.startsWith("_") && fullMatch.endsWith("_")) {
         const italicText = match[7];
-        parts.push(<em key={`italic-${matchIndex}`} className="italic text-slate-800 dark:text-slate-200">{italicText}</em>);
+        parts.push(<em key={`italic-${keyCounter++}`} className="italic text-slate-800 dark:text-slate-200">{italicText}</em>);
       } else {
         parts.push(fullMatch);
       }
@@ -572,14 +575,14 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
           });
           parts.push(
             <span
-              key={`inline-${matchIndex}`}
+              key={`inline-${keyCounter++}`}
               className="inline-block px-1 font-mono text-slate-900 dark:text-white"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           );
         } catch (err) {
           console.error("KaTeX inline error:", err);
-          parts.push(<code key={`inline-err-${matchIndex}`} className="text-red-500">${content}$</code>);
+          parts.push(<code key={`inline-err-${keyCounter++}`} className="text-red-500">${content}$</code>);
         }
       } else {
         parts.push(...parseMarkdownFormatting(fullMatch));
@@ -613,7 +616,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
       
       parts.push(
         <div
-          key={`block-placeholder-${matchIndex}`}
+          key={`block-placeholder-${keyCounter++}`}
           className="my-6 w-full overflow-x-auto py-2 text-slate-800 dark:text-neutral-200"
           dangerouslySetInnerHTML={{ __html: mathObj.html }}
         />

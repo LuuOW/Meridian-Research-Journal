@@ -152,52 +152,187 @@ export default function App() {
     if (!blog?.bannerSvg) return;
     
     let svgString = blog.bannerSvg;
-    if (!svgString.includes("xmlns=")) {
-      svgString = svgString.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
-    }
     
-    const img = new Image();
-    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 1200;
-      canvas.height = 675;
-      const ctx = canvas.getContext("2d");
+    // Parse and sanitize the SVG using a forgiving HTML DOMParser to ensure 100% standard compliance and fix any malformed XML automatically
+    try {
+      const parser = new DOMParser();
+      // Pre-escape raw ampersands so they don't break the string serialization
+      const escapedSvg = svgString.replace(/&(?!(amp|lt|gt|quot|apos|#\d+);)/g, "&amp;");
       
-      if (ctx) {
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-        ctx.fillStyle = "#090d16";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        canvas.toBlob((pngBlob) => {
-          if (pngBlob) {
-            const pngUrl = URL.createObjectURL(pngBlob);
-            const downloadLink = document.createElement("a");
-            downloadLink.href = pngUrl;
-            downloadLink.download = `${blog.slug || "meridian-banner"}.png`;
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            URL.revokeObjectURL(pngUrl);
+      const doc = parser.parseFromString(escapedSvg, "text/html");
+      const svgEl = doc.querySelector("svg");
+      
+      if (svgEl) {
+        // Strip out any external stylesheet imports or font-face declarations inside <style> tags (they crash canvas/image loading)
+        const styles = svgEl.querySelectorAll("style");
+        styles.forEach(style => {
+          if (style.textContent) {
+            style.textContent = style.textContent
+              .replace(/@import\s+[^;]+;/gi, "")
+              .replace(/@font-face\s*\{[^}]*\}/gi, "")
+              .replace(/url\(['"]?https?:\/\/[^'")]*['"]?\)/gi, "none");
           }
-        }, "image/png");
+        });
+        
+        // Remove any <image> tags that have external sources to avoid tainting the canvas
+        const images = svgEl.querySelectorAll("image");
+        images.forEach(imgEl => {
+          const href = imgEl.getAttribute("href") || imgEl.getAttribute("xlink:href") || "";
+          if (href.startsWith("http://") || href.startsWith("https://")) {
+            imgEl.remove(); // Remove external images entirely
+          }
+        });
+        
+        // Ensure standard namespace, width, and height are set on the root SVG
+        if (!svgEl.getAttribute("xmlns")) {
+          svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        }
+        svgEl.setAttribute("width", "800");
+        svgEl.setAttribute("height", "400");
+        
+        // Serialize the SVG element itself to produce 100% valid XML!
+        let serialized = new XMLSerializer().serializeToString(svgEl);
+        
+        // Restore camelCase SVG element tag names
+        const camelCaseElements = [
+          "linearGradient", "radialGradient", "clipPath", "textPath", "foreignObject",
+          "feGaussianBlur", "feOffset", "feBlend", "feMerge", "feMergeNode", 
+          "feColorMatrix", "feComponentTransfer", "feComposite", "feConvolveMatrix",
+          "feDiffuseLighting", "feDisplacementMap", "feDistantLight", "feDropShadow",
+          "feFlood", "feFuncA", "feFuncB", "feFuncG", "feFuncR", "feGaussianBlur",
+          "feImage", "feMerge", "feMergeNode", "feMorphology", "feOffset",
+          "feSpecularLighting", "feSpotLight", "feTile", "feTurbulence"
+        ];
+        
+        camelCaseElements.forEach(tag => {
+          const lowercase = tag.toLowerCase();
+          const openRegex = new RegExp(`<${lowercase}\\b`, "g");
+          const closeRegex = new RegExp(`</${lowercase}>`, "g");
+          serialized = serialized.replace(openRegex, `<${tag}`);
+          serialized = serialized.replace(closeRegex, `</${tag}>`);
+        });
+        
+        // Restore camelCase SVG attributes
+        const camelCaseAttributes = [
+          "viewBox", "gradientTransform", "gradientUnits", "spreadMethod", 
+          "clipPathUnits", "preserveAspectRatio", "patternUnits", "patternContentUnits", 
+          "patternTransform", "attributeName", "attributeType", "keyTimes", "keySplines", 
+          "repeatCount", "repeatDur", "stdDeviation", "specularConstant", "specularExponent",
+          "surfaceScale", "targetX", "targetY", "limitingConeAngle", "diffuseConstant"
+        ];
+        
+        camelCaseAttributes.forEach(attr => {
+          const lowercase = attr.toLowerCase();
+          const regex = new RegExp(`\\b${lowercase}=`, "gi");
+          serialized = serialized.replace(regex, `${attr}=`);
+        });
+        
+        svgString = serialized;
       }
-      URL.revokeObjectURL(url);
-    };
+    } catch (err) {
+      console.error("DOMParser error:", err);
+    }
+
+    // Prepare fallbacks: Try Blob URL first, then Base64 Data URI, and finally direct SVG file download.
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const blobUrl = URL.createObjectURL(blob);
     
-    img.onerror = (e) => {
-      console.error("SVG to PNG conversion image failed to load:", e);
-      URL.revokeObjectURL(url);
+    // Attempt base64 encoding as the second-layer fallback
+    let dataUri = "";
+    try {
+      const base64 = btoa(unescape(encodeURIComponent(svgString)));
+      dataUri = `data:image/svg+xml;base64,${base64}`;
+    } catch (e) {
+      console.warn("Base64 encoding failed for fallback:", e);
+    }
+
+    const tryLoadImage = (srcUrl: string, onDone: () => void, onFail: () => void) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous"; // prevent potential tainted canvas issues where possible
+      
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1200;
+          canvas.height = 675;
+          const ctx = canvas.getContext("2d");
+          
+          if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+            ctx.fillStyle = "#090d16";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob((pngBlob) => {
+              if (pngBlob) {
+                const pngUrl = URL.createObjectURL(pngBlob);
+                const downloadLink = document.createElement("a");
+                downloadLink.href = pngUrl;
+                downloadLink.download = `${blog.slug || "meridian-banner"}.png`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                setTimeout(() => URL.revokeObjectURL(pngUrl), 100);
+                onDone();
+              } else {
+                onFail();
+              }
+            }, "image/png");
+          } else {
+            onFail();
+          }
+        } catch (err) {
+          console.error("Error drawing image to canvas:", err);
+          onFail();
+        }
+      };
+      
+      img.onerror = (e) => {
+        console.warn("Image src load failed:", srcUrl.slice(0, 60), e);
+        onFail();
+      };
+      
+      img.src = srcUrl;
     };
-    
-    img.src = url;
+
+    // Trigger sequential attempts
+    tryLoadImage(blobUrl, 
+      // Success with Blob URL
+      () => {
+        URL.revokeObjectURL(blobUrl);
+      },
+      // Fail with Blob URL -> Try Base64 Data URI
+      () => {
+        URL.revokeObjectURL(blobUrl);
+        if (dataUri) {
+          tryLoadImage(dataUri,
+            // Success with Data URI
+            () => {},
+            // Fail with Data URI -> Final Fallback: Download as SVG
+            () => triggerSvgDownload()
+          );
+        } else {
+          triggerSvgDownload();
+        }
+      }
+    );
+
+    function triggerSvgDownload() {
+      console.warn("PNG download completely failed. Falling back to direct SVG file download.");
+      const fallbackBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+      const fallbackUrl = URL.createObjectURL(fallbackBlob);
+      const a = document.createElement("a");
+      a.href = fallbackUrl;
+      a.download = `${blog.slug || "meridian-banner"}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(fallbackUrl), 100);
+    }
   };
 
-  // Load preloaded articles and any custom user generated articles from Firestore, Server, and LocalStorage
+  // Load preloaded articles and any custom user generated articles from Firestore via Server API, and LocalStorage
   useEffect(() => {
     const loadBlogs = async () => {
       // 1. Get initial local custom blogs from localStorage as a local cache
@@ -234,35 +369,22 @@ export default function App() {
         }
       }
 
-      let firestoreBlogs: BlogPost[] = [];
-      let firestoreError = false;
+      let serverBlogs: BlogPost[] = [];
+      let fetchError = false;
 
-      // 2. Fetch custom blogs from secure Firestore cloud database with a 2.5s timeout (only if db exists)
-      if (db) {
-        try {
-          const getDocsPromise = getDocs(collection(db, "blogs"));
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Firestore fetch timed out")), 2500)
-          );
-
-          const querySnapshot = await Promise.race([getDocsPromise, timeoutPromise]);
-          querySnapshot.forEach((docSnap) => {
-            const blogData = docSnap.data() as BlogPost;
-            if (blogData && blogData.id) {
-              firestoreBlogs.push(blogData);
-            }
-          });
-        } catch (err) {
-          console.error("Failed to fetch custom blogs from Firestore (will operate offline):", err);
-          firestoreError = true;
-          try {
-            handleFirestoreError(err, OperationType.GET, "blogs");
-          } catch (thrownErr) {
-            console.warn("Firestore fetch failed. Operating in offline-first mode using cached or preloaded content.");
-          }
+      // 2. Fetch custom blogs from secure server-side API (which connects directly to Firestore securely)
+      try {
+        const response = await fetch("/api/blogs");
+        if (response.ok) {
+          const data = await response.json();
+          serverBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+        } else {
+          console.warn(`Server API responded with code ${response.status}. Using local cache fallback.`);
+          fetchError = true;
         }
-      } else {
-        console.info("Firestore database is unconfigured. Operating locally with offline-first persistence.");
+      } catch (err) {
+        console.error("Failed to fetch custom blogs from server API:", err);
+        fetchError = true;
       }
 
       // 3. Merge lists using a Map keyed by id to avoid duplicates
@@ -273,8 +395,8 @@ export default function App() {
         mergedMap.set(blog.id, blog);
       });
 
-      // Add firestore blogs (they take precedence or supplement)
-      firestoreBlogs.forEach(blog => {
+      // Add server blogs (they take precedence or supplement)
+      serverBlogs.forEach(blog => {
         mergedMap.set(blog.id, blog);
       });
 
@@ -287,49 +409,50 @@ export default function App() {
         return timeB - timeA;
       });
 
-      // 4. Proactively upload any local-only cache blogs to Firestore so they are never lost (only if db exists)
-      if (db && !firestoreError) {
-        for (const blog of mergedCustomBlogs) {
-          const isOnlyLocal = !firestoreBlogs.some(fb => fb.id === blog.id);
-          if (isOnlyLocal) {
-            try {
-              await setDoc(doc(db, "blogs", blog.id), blog);
-              console.log(`Successfully backed up local blog "${blog.title}" to cloud Firestore.`);
-            } catch (err) {
-              console.error(`Failed to back up local blog "${blog.title}" to Firestore:`, err);
-              try {
-                handleFirestoreError(err, OperationType.WRITE, `blogs/${blog.id}`);
-              } catch (thrownErr) {
-                console.warn("Could not save backup copy to Firestore in offline mode.");
+      // 4. Proactively call the server sync endpoint to sync Firestore and server-side cache with any local-only cache blogs
+      if (!fetchError) {
+        try {
+          const response = await fetch("/api/blogs/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ blogs: mergedCustomBlogs })
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const syncedBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+            
+            // Update state and local storage with the fully synced server list
+            const allBlogs = [...syncedBlogs, ...PRELOADED_BLOGS];
+            setBlogs(allBlogs);
+            localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedBlogs));
+
+            // Handle deep linking again in case new blogs were fetched from Firestore
+            const refreshedBlogId = getBlogIdFromUrl();
+            if (refreshedBlogId) {
+              const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
+              if (found) {
+                setActiveBlog(found);
               }
             }
+            return;
           }
+        } catch (err) {
+          console.error("Failed to sync server backup JSON:", err);
         }
       }
 
-      // Update state and local storage immediately with the synced list
+      // Fallback: update state and local storage with the merged local/offline list
       const allBlogs = [...mergedCustomBlogs, ...PRELOADED_BLOGS];
       setBlogs(allBlogs);
       localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
 
-      // Handle deep linking again in case new blogs were fetched from Firestore
+      // Handle deep linking again
       const refreshedBlogId = getBlogIdFromUrl();
       if (refreshedBlogId) {
         const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
         if (found) {
           setActiveBlog(found);
         }
-      }
-
-      // 5. Call the server sync endpoint to ensure the server's ephemeral JSON backup is also in sync
-      try {
-        await fetch("/api/blogs/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ blogs: mergedCustomBlogs })
-        });
-      } catch (err) {
-        console.error("Failed to sync server backup JSON:", err);
       }
     };
 
@@ -403,17 +526,6 @@ export default function App() {
   };
 
   const handleBlogGenerated = async (newBlog: BlogPost) => {
-    // 1. Save to cloud Firestore immediately (only if db exists)
-    if (db) {
-      try {
-        await setDoc(doc(db, "blogs", newBlog.id), newBlog);
-        console.log("Successfully saved new blog to Cloud Firestore.");
-      } catch (err) {
-        console.error("Failed to save new blog to Firestore:", err);
-        handleFirestoreError(err, OperationType.WRITE, `blogs/${newBlog.id}`);
-      }
-    }
-
     const updatedBlogs = [newBlog, ...blogs.filter(b => b.id !== newBlog.id)];
     setBlogs(updatedBlogs);
     
@@ -421,12 +533,24 @@ export default function App() {
     const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
     localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
     
+    // Proactively trigger sync to the server API and Firestore securely in the background
+    try {
+      await fetch("/api/blogs/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blogs: customBlogs })
+      });
+      console.log("Successfully synced generated blog to the server/Firestore");
+    } catch (err) {
+      console.error("Failed to sync generated blog to server/Firestore:", err);
+    }
+    
     setIsCreateOpen(false);
     setActiveBlog(newBlog); // Automatically open the new blog
   };
 
   const handleRemoveBlog = async (id: string, password?: string): Promise<boolean> => {
-    // 1. Delete from server persistent JSON fallback, verifying password
+    // Delete from server-side fallback JSON and secure Firestore via Server API
     try {
       const response = await fetch(`/api/blogs/${id}`, { 
         method: "DELETE",
@@ -439,19 +563,8 @@ export default function App() {
         return false;
       }
     } catch (err) {
-      console.error("Failed to delete blog from server JSON:", err);
+      console.error("Failed to delete blog from server:", err);
       return false;
-    }
-
-    // 2. Delete from Cloud Firestore (only if db exists)
-    if (db) {
-      try {
-        await deleteDoc(doc(db, "blogs", id));
-        console.log("Successfully deleted blog from Cloud Firestore.");
-      } catch (err) {
-        console.error("Failed to delete blog from Firestore:", err);
-        handleFirestoreError(err, OperationType.DELETE, `blogs/${id}`);
-      }
     }
 
     const updatedBlogs = blogs.filter(b => b.id !== id);

@@ -1,7 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, Auth } from "firebase/auth";
 import { initializeFirestore, Firestore } from "firebase/firestore";
-import firebaseConfig from "../../firebase-applet-config.json";
+// Load the firebase-applet-config.json file optionally using import.meta.glob
+// to prevent compile-time or linting errors if the user deletes the configuration file.
+const configs = (import.meta as any).glob("../../firebase-applet-config.json", { eager: true, import: "default" });
+const firebaseConfig = (configs["../../firebase-applet-config.json"] || configs["/firebase-applet-config.json"] || {}) as Record<string, any>;
 
 export const isFirebaseEnabled = !!(firebaseConfig && firebaseConfig.projectId && firebaseConfig.projectId !== "");
 

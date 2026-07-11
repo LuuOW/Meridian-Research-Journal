@@ -4,6 +4,8 @@ import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import { initializeApp } from "firebase/app";
+import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
 dotenv.config();
 
@@ -82,14 +84,143 @@ const writeCustomBlogs = (blogs: any[]) => {
     console.error("Error writing custom_blogs.json:", error);
   }
 };
+
+// Initialize Firestore on Server Side
+let db: any = null;
+const CONFIG_FILE = path.join(process.cwd(), "firebase-applet-config.json");
+let firebaseConfig: any = null;
+
+if (fs.existsSync(CONFIG_FILE)) {
+  try {
+    firebaseConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+  } catch (err) {
+    console.error("Failed to parse firebase-applet-config.json:", err);
+  }
+}
+
+if (firebaseConfig && firebaseConfig.projectId) {
+  try {
+    const firebaseApp = initializeApp(firebaseConfig);
+    db = initializeFirestore(firebaseApp, {
+      experimentalForceLongPolling: true,
+    }, firebaseConfig.firestoreDatabaseId);
+    console.log("Firebase Firestore successfully initialized on Server!");
+  } catch (error) {
+    console.error("Failed to initialize Firebase on Server:", error);
+  }
+}
+
+// Get all blogs, with fallback to local JSON file
+const getBlogs = async (): Promise<any[]> => {
+  const localBlogs = readCustomBlogs();
+  if (!db) {
+    return localBlogs;
+  }
+  try {
+    const querySnapshot = await getDocs(collection(db, "blogs"));
+    const firestoreBlogs: any[] = [];
+    querySnapshot.forEach((doc) => {
+      firestoreBlogs.push(doc.data());
+    });
+
+    if (firestoreBlogs.length === 0 && localBlogs.length > 0) {
+      // Seed Firestore with local blogs if Firestore is completely empty
+      console.log(`Firestore blogs collection is empty. Seeding with ${localBlogs.length} local blogs...`);
+      for (const blog of localBlogs) {
+        if (blog && blog.id) {
+          await setDoc(doc(db, "blogs", blog.id), blog);
+        }
+      }
+      return localBlogs;
+    }
+
+    // Sort newer first based on the generation timestamp in ID (e.g. generated-1234567890)
+    firestoreBlogs.sort((a: any, b: any) => {
+      const timeA = parseInt(a.id?.replace("generated-", "")) || 0;
+      const timeB = parseInt(b.id?.replace("generated-", "")) || 0;
+      return timeB - timeA;
+    });
+
+    return firestoreBlogs;
+  } catch (error) {
+    console.error("Error reading from Firestore, falling back to local file:", error);
+    return localBlogs;
+  }
+};
+
+// Save a single blog to local file and Firestore
+const saveBlog = async (blog: any) => {
+  // Save locally
+  const localBlogs = readCustomBlogs();
+  const isDuplicate = localBlogs.some((b: any) => b.id === blog.id);
+  if (!isDuplicate) {
+    localBlogs.push(blog);
+    writeCustomBlogs(localBlogs);
+  }
+
+  // Save to Firestore
+  if (db && blog && blog.id) {
+    try {
+      await setDoc(doc(db, "blogs", blog.id), blog);
+      console.log(`Blog "${blog.title}" successfully written to Firestore.`);
+    } catch (error) {
+      console.error("Error saving to Firestore:", error);
+    }
+  }
+};
+
+// Save multiple blogs to local file and Firestore
+const saveBlogs = async (blogs: any[]) => {
+  // Save locally
+  writeCustomBlogs(blogs);
+
+  // Save to Firestore
+  if (db) {
+    try {
+      console.log(`Syncing ${blogs.length} blogs to Firestore...`);
+      await Promise.all(
+        blogs.map(async (blog) => {
+          if (blog && blog.id) {
+            await setDoc(doc(db, "blogs", blog.id), blog);
+          }
+        })
+      );
+      console.log("Sync to Firestore complete!");
+    } catch (error) {
+      console.error("Error syncing to Firestore:", error);
+    }
+  }
+};
+
+// Delete a blog from local file and Firestore
+const deleteBlog = async (id: string): Promise<boolean> => {
+  // Delete locally
+  const localBlogs = readCustomBlogs();
+  const filtered = localBlogs.filter((b: any) => b.id !== id);
+  writeCustomBlogs(filtered);
+
+  // Delete from Firestore
+  if (db) {
+    try {
+      await deleteDoc(doc(db, "blogs", id));
+      console.log(`Blog ${id} successfully deleted from Firestore.`);
+      return true;
+    } catch (error) {
+      console.error("Error deleting from Firestore:", error);
+      return false;
+    }
+  }
+  return true;
+};
+
 // API: Get all custom blogs
-app.get("/api/blogs", (req, res) => {
-  const blogs = readCustomBlogs();
+app.get("/api/blogs", async (req, res) => {
+  const blogs = await getBlogs();
   res.json({ blogs });
 });
 
 // API: Delete a custom blog
-app.delete("/api/blogs/:id", (req, res) => {
+app.delete("/api/blogs/:id", async (req, res) => {
   const { id } = req.params;
   const password = req.headers["x-deletion-password"] || req.query.password || req.body?.password;
   const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
@@ -98,14 +229,8 @@ app.delete("/api/blogs/:id", (req, res) => {
     return res.status(403).json({ error: "Unauthorized: Incorrect editor password." });
   }
 
-  const blogs = readCustomBlogs();
-  const filtered = blogs.filter((b: any) => b.id !== id);
-  const deletedBlog = blogs.find((b: any) => b.id === id);
-  const commitMsg = deletedBlog ? `Delete blog post: "${deletedBlog.title}"` : `Delete blog post ${id}`;
-  
-  writeCustomBlogs(filtered);
-  
-  res.json({ success: true });
+  const success = await deleteBlog(id);
+  res.json({ success });
 });
 
 // API: Verify Editor Password
@@ -121,9 +246,9 @@ app.post("/api/verify-editor-password", (req, res) => {
 });
 
 // API: Sync custom blogs from client and server
-app.post("/api/blogs/sync", (req, res) => {
+app.post("/api/blogs/sync", async (req, res) => {
   const clientBlogs = req.body.blogs || [];
-  const serverBlogs = readCustomBlogs();
+  const serverBlogs = await getBlogs();
   
   // Merge lists using a Map keyed by id to avoid duplicates
   const mergedMap = new Map<string, any>();
@@ -151,7 +276,7 @@ app.post("/api/blogs/sync", (req, res) => {
     return timeB - timeA; // Newer first
   });
   
-  writeCustomBlogs(mergedBlogs);
+  await saveBlogs(mergedBlogs);
   res.json({ blogs: mergedBlogs });
 });
 
@@ -270,6 +395,7 @@ Source Text/Abstract: ${paperSummary}
 The response must be valid JSON according to the schema provided. Make sure the 'content' field contains rich, deeply written Markdown text with multiple sections, technical explanations, and the required LaTeX equations.`;
 
     const modelsToTry = [
+      "gemini-2.5-flash",
       "gemini-3.5-flash",
       "gemini-3.1-pro-preview",
       "gemini-flash-latest",
@@ -387,18 +513,17 @@ The response must be valid JSON according to the schema provided. Make sure the 
       })
     };
 
-    // Save generated blog to server-side JSON file
-    const blogs = readCustomBlogs();
+    // Save generated blog using saveBlog and getBlogs
+    const blogs = await getBlogs();
     const isDuplicate = blogs.some((b: any) => 
       (b.arxivLink && b.arxivLink === newBlog.arxivLink) || 
       (b.title && b.title.toLowerCase() === newBlog.title.toLowerCase())
     );
     
     if (!isDuplicate) {
-      blogs.push(newBlog);
-      writeCustomBlogs(blogs);
+      await saveBlog(newBlog);
     } else {
-      console.log("Duplicate blog detected (by title or arxivLink), skipping append to custom_blogs.json");
+      console.log("Duplicate blog detected (by title or arxivLink), skipping append");
     }
 
     res.json({ blog: newBlog });

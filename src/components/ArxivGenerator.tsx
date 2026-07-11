@@ -89,11 +89,33 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Failed to generate blog. Please try another paper.");
+        let errMessage = "Failed to generate blog. Please try another paper.";
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errData = await response.json();
+            errMessage = errData.error || errMessage;
+          } else {
+            const text = await response.text();
+            if (text.toLowerCase().includes("upstream request timeout") || text.toLowerCase().includes("timeout")) {
+              errMessage = "The generation server took too long to respond (upstream request timeout). The AI is currently experiencing high demand. Please try again in a few seconds.";
+            } else {
+              errMessage = `Server error (${response.status}): ${text.slice(0, 150)}`;
+            }
+          }
+        } catch (parseErr) {
+          errMessage = `Server returned an error (${response.status})`;
+        }
+        throw new Error(errMessage);
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        throw new Error("Failed to parse server response. The generation server might have timed out. Please try again.");
+      }
+
       if (data.blog) {
         onBlogGenerated(data.blog);
       } else {
