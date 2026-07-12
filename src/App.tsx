@@ -27,7 +27,6 @@ export default function App() {
   const [activeAudioBlog, setActiveAudioBlog] = useState<BlogPost | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [selectedTimeFilter, setSelectedTimeFilter] = useState<"all" | "today" | "yesterday" | "week">("all");
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
@@ -110,42 +109,6 @@ export default function App() {
       setIsEditorMode(false);
       setEditorPassword("");
     }
-  };
-
-  const getBlogDate = (b: BlogPost): Date | null => {
-    if (b.id.startsWith("generated-")) {
-      const ts = parseInt(b.id.replace("generated-", ""));
-      if (!isNaN(ts)) return new Date(ts);
-    }
-    const parsed = Date.parse(b.date);
-    if (!isNaN(parsed)) return new Date(parsed);
-    return null;
-  };
-
-  const isToday = (b: BlogPost) => {
-    const blogDate = getBlogDate(b);
-    if (!blogDate) return false;
-    const today = new Date();
-    return blogDate.toDateString() === today.toDateString();
-  };
-
-  const isYesterday = (b: BlogPost) => {
-    const blogDate = getBlogDate(b);
-    if (!blogDate) return false;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return blogDate.toDateString() === yesterday.toDateString();
-  };
-
-  const isThisWeek = (b: BlogPost) => {
-    const blogDate = getBlogDate(b);
-    if (!blogDate) return false;
-    const now = new Date();
-    const startOfWeek = new Date();
-    startOfWeek.setDate(now.getDate() - 7);
-    // Set to start of day (midnight) to perform clean calendar day comparisons
-    startOfWeek.setHours(0, 0, 0, 0);
-    return blogDate >= startOfWeek;
   };
 
   const handleDownloadPng = (blog: BlogPost) => {
@@ -583,8 +546,8 @@ export default function App() {
   // Get all unique tags from active blogs
   const allTags = Array.from(new Set(blogs.flatMap((b) => b.tags)));
 
-  // Base filtered list (excluding time-based filters to compute accurate context counts)
-  const baseFilteredBlogs = blogs.filter((b) => {
+  // Filtered list of blogs based on search and selected tag
+  const filteredBlogs = blogs.filter((b) => {
     // Skip hidden blogs from the public feed unless in editor mode
     if (!isEditorMode && hiddenBlogIds.includes(b.id)) return false;
 
@@ -595,18 +558,6 @@ export default function App() {
     const matchesTag = selectedTag ? b.tags.includes(selectedTag) : true;
     
     return matchesSearch && matchesTag;
-  });
-
-  // Filtered list with active time filter applied
-  const filteredBlogs = baseFilteredBlogs.filter((b) => {
-    if (selectedTimeFilter === "today") {
-      return isToday(b);
-    } else if (selectedTimeFilter === "yesterday") {
-      return isYesterday(b);
-    } else if (selectedTimeFilter === "week") {
-      return isThisWeek(b);
-    }
-    return true;
   });
 
   return (
@@ -682,10 +633,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Advanced Search and Filter Bar */}
-              <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm mb-12 space-y-4">
-                <div className="flex flex-col md:flex-row items-center gap-4">
-                  <div className="relative w-full md:flex-1">
+              {/* Simplified Search and Topic Filter Bar */}
+              <div className="bg-white dark:bg-neutral-900 p-5 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm mb-12">
+                <div className="flex flex-col lg:flex-row items-center gap-4">
+                  <div className="relative w-full lg:flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
                       type="text"
@@ -697,7 +648,7 @@ export default function App() {
                   </div>
                   
                   {/* Scrollable tag list */}
-                  <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto no-scrollbar py-1">
+                  <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto no-scrollbar py-1">
                     <button
                       onClick={() => setSelectedTag(null)}
                       className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
@@ -723,74 +674,6 @@ export default function App() {
                     ))}
                   </div>
                 </div>
-
-                 {/* Recency Time Filter Selector */}
-                <div className="flex flex-wrap items-center justify-between pt-3 border-t border-gray-50/80 dark:border-neutral-800 gap-3 text-xs">
-                  <div className="flex items-center gap-1.5 text-gray-400 dark:text-neutral-500 font-mono text-[10px] uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-600 rounded-full"></span>
-                    Publication Recency:
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => setSelectedTimeFilter("all")}
-                      className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
-                        selectedTimeFilter === "all"
-                          ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700"
-                          : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
-                      }`}
-                    >
-                      All Time
-                      <span className="bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-700 dark:text-neutral-300 px-1.5 py-0.5 rounded-md text-[9px] font-mono">
-                        {baseFilteredBlogs.length}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setSelectedTimeFilter("today")}
-                      className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
-                        selectedTimeFilter === "today"
-                          ? "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200/50 dark:border-blue-900/40"
-                          : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
-                      }`}
-                    >
-                      💡 Today
-                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
-                        selectedTimeFilter === "today" ? "bg-blue-200/70 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
-                      }`}>
-                        {baseFilteredBlogs.filter(isToday).length}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setSelectedTimeFilter("yesterday")}
-                      className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
-                        selectedTimeFilter === "yesterday"
-                          ? "bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border border-purple-200/50 dark:border-purple-900/40"
-                          : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
-                      }`}
-                    >
-                      ⏳ Yesterday
-                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
-                        selectedTimeFilter === "yesterday" ? "bg-purple-200/70 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
-                      }`}>
-                        {baseFilteredBlogs.filter(isYesterday).length}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setSelectedTimeFilter("week")}
-                      className={`px-3.5 py-1.5 rounded-xl font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
-                        selectedTimeFilter === "week"
-                          ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/50 dark:border-amber-900/40"
-                          : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
-                      }`}
-                    >
-                      🌟 This Week
-                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
-                        selectedTimeFilter === "week" ? "bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200" : "bg-neutral-100 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400"
-                      }`}>
-                        {baseFilteredBlogs.filter(isThisWeek).length}
-                      </span>
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Grid or Empty state layout */}
@@ -799,7 +682,7 @@ export default function App() {
                   {filteredBlogs.length > 0 ? (
                     <>
                       {/* Premium Featured Section (Only when no search or topic filter is active) */}
-                      {!searchQuery && !selectedTag && selectedTimeFilter === "all" && (
+                      {!searchQuery && !selectedTag && (
                         <div className="mb-12">
                           <div className="flex items-center gap-2 mb-4">
                             <span className="flex h-2 w-2 relative">
@@ -934,7 +817,7 @@ export default function App() {
                       )}
 
                       {/* Heading for other publications */}
-                      {!searchQuery && !selectedTag && selectedTimeFilter === "all" && filteredBlogs.length > 1 && (
+                      {!searchQuery && !selectedTag && filteredBlogs.length > 1 && (
                         <div className="flex items-center gap-3 pt-6 pb-2">
                           <h4 className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">
                             Recent Publications ({filteredBlogs.length - 1})
@@ -945,7 +828,7 @@ export default function App() {
 
                       {/* Standard Grid mapping */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {( !searchQuery && !selectedTag && selectedTimeFilter === "all"
+                        {( !searchQuery && !selectedTag
                           ? filteredBlogs.slice(1)
                           : filteredBlogs
                         ).map((blog) => {
