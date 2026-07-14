@@ -6,6 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { initializeApp } from "firebase/app";
 import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { extractArxivId } from "./src/lib/arxivUtils";
 
 dotenv.config();
 
@@ -28,15 +29,6 @@ const getGeminiClient = () => {
       },
     },
   });
-};
-
-// Helper to extract arXiv ID
-const extractArxivId = (input: string): string | null => {
-  const urlMatch = input.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/i);
-  if (urlMatch) return urlMatch[1];
-  const idMatch = input.match(/^(\d{4}\.\d{4,5})$/);
-  if (idMatch) return idMatch[1];
-  return null;
 };
 
 // Simple arXiv API fetcher
