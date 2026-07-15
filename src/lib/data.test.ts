@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { PRELOADED_BLOGS } from "../data";
-import { extractArxivId } from "./arxivUtils";
+import { extractArxivId, cleanJsonText } from "./arxivUtils";
 
 test("PRELOADED_BLOGS contains valid articles", () => {
   assert.ok(Array.isArray(PRELOADED_BLOGS), "PRELOADED_BLOGS should be an array");
@@ -82,4 +82,46 @@ test("extractArxivId extracts correct paper IDs", () => {
     "Should return null for generic non-arxiv URLs"
   );
 });
+
+test("cleanJsonText sanitizes raw LLM output and LaTeX correctly", () => {
+
+  // 1. Test markdown wrapping removal
+  const rawMarkdownJson = "```json\n{\n  \"title\": \"Quantum Gravity\"\n}\n```";
+  const cleaned1 = cleanJsonText(rawMarkdownJson);
+  assert.deepStrictEqual(JSON.parse(cleaned1), { title: "Quantum Gravity" });
+
+  // 2. Test standard invalid LaTeX escape sequences (e.g., \alpha, \partial, \sigma)
+  const latexJson = `{"content": "Let \\alpha be the angle, and \\partial^2 f is the derivative."}`;
+  // Wait, let's represent the single backslashes properly in JS string template literal
+  const badLatexJson = '{"content": "Let \\alpha be the angle, and \\partial^2 f is the derivative."}';
+  const cleanedLatex = cleanJsonText(badLatexJson);
+  const parsedLatex = JSON.parse(cleanedLatex);
+  assert.strictEqual(parsedLatex.content, "Let \\alpha be the angle, and \\partial^2 f is the derivative.");
+
+  // 3. Test LaTeX starting with JSON escapes (e.g., \theta, \beta, \frac)
+  const trickyLatexJson = '{"formula": "Let \\theta be the angle, \\beta be the scale, and \\frac{1}{2} be the fraction."}';
+  const cleanedTricky = cleanJsonText(trickyLatexJson);
+  const parsedTricky = JSON.parse(cleanedTricky);
+  assert.strictEqual(parsedTricky.formula, "Let \\theta be the angle, \\beta be the scale, and \\frac{1}{2} be the fraction.");
+
+  // 4. Test distinguishing true JSON newlines (\n followed by space/caps) vs \nabla / \nu / \nearrow
+  const newlineVsNablaJson = '{"text": "Line 1\\nLine 2\\n Let \\nabla be the gradient and \\nu be the frequency."}';
+  const cleanedNewline = cleanJsonText(newlineVsNablaJson);
+  const parsedNewline = JSON.parse(cleanedNewline);
+  // Expect standard \\n to parse as a real newline character, and \\nabla/\\nu to parse as \nabla and \nu
+  assert.strictEqual(parsedNewline.text, "Line 1\nLine 2\n Let \\nabla be the gradient and \\nu be the frequency.");
+
+  // 5. Test literal newlines inside JSON string values
+  const literalNewlineJson = '{"content": "This is line 1\nThis is line 2"}';
+  const cleanedLiteral = cleanJsonText(literalNewlineJson);
+  const parsedLiteral = JSON.parse(cleanedLiteral);
+  assert.strictEqual(parsedLiteral.content, "This is line 1\nThis is line 2");
+
+  // 6. Test invalid Unicode escape sequences vs LaTeX underline (e.g., \underline, \upsilon)
+  const unicodeVsUnderlineJson = '{"text": "Look at \\underline{this} and \\upsilon."}';
+  const cleanedUnicode = cleanJsonText(unicodeVsUnderlineJson);
+  const parsedUnicode = JSON.parse(cleanedUnicode);
+  assert.strictEqual(parsedUnicode.text, "Look at \\underline{this} and \\upsilon.");
+});
+
 

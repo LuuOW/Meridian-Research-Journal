@@ -6,7 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { initializeApp } from "firebase/app";
 import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
-import { extractArxivId } from "./src/lib/arxivUtils";
+import { extractArxivId, cleanJsonText } from "./src/lib/arxivUtils";
 
 dotenv.config();
 
@@ -485,7 +485,16 @@ The response must be valid JSON according to the schema provided. Make sure the 
       throw new Error("No text returned from API generators");
     }
 
-    const parsedBlog = JSON.parse(resultText.trim());
+    let parsedBlog;
+    try {
+      const sanitizedText = cleanJsonText(resultText);
+      parsedBlog = JSON.parse(sanitizedText);
+    } catch (parseError: any) {
+      console.error("JSON parsing failed. Raw response length:", resultText.length);
+      console.error("Snippet of raw response (start):", resultText.slice(0, 500));
+      console.error("Snippet of raw response (end):", resultText.slice(-500));
+      throw new Error(`Failed to parse AI response as valid JSON: ${parseError.message || parseError}`);
+    }
     
     // Add stable ID and slug
     const timestamp = Date.now();
