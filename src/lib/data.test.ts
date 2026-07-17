@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { PRELOADED_BLOGS } from "../data";
-import { extractArxivId, cleanJsonText } from "./arxivUtils";
+import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml } from "./arxivUtils";
 
 test("PRELOADED_BLOGS contains valid articles", () => {
   assert.ok(Array.isArray(PRELOADED_BLOGS), "PRELOADED_BLOGS should be an array");
@@ -122,6 +122,58 @@ test("cleanJsonText sanitizes raw LLM output and LaTeX correctly", () => {
   const cleanedUnicode = cleanJsonText(unicodeVsUnderlineJson);
   const parsedUnicode = JSON.parse(cleanedUnicode);
   assert.strictEqual(parsedUnicode.text, "Look at \\underline{this} and \\upsilon.");
+});
+
+test("generateSlug generates clean URL slugs", () => {
+  assert.strictEqual(generateSlug("Hello World!"), "hello-world", "Should convert spaces to hyphens and lowercase");
+  assert.strictEqual(generateSlug("Quantum Mechanics (Part 1)"), "quantum-mechanics-part-1", "Should replace non-alphanumeric chars");
+  assert.strictEqual(generateSlug("---Amazing---Title---"), "amazing-title", "Should strip leading and trailing hyphens");
+  assert.strictEqual(generateSlug(""), "", "Should handle empty string");
+});
+
+test("parseArxivXml parses standard arXiv query result XML properly", () => {
+  const xmlSample = `<?xml version="1.0" encoding="UTF-8"?>
+  <feed xmlns="http://www.w3.org/2005/Atom">
+    <title type="text">Arxiv Query: search_query=all&amp;id_list=2403.12345</title>
+    <entry>
+      <title>  Attention Is All   You Need  </title>
+      <summary>
+        This paper proposes a new simple network architecture, the Transformer.
+        It is based solely on attention mechanisms.
+      </summary>
+      <author>
+        <name>Ashish Vaswani</name>
+      </author>
+      <author>
+        <name>Noam Shazeer</name>
+      </author>
+      <author>
+        <name>Niki Parmar</name>
+      </author>
+      <author>
+        <name>Jakob Uszkoreit</name>
+      </author>
+    </entry>
+  </feed>`;
+
+  const parsed = parseArxivXml(xmlSample);
+
+  assert.strictEqual(parsed.title, "Attention Is All You Need", "Should parse and format title, collapsing inner whitespace");
+  assert.strictEqual(
+    parsed.summary,
+    "This paper proposes a new simple network architecture, the Transformer. It is based solely on attention mechanisms.",
+    "Should parse and format summary, collapsing inner whitespace"
+  );
+  assert.strictEqual(parsed.authors, "Ashish Vaswani, Noam Shazeer, Niki Parmar", "Should parse authors and limit to top 3 names, joined by commas");
+});
+
+test("parseArxivXml handles missing fields gracefully", () => {
+  const emptyXml = `<feed></feed>`;
+  const parsedEmpty = parseArxivXml(emptyXml);
+
+  assert.strictEqual(parsedEmpty.title, "Unknown Paper Title");
+  assert.strictEqual(parsedEmpty.summary, "");
+  assert.strictEqual(parsedEmpty.authors, "");
 });
 
 

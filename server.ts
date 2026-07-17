@@ -6,7 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { initializeApp } from "firebase/app";
 import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
-import { extractArxivId, cleanJsonText } from "./src/lib/arxivUtils";
+import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml } from "./src/lib/arxivUtils";
 
 dotenv.config();
 
@@ -39,14 +39,8 @@ const fetchArxivMetadata = async (id: string) => {
     if (!res.ok) throw new Error("Failed to fetch from arXiv API");
     const xml = await res.text();
     
-    // Extract metadata using robust regexes
-    const titleMatch = xml.match(/<title>([\s\S]*?)<\/title>/);
-    const summaryMatch = xml.match(/<summary>([\s\S]*?)<\/summary>/);
-    const authorMatches = [...xml.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
-    
-    const title = titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title";
-    const summary = summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "";
-    const authors = authorMatches.map(m => m[1].trim()).slice(0, 3).join(", ");
+    // Extract metadata using robust helper function
+    const { title, summary, authors } = parseArxivXml(xml);
     
     return { title, summary, authors, arxivLink: `https://arxiv.org/abs/${id}` };
   } catch (error) {
@@ -498,10 +492,7 @@ The response must be valid JSON according to the schema provided. Make sure the 
     
     // Add stable ID and slug
     const timestamp = Date.now();
-    const slug = parsedBlog.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
+    const slug = generateSlug(parsedBlog.title);
 
     const newBlog = {
       ...parsedBlog,

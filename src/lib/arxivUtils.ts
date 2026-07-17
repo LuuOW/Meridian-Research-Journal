@@ -90,3 +90,31 @@ export const cleanJsonText = (text: string): string => {
   return result;
 };
 
+// Helper to generate a clean, safe URL slug from a title string
+export const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+};
+
+// Helper to parse arXiv XML payload and extract title, summary, and authors list
+export interface ArxivMetadata {
+  title: string;
+  summary: string;
+  authors: string;
+}
+
+export const parseArxivXml = (xml: string): ArxivMetadata => {
+  const titleMatch = xml.match(/<title>([\s\S]*?)<\/title>/);
+  const summaryMatch = xml.match(/<summary>([\s\S]*?)<\/summary>/);
+  const authorMatches = [...xml.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
+  
+  const title = titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title";
+  const summary = summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "";
+  const authors = authorMatches.map(m => m[1].trim()).slice(0, 3).join(", ");
+  
+  return { title, summary, authors };
+};
+
+
