@@ -6,6 +6,7 @@ interface ArxivGeneratorProps {
   onClose: () => void;
   onBlogGenerated: (blog: BlogPost) => void;
   editorPassword?: string;
+  initialArxivId?: string;
 }
 
 const PRESET_EXAMPLES = [
@@ -37,10 +38,17 @@ const LOADING_STEPS = [
   "Finalizing Meridian editorial polish..."
 ];
 
-export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogGenerated, editorPassword = "meridian" }) => {
-  const [arxivInput, setArxivInput] = useState("");
+export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogGenerated, editorPassword = "meridian", initialArxivId = "" }) => {
+  const [arxivInput, setArxivInput] = useState(initialArxivId);
   const [rawText, setRawText] = useState("");
   const [activeTab, setActiveTab] = useState<"arxiv" | "raw">("arxiv");
+
+  useEffect(() => {
+    if (initialArxivId) {
+      setArxivInput(initialArxivId);
+      setActiveTab("arxiv");
+    }
+  }, [initialArxivId]);
   
   const [isGenerating, setIsGenerating] = useState(false);
 

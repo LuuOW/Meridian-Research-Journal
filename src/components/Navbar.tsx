@@ -1,9 +1,10 @@
 import React from "react";
-import { Sparkles, Compass, Lock, Unlock, Sun, Moon } from "lucide-react";
+import { Sparkles, Compass, Lock, Unlock, Sun, Moon, Sigma } from "lucide-react";
 
 interface NavbarProps {
   onOpenCreate: () => void;
   onOpenAbout: () => void;
+  onOpenDispatch?: () => void;
   isEditorMode: boolean;
   onToggleEditorMode: () => void;
   onHome?: () => void;
@@ -14,6 +15,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ 
   onOpenCreate, 
   onOpenAbout, 
+  onOpenDispatch,
   isEditorMode, 
   onToggleEditorMode,
   onHome,
@@ -76,13 +78,24 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Action Button & Theme/Editor Toggles */}
         <div className="flex-1 flex justify-end items-center gap-3.5 min-h-[44px]">
           {isEditorMode && (
-            <button
-              onClick={onOpenCreate}
-              className="px-6 py-2.5 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold shadow-sm transition-all duration-200 flex items-center gap-2 group active:scale-95 animate-fade-in"
-            >
-              <Sparkles className="w-4 h-4 text-white dark:text-black fill-white/20 group-hover:rotate-12 transition-transform" />
-              <span>Generate Blog</span>
-            </button>
+            <div className="flex items-center gap-2 animate-fade-in">
+              <button
+                onClick={onOpenDispatch}
+                className="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-100 rounded-full text-xs font-bold border border-neutral-200 dark:border-neutral-800 transition-all duration-200 flex items-center gap-2 group active:scale-95 cursor-pointer"
+                title="Open Daily AI Advisor Dispatch Sandbox"
+              >
+                <Sigma className="w-4 h-4 text-cyan-600 dark:text-cyan-400 group-hover:rotate-12 transition-transform" />
+                <span>AI Advisor</span>
+              </button>
+
+              <button
+                onClick={onOpenCreate}
+                className="px-6 py-2.5 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold shadow-sm transition-all duration-200 flex items-center gap-2 group active:scale-95 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-white dark:text-black fill-white/20 group-hover:rotate-12 transition-transform" />
+                <span>Generate Blog</span>
+              </button>
+            </div>
           )}
 
           {/* Global Light / Dark Theme Toggle Button */}

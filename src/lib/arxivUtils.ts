@@ -1,8 +1,8 @@
 // Helper to extract arXiv ID
 export const extractArxivId = (input: string): string | null => {
-  const urlMatch = input.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})/i);
+  const urlMatch = input.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})(?:v\d+)?/i);
   if (urlMatch) return urlMatch[1];
-  const idMatch = input.match(/^(\d{4}\.\d{4,5})$/);
+  const idMatch = input.match(/^(\d{4}\.\d{4,5})(?:v\d+)?$/);
   if (idMatch) return idMatch[1];
   return null;
 };
@@ -106,15 +106,61 @@ export interface ArxivMetadata {
 }
 
 export const parseArxivXml = (xml: string): ArxivMetadata => {
-  const titleMatch = xml.match(/<title>([\s\S]*?)<\/title>/);
-  const summaryMatch = xml.match(/<summary>([\s\S]*?)<\/summary>/);
-  const authorMatches = [...xml.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
+  // Extract entry content if present to prevent matching the outer feed title/summary
+  const entryMatch = xml.match(/<entry>([\s\S]*?)<\/entry>/);
+  const searchContent = entryMatch ? entryMatch[1] : xml;
+
+  const titleMatch = searchContent.match(/<title>([\s\S]*?)<\/title>/);
+  const summaryMatch = searchContent.match(/<summary>([\s\S]*?)<\/summary>/);
+  const authorMatches = [...searchContent.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
   
   const title = titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title";
   const summary = summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "";
   const authors = authorMatches.map(m => m[1].trim()).slice(0, 3).join(", ");
   
   return { title, summary, authors };
+};
+
+export interface ArxivPaper {
+  id: string;
+  title: string;
+  summary: string;
+  authors: string;
+  link: string;
+}
+
+export const parseArxivFeedXml = (xml: string): ArxivPaper[] => {
+  const entries: ArxivPaper[] = [];
+  const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+  let match;
+  
+  while ((match = entryRegex.exec(xml)) !== null) {
+    const entryContent = match[1];
+    
+    // Extract ID
+    const idMatch = entryContent.match(/<id>[\s\S]*?(?:abs|pdf)\/(\d{4}\.\d{4,5}(?:v\d+)?)/i);
+    const id = idMatch ? idMatch[1] : "";
+    
+    const titleMatch = entryContent.match(/<title>([\s\S]*?)<\/title>/);
+    const summaryMatch = entryContent.match(/<summary>([\s\S]*?)<\/summary>/);
+    const authorMatches = [...entryContent.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
+    
+    const title = titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title";
+    const summary = summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "";
+    const authors = authorMatches.map(m => m[1].trim()).slice(0, 3).join(", ");
+    
+    if (id) {
+      entries.push({
+        id,
+        title,
+        summary,
+        authors,
+        link: `https://arxiv.org/abs/${id.replace(/v\d+$/, "")}`
+      });
+    }
+  }
+  
+  return entries;
 };
 
 

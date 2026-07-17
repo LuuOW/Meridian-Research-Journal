@@ -176,4 +176,71 @@ test("parseArxivXml handles missing fields gracefully", () => {
   assert.strictEqual(parsedEmpty.authors, "");
 });
 
+test("extractArxivId handles version suffixes and query parameters", () => {
+  // Version suffix
+  assert.strictEqual(extractArxivId("2403.12345v2"), "2403.12345");
+  assert.strictEqual(extractArxivId("https://arxiv.org/abs/2403.12345v1"), "2403.12345");
+  assert.strictEqual(extractArxivId("https://arxiv.org/pdf/2403.12345v12"), "2403.12345");
+
+  // Query parameters
+  assert.strictEqual(
+    extractArxivId("https://arxiv.org/abs/2403.12345?context=cs.AI"),
+    "2403.12345"
+  );
+  assert.strictEqual(
+    extractArxivId("https://arxiv.org/pdf/1706.03762v5?utm_source=test"),
+    "1706.03762"
+  );
+
+  // Spaced input
+  assert.strictEqual(extractArxivId("  https://arxiv.org/abs/2112.01234  "), "2112.01234");
+});
+
+test("generateSlug handles advanced punctuation and non-ASCII cases", () => {
+  // Non-ASCII characters replaced with hyphen
+  assert.strictEqual(generateSlug("Schrödinger's Cat"), "schr-dinger-s-cat");
+  
+  // Mixed specials and duplicates
+  assert.strictEqual(generateSlug("A & B - C @ D !"), "a-b-c-d");
+  
+  // Empty result for entirely punctuation
+  assert.strictEqual(generateSlug("@#$%^&*()_+"), "");
+  
+  // Numbers-only title
+  assert.strictEqual(generateSlug("404"), "404");
+});
+
+test("cleanJsonText handles advanced LaTeX sequences and mathematical symbols", () => {
+  // Escape sequences of multiple popular math symbols that are invalid as JSON escapes
+  const rawMathJson = '{"formula": "Let \\\\pi, \\\\tau, \\\\lambda, \\\\epsilon, \\\\Delta, \\\\theta represent our variables."}';
+  const cleanedMath = cleanJsonText(rawMathJson);
+  const parsedMath = JSON.parse(cleanedMath);
+  assert.strictEqual(parsedMath.formula, "Let \\pi, \\tau, \\lambda, \\epsilon, \\Delta, \\theta represent our variables.");
+
+  // Test deeply nested double/triple backslashes
+  const nestedEscapes = '{"text": "Double \\\\\\\\ escape and single \\\\rho."}';
+  const cleanedNested = cleanJsonText(nestedEscapes);
+  const parsedNested = JSON.parse(cleanedNested);
+  assert.strictEqual(parsedNested.text, "Double \\\\ escape and single \\rho.");
+});
+
+test("parseArxivXml successfully scopes to entry block", () => {
+  const feedXml = `<?xml version="1.0" encoding="UTF-8"?>
+  <feed>
+    <title>ArXiv Feed Level Title Search</title>
+    <summary>Feed Level Summary description</summary>
+    <entry>
+      <title>True Paper Title Inside Entry</title>
+      <summary>True summary details inside entry.</summary>
+      <author><name>Author One</name></author>
+    </entry>
+  </feed>`;
+
+  const parsed = parseArxivXml(feedXml);
+  assert.strictEqual(parsed.title, "True Paper Title Inside Entry", "Should ignore the outer feed-level title");
+  assert.strictEqual(parsed.summary, "True summary details inside entry.", "Should ignore the outer feed-level summary");
+  assert.strictEqual(parsed.authors, "Author One");
+});
+
+
 

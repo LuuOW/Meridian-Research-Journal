@@ -9,6 +9,8 @@ import { BlogPostCard } from "./components/BlogPostCard";
 import { MathRenderer } from "./components/MathRenderer";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
+import { DailyPrediction } from "./components/DailyPrediction";
+import DailyDispatchPanel from "./components/DailyDispatchPanel";
 
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
@@ -21,6 +23,8 @@ export default function App() {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [activeBlog, setActiveBlog] = useState<BlogPost | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isDispatchOpen, setIsDispatchOpen] = useState(false);
+  const [initialArxivId, setInitialArxivId] = useState<string>("");
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isEditorMode, setIsEditorMode] = useState<boolean>(false);
   const [hiddenBlogIds, setHiddenBlogIds] = useState<string[]>([]);
@@ -296,130 +300,160 @@ export default function App() {
   };
 
   // Load preloaded articles and any custom user generated articles from Firestore via Server API, and LocalStorage
-  useEffect(() => {
-    const loadBlogs = async () => {
-      // 1. Get initial local custom blogs from localStorage as a local cache
-      let localCustomBlogs: BlogPost[] = [];
-      const saved = localStorage.getItem("meridian_blogs_saved");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as BlogPost[];
-          localCustomBlogs = parsed.filter(cb => cb && cb.id && !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
-        } catch (err) {
-          console.error("Failed to parse local custom blogs:", err);
-        }
-      }
-
-      // Immediately render local cache + preloaded blogs so the user sees blogs instantly
-      const initialBlogs = [...localCustomBlogs, ...PRELOADED_BLOGS];
-      setBlogs(initialBlogs);
-
-      // Handle deep linking via path /blog/:id or query parameter on load (initial pass)
-      const getBlogIdFromUrl = () => {
-        const pathParts = window.location.pathname.split("/");
-        if (pathParts[1] === "blog" && pathParts[2]) {
-          return decodeURIComponent(pathParts[2]);
-        }
-        const searchParams = new URLSearchParams(window.location.search);
-        return searchParams.get("blog") || searchParams.get("id");
-      };
-
-      const blogId = getBlogIdFromUrl();
-      if (blogId) {
-        const found = initialBlogs.find(b => b.id === blogId || b.slug === blogId);
-        if (found) {
-          setActiveBlog(found);
-        }
-      }
-
-      let serverBlogs: BlogPost[] = [];
-      let fetchError = false;
-
-      // 2. Fetch custom blogs from secure server-side API (which connects directly to Firestore securely)
+  const loadBlogs = async () => {
+    // 1. Get initial local custom blogs from localStorage as a local cache
+    let localCustomBlogs: BlogPost[] = [];
+    const saved = localStorage.getItem("meridian_blogs_saved");
+    if (saved) {
       try {
-        const response = await fetch("/api/blogs");
-        if (response.ok) {
-          const data = await response.json();
-          serverBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
-        } else {
-          console.warn(`Server API responded with code ${response.status}. Using local cache fallback.`);
-          fetchError = true;
-        }
+        const parsed = JSON.parse(saved) as BlogPost[];
+        localCustomBlogs = parsed.filter(cb => cb && cb.id && !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
       } catch (err) {
-        console.error("Failed to fetch custom blogs from server API:", err);
-        fetchError = true;
+        console.error("Failed to parse local custom blogs:", err);
       }
+    }
 
-      // 3. Merge lists using a Map keyed by id to avoid duplicates
-      const mergedMap = new Map<string, BlogPost>();
-      
-      // Add local blogs first
-      localCustomBlogs.forEach(blog => {
-        mergedMap.set(blog.id, blog);
-      });
+    // Immediately render local cache + preloaded blogs so the user sees blogs instantly
+    const initialBlogs = [...localCustomBlogs, ...PRELOADED_BLOGS];
+    setBlogs(initialBlogs);
 
-      // Add server blogs (they take precedence or supplement)
-      serverBlogs.forEach(blog => {
-        mergedMap.set(blog.id, blog);
-      });
-
-      const mergedCustomBlogs = Array.from(mergedMap.values());
-
-      // Sort them by id descending (newer timestamped generated IDs first)
-      mergedCustomBlogs.sort((a, b) => {
-        const timeA = parseInt(a.id.replace("generated-", "")) || 0;
-        const timeB = parseInt(b.id.replace("generated-", "")) || 0;
-        return timeB - timeA;
-      });
-
-      // 4. Proactively call the server sync endpoint to sync Firestore and server-side cache with any local-only cache blogs
-      if (!fetchError) {
-        try {
-          const response = await fetch("/api/blogs/sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ blogs: mergedCustomBlogs })
-          });
-          if (response.ok) {
-            const data = await response.json();
-            const syncedBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
-            
-            // Update state and local storage with the fully synced server list
-            const allBlogs = [...syncedBlogs, ...PRELOADED_BLOGS];
-            setBlogs(allBlogs);
-            localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedBlogs));
-
-            // Handle deep linking again in case new blogs were fetched from Firestore
-            const refreshedBlogId = getBlogIdFromUrl();
-            if (refreshedBlogId) {
-              const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
-              if (found) {
-                setActiveBlog(found);
-              }
-            }
-            return;
-          }
-        } catch (err) {
-          console.error("Failed to sync server backup JSON:", err);
-        }
+    // Handle deep linking via path /blog/:id or query parameter on load (initial pass)
+    const getBlogIdFromUrl = () => {
+      const pathParts = window.location.pathname.split("/");
+      if (pathParts[1] === "blog" && pathParts[2]) {
+        return decodeURIComponent(pathParts[2]);
       }
-
-      // Fallback: update state and local storage with the merged local/offline list
-      const allBlogs = [...mergedCustomBlogs, ...PRELOADED_BLOGS];
-      setBlogs(allBlogs);
-      localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
-
-      // Handle deep linking again
-      const refreshedBlogId = getBlogIdFromUrl();
-      if (refreshedBlogId) {
-        const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
-        if (found) {
-          setActiveBlog(found);
-        }
-      }
+      const searchParams = new URLSearchParams(window.location.search);
+      return searchParams.get("blog") || searchParams.get("id");
     };
 
+    const blogId = getBlogIdFromUrl();
+    if (blogId) {
+      const found = initialBlogs.find(b => b.id === blogId || b.slug === blogId);
+      if (found) {
+        setActiveBlog(found);
+      }
+    }
+
+    let serverBlogs: BlogPost[] = [];
+    let fetchError = false;
+
+    // 2. Fetch custom blogs from secure server-side API (which connects directly to Firestore securely)
+    try {
+      const response = await fetch("/api/blogs");
+      if (response.ok) {
+        const data = await response.json();
+        serverBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+      } else {
+        console.warn(`Server API responded with code ${response.status}. Using local cache fallback.`);
+        fetchError = true;
+      }
+    } catch (err) {
+      console.error("Failed to fetch custom blogs from server API:", err);
+      fetchError = true;
+    }
+
+    // 3. Merge lists using a Map keyed by id to avoid duplicates
+    const mergedMap = new Map<string, BlogPost>();
+    
+    // Add local blogs first
+    localCustomBlogs.forEach(blog => {
+      mergedMap.set(blog.id, blog);
+    });
+
+    // Add server blogs (they take precedence or supplement)
+    serverBlogs.forEach(blog => {
+      mergedMap.set(blog.id, blog);
+    });
+
+    const mergedCustomBlogs = Array.from(mergedMap.values());
+
+    // Sort them by id descending (newer timestamped generated IDs first)
+    mergedCustomBlogs.sort((a, b) => {
+      const timeA = parseInt(a.id.replace("generated-", "")) || 0;
+      const timeB = parseInt(b.id.replace("generated-", "")) || 0;
+      return timeB - timeA;
+    });
+
+    // 4. Proactively call the server sync endpoint to sync Firestore and server-side cache with any local-only cache blogs
+    if (!fetchError) {
+      try {
+        const response = await fetch("/api/blogs/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blogs: mergedCustomBlogs })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const syncedBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+          
+          // Update state and local storage with the fully synced server list
+          const allBlogs = [...syncedBlogs, ...PRELOADED_BLOGS];
+          setBlogs(allBlogs);
+          localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedBlogs));
+
+          // Handle deep linking again in case new blogs were fetched from Firestore
+          const refreshedBlogId = getBlogIdFromUrl();
+          if (refreshedBlogId) {
+            const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
+            if (found) {
+              setActiveBlog(found);
+            }
+          }
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to sync server backup JSON:", err);
+      }
+    }
+
+    // Fallback: update state and local storage with the merged local/offline list
+    const allBlogs = [...mergedCustomBlogs, ...PRELOADED_BLOGS];
+    setBlogs(allBlogs);
+    localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
+
+    // Handle deep linking again
+    const refreshedBlogId = getBlogIdFromUrl();
+    if (refreshedBlogId) {
+      const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
+      if (found) {
+        setActiveBlog(found);
+      }
+    }
+  };
+
+  useEffect(() => {
     loadBlogs();
+  }, []);
+
+  // Check if there is a publish_draft URL parameter and publish it on load
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const publishId = searchParams.get("publish_draft");
+    if (publishId) {
+      const handlePublishOnLoad = async () => {
+        try {
+          const res = await fetch("/api/blogs/publish-draft", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: publishId })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            // Clear URL parameter
+            const newUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, "", newUrl);
+            await loadBlogs();
+            if (data.blog) {
+              setActiveBlog(data.blog);
+            }
+          }
+        } catch (err) {
+          console.error("Error publishing draft on load:", err);
+        }
+      };
+      handlePublishOnLoad();
+    }
   }, []);
 
   // Update URL pathname / search parameters when activeBlog changes
@@ -551,6 +585,9 @@ export default function App() {
     // Skip hidden blogs from the public feed unless in editor mode
     if (!isEditorMode && hiddenBlogIds.includes(b.id)) return false;
 
+    // Skip draft options (they are published via the daily dispatch flow)
+    if (b.status === "draft_option") return false;
+
     const matchesSearch =
       b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -569,6 +606,7 @@ export default function App() {
       <Navbar 
         onOpenCreate={() => setIsCreateOpen(true)} 
         onOpenAbout={() => setIsAboutOpen(true)} 
+        onOpenDispatch={() => setIsDispatchOpen(true)}
         isEditorMode={isEditorMode}
         onToggleEditorMode={handleToggleEditorMode}
         onHome={() => setActiveBlog(null)}
@@ -631,6 +669,17 @@ export default function App() {
                   <div className="w-1.5 h-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 bg-transparent" />
                   <div className="h-[1px] w-12 bg-neutral-200 dark:bg-neutral-800" />
                 </div>
+              </div>
+
+              {/* Daily AI Paper Prediction */}
+              <div className="max-w-7xl mx-auto mb-12">
+                <DailyPrediction 
+                  onGeneratePredictedBlog={(arxivId) => {
+                    setInitialArxivId(arxivId);
+                    setIsCreateOpen(true);
+                  }}
+                  historyCount={blogs.length}
+                />
               </div>
 
               {/* Simplified Search and Topic Filter Bar */}
@@ -1135,9 +1184,13 @@ export default function App() {
       {/* CREATION/GENERATOR DIALOG PANEL OVERLAY */}
       {isCreateOpen && (
         <ArxivGenerator
-          onClose={() => setIsCreateOpen(false)}
+          onClose={() => {
+            setIsCreateOpen(false);
+            setInitialArxivId("");
+          }}
           onBlogGenerated={handleBlogGenerated}
           editorPassword={editorPassword}
+          initialArxivId={initialArxivId}
         />
       )}
 
@@ -1182,6 +1235,32 @@ export default function App() {
           setIsEditorPasswordModalOpen(false);
         }}
       />
+
+      {/* DAILY DISPATCH MODAL OVERLAY */}
+      {isDispatchOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="w-full max-w-6xl relative"
+          >
+            <button
+              onClick={() => setIsDispatchOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 p-2 rounded-full border border-slate-800/60 z-50 transition-colors cursor-pointer"
+              aria-label="Close Dispatch Panel"
+            >
+              ✕
+            </button>
+            <DailyDispatchPanel 
+              onBlogPublished={() => {
+                loadBlogs();
+              }}
+              onClose={() => setIsDispatchOpen(false)} 
+            />
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

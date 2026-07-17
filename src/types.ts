@@ -10,6 +10,10 @@ export interface BlogPost {
   content: string;
   author: string;
   tags: string[];
+  status?: string;
+  optionType?: string;
+  ragAlignment?: string;
+  timestamp?: number;
 }
 
 export interface GenerationRequest {
