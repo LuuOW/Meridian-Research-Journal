@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { X, Cpu, Sparkles, BookOpen, FileText, ArrowRight, CheckCircle2 } from "lucide-react";
 import { BlogPost } from "../types";
+import { DailyPrediction } from "./DailyPrediction";
 
 interface ArxivGeneratorProps {
   onClose: () => void;
   onBlogGenerated: (blog: BlogPost) => void;
   editorPassword?: string;
   initialArxivId?: string;
+  historyCount?: number;
 }
 
 const PRESET_EXAMPLES = [
@@ -38,7 +40,7 @@ const LOADING_STEPS = [
   "Finalizing Meridian editorial polish..."
 ];
 
-export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogGenerated, editorPassword = "meridian", initialArxivId = "" }) => {
+export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogGenerated, editorPassword = "meridian", initialArxivId = "", historyCount = 0 }) => {
   const [arxivInput, setArxivInput] = useState(initialArxivId);
   const [rawText, setRawText] = useState("");
   const [activeTab, setActiveTab] = useState<"arxiv" | "raw">("arxiv");
@@ -71,16 +73,20 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
     setActiveTab("arxiv");
   };
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = async (e?: React.FormEvent, forcedArxivId?: string) => {
+    if (e) e.preventDefault();
     setErrorMsg(null);
 
-    const inputVal = activeTab === "arxiv" ? arxivInput.trim() : "";
+    const inputVal = forcedArxivId ? forcedArxivId.trim() : (activeTab === "arxiv" ? arxivInput.trim() : "");
     const textVal = activeTab === "raw" ? rawText.trim() : "";
 
     if (!inputVal && !textVal) {
       setErrorMsg("Please provide an arXiv ID/Link or paste some research text.");
       return;
+    }
+
+    if (forcedArxivId) {
+      setArxivInput(forcedArxivId);
     }
 
     setIsGenerating(true);
@@ -140,7 +146,7 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
     <div className="fixed inset-0 bg-neutral-950/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
       
       {/* Modal Card */}
-      <div className="bg-white dark:bg-zinc-900 rounded-[32px] w-full max-w-2xl overflow-hidden shadow-2xl border border-gray-100 dark:border-neutral-800 flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-zinc-900 rounded-[32px] w-full max-w-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-neutral-800 flex flex-col max-h-[90vh]">
         
         {/* Header */}
         <div className="p-6 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
@@ -198,21 +204,31 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
               
               {/* Form Input */}
               {activeTab === "arxiv" ? (
-                <div className="space-y-2">
-                  <label htmlFor="arxiv-input" className="block text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">
-                    arXiv Link or Identifier
-                  </label>
-                  <input
-                    id="arxiv-input"
-                    type="text"
-                    placeholder="e.g. 2303.02517 or https://arxiv.org/abs/2303.02517"
-                    value={arxivInput}
-                    onChange={(e) => setArxivInput(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-100 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-neutral-700 font-mono text-sm transition-all bg-neutral-50/50 dark:bg-neutral-950/40 text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900"
-                  />
-                  <p className="text-[11px] text-gray-400 dark:text-neutral-500">
-                    We will automatically fetch and extract the paper details directly from arXiv.
-                  </p>
+                <div className="space-y-6">
+                  {/* Daily AI Paper Prediction Promotion */}
+                  <div className="border border-cyan-500/10 rounded-3xl overflow-hidden bg-neutral-50/20 dark:bg-neutral-950/10">
+                    <DailyPrediction 
+                      onGeneratePredictedBlog={(arxivId) => handleGenerate(undefined, arxivId)}
+                      historyCount={historyCount}
+                    />
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-neutral-800/80">
+                    <label htmlFor="arxiv-input" className="block text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">
+                      Or manual arXiv Link or Identifier
+                    </label>
+                    <input
+                      id="arxiv-input"
+                      type="text"
+                      placeholder="e.g. 2303.02517 or https://arxiv.org/abs/2303.02517"
+                      value={arxivInput}
+                      onChange={(e) => setArxivInput(e.target.value)}
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-100 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-neutral-700 font-mono text-sm transition-all bg-neutral-50/50 dark:bg-neutral-950/40 text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900"
+                    />
+                    <p className="text-[11px] text-gray-400 dark:text-neutral-500">
+                      We will automatically fetch and extract the paper details directly from arXiv.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">

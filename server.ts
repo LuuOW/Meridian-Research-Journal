@@ -95,6 +95,36 @@ const writeDispatchedEmails = (emails: any[]) => {
   }
 };
 
+const PASSKEYS_FILE = path.join(process.cwd(), "passkeys.json");
+
+const readPasskeys = (): any[] => {
+  try {
+    if (fs.existsSync(PASSKEYS_FILE)) {
+      const data = fs.readFileSync(PASSKEYS_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error("Error reading passkeys.json:", error);
+  }
+  return [];
+};
+
+const writePasskeys = (passkeys: any[]) => {
+  try {
+    fs.writeFileSync(PASSKEYS_FILE, JSON.stringify(passkeys, null, 2), "utf-8");
+  } catch (error) {
+    console.error("Error writing passkeys.json:", error);
+  }
+};
+
+// Store temporary portal tokens for passkey device registration/authentication
+const portalTokens = new Map<string, {
+  type: "register" | "auth";
+  createdAt: number;
+  authorized?: boolean;
+  password?: string;
+}>();
+
 const readSmtpConfig = (): any => {
   try {
     if (fs.existsSync(SMTP_CONFIG_FILE)) {
@@ -285,6 +315,113 @@ app.post("/api/verify-editor-password", (req, res) => {
   } else {
     res.status(403).json({ error: "Incorrect password." });
   }
+});
+
+// API: Get registered passkeys
+app.get("/api/passkeys/list", (req, res) => {
+  const passkeys = readPasskeys();
+  res.json({ passkeys });
+});
+
+// API: Register a passkey
+app.post("/api/passkeys/register", async (req, res) => {
+  const { credential, deviceName } = req.body;
+  if (!credential || !credential.id) {
+    return res.status(400).json({ error: "Invalid credential data" });
+  }
+
+  const passkeys = readPasskeys();
+  const exists = passkeys.some((p: any) => p.id === credential.id);
+  
+  if (!exists) {
+    const newPasskey = {
+      id: credential.id,
+      publicKey: credential.publicKey || "",
+      deviceName: deviceName || "My Registered Device",
+      createdAt: Date.now()
+    };
+    passkeys.push(newPasskey);
+    writePasskeys(passkeys);
+
+    // Sync to Firestore if db is available
+    if (db) {
+      try {
+        await setDoc(doc(db, "passkeys", credential.id), newPasskey);
+        console.log(`Passkey ${credential.id} successfully written to Firestore.`);
+      } catch (err) {
+        console.error("Error saving passkey to Firestore:", err);
+      }
+    }
+  }
+
+  res.json({ success: true });
+});
+
+// API: Generate a portal token
+app.post("/api/passkeys/generate-portal", (req, res) => {
+  const { type } = req.body; // "register" | "auth"
+  const token = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  
+  portalTokens.set(token, {
+    type: type || "register",
+    createdAt: Date.now(),
+    authorized: false
+  });
+
+  // Clean up old tokens (older than 15 minutes)
+  const fifteenMinutes = 15 * 60 * 1000;
+  const now = Date.now();
+  for (const [t, data] of portalTokens.entries()) {
+    if (now - data.createdAt > fifteenMinutes) {
+      portalTokens.delete(t);
+    }
+  }
+
+  res.json({ token });
+});
+
+// API: Verify and Authorize a Portal Token
+app.post("/api/passkeys/verify-portal", (req, res) => {
+  const { token, success } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: "Token is required" });
+  }
+
+  const tokenData = portalTokens.get(token);
+  if (!tokenData) {
+    return res.status(404).json({ error: "Token not found or expired" });
+  }
+
+  if (success) {
+    tokenData.authorized = true;
+    tokenData.password = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+    portalTokens.set(token, tokenData);
+    return res.json({ success: true });
+  }
+
+  res.status(400).json({ error: "Verification failed" });
+});
+
+// API: Poll for Portal Token authorization status
+app.get("/api/passkeys/poll-auth", (req, res) => {
+  const { token } = req.query;
+  if (!token || typeof token !== "string") {
+    return res.status(400).json({ error: "Token is required" });
+  }
+
+  const tokenData = portalTokens.get(token);
+  if (!tokenData) {
+    return res.status(404).json({ error: "Token not found or expired" });
+  }
+
+  if (tokenData.authorized) {
+    const password = tokenData.password || "meridian";
+    // Consume token on successful poll
+    portalTokens.delete(token);
+    return res.json({ authorized: true, password });
+  }
+
+  res.json({ authorized: false });
 });
 
 // API: Sync custom blogs from client and server

@@ -9,21 +9,29 @@ import { BlogPostCard } from "./components/BlogPostCard";
 import { MathRenderer } from "./components/MathRenderer";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
-import { DailyPrediction } from "./components/DailyPrediction";
-import DailyDispatchPanel from "./components/DailyDispatchPanel";
 
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
+import { PasskeyPortal } from "./components/PasskeyPortal";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
 export default function App() {
+  const [portalToken, setPortalToken] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("portal_token") || params.get("register_portal");
+  });
+
+  const [portalType, setPortalType] = useState<"register" | "auth">(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("portal_type") === "auth" ? "auth" : "register";
+  });
+
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [activeBlog, setActiveBlog] = useState<BlogPost | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isDispatchOpen, setIsDispatchOpen] = useState(false);
   const [initialArxivId, setInitialArxivId] = useState<string>("");
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isEditorMode, setIsEditorMode] = useState<boolean>(false);
@@ -597,6 +605,20 @@ export default function App() {
     return matchesSearch && matchesTag;
   });
 
+  if (portalToken) {
+    return (
+      <PasskeyPortal 
+        token={portalToken} 
+        type={portalType} 
+        onClose={() => {
+          setPortalToken(null);
+          const newUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, "", newUrl);
+        }} 
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-neutral-950 flex flex-col font-sans selection:bg-neutral-200 dark:selection:bg-neutral-800 selection:text-black dark:selection:text-white pb-16 text-neutral-900 dark:text-neutral-100 transition-colors duration-300 relative overflow-hidden">
       {/* Technical background grid & ambient light accents */}
@@ -606,7 +628,6 @@ export default function App() {
       <Navbar 
         onOpenCreate={() => setIsCreateOpen(true)} 
         onOpenAbout={() => setIsAboutOpen(true)} 
-        onOpenDispatch={() => setIsDispatchOpen(true)}
         isEditorMode={isEditorMode}
         onToggleEditorMode={handleToggleEditorMode}
         onHome={() => setActiveBlog(null)}
@@ -669,17 +690,6 @@ export default function App() {
                   <div className="w-1.5 h-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 bg-transparent" />
                   <div className="h-[1px] w-12 bg-neutral-200 dark:bg-neutral-800" />
                 </div>
-              </div>
-
-              {/* Daily AI Paper Prediction */}
-              <div className="max-w-7xl mx-auto mb-12">
-                <DailyPrediction 
-                  onGeneratePredictedBlog={(arxivId) => {
-                    setInitialArxivId(arxivId);
-                    setIsCreateOpen(true);
-                  }}
-                  historyCount={blogs.length}
-                />
               </div>
 
               {/* Simplified Search and Topic Filter Bar */}
@@ -1191,6 +1201,7 @@ export default function App() {
           onBlogGenerated={handleBlogGenerated}
           editorPassword={editorPassword}
           initialArxivId={initialArxivId}
+          historyCount={blogs.length}
         />
       )}
 
@@ -1235,32 +1246,6 @@ export default function App() {
           setIsEditorPasswordModalOpen(false);
         }}
       />
-
-      {/* DAILY DISPATCH MODAL OVERLAY */}
-      {isDispatchOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full max-w-6xl relative"
-          >
-            <button
-              onClick={() => setIsDispatchOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 p-2 rounded-full border border-slate-800/60 z-50 transition-colors cursor-pointer"
-              aria-label="Close Dispatch Panel"
-            >
-              ✕
-            </button>
-            <DailyDispatchPanel 
-              onBlogPublished={() => {
-                loadBlogs();
-              }}
-              onClose={() => setIsDispatchOpen(false)} 
-            />
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }

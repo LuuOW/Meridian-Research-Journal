@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { PRELOADED_BLOGS } from "../data";
-import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml } from "./arxivUtils";
+import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml } from "./arxivUtils";
 
 test("PRELOADED_BLOGS contains valid articles", () => {
   assert.ok(Array.isArray(PRELOADED_BLOGS), "PRELOADED_BLOGS should be an array");
@@ -240,6 +240,87 @@ test("parseArxivXml successfully scopes to entry block", () => {
   assert.strictEqual(parsed.title, "True Paper Title Inside Entry", "Should ignore the outer feed-level title");
   assert.strictEqual(parsed.summary, "True summary details inside entry.", "Should ignore the outer feed-level summary");
   assert.strictEqual(parsed.authors, "Author One");
+});
+
+test("parseArxivFeedXml parses multi-entry feeds and structures them correctly", () => {
+  const multiFeedXml = `<?xml version="1.0" encoding="UTF-8"?>
+  <feed xmlns="http://www.w3.org/2005/Atom">
+    <entry>
+      <id>http://arxiv.org/abs/2403.00001v1</id>
+      <title>Paper One: A Deep Dive into Transformers</title>
+      <summary>This is summary of Paper One.</summary>
+      <author><name>Alice Smith</name></author>
+      <author><name>Bob Jones</name></author>
+    </entry>
+    <entry>
+      <id>http://arxiv.org/abs/2403.00002v3</id>
+      <title>Paper Two: Scaling Laws for Large Models</title>
+      <summary>This is summary of Paper Two.</summary>
+      <author><name>Charlie Brown</name></author>
+      <author><name>Diana Prince</name></author>
+      <author><name>Ethan Hunt</name></author>
+      <author><name>Frank Castle</name></author>
+    </entry>
+  </feed>`;
+
+  const papers = parseArxivFeedXml(multiFeedXml);
+  assert.strictEqual(papers.length, 2, "Should parse exactly 2 papers");
+
+  // Verify first entry
+  assert.strictEqual(papers[0].id, "2403.00001v1");
+  assert.strictEqual(papers[0].title, "Paper One: A Deep Dive into Transformers");
+  assert.strictEqual(papers[0].summary, "This is summary of Paper One.");
+  assert.strictEqual(papers[0].authors, "Alice Smith, Bob Jones");
+  assert.strictEqual(papers[0].link, "https://arxiv.org/abs/2403.00001");
+
+  // Verify second entry (author list truncated to 3 names)
+  assert.strictEqual(papers[1].id, "2403.00002v3");
+  assert.strictEqual(papers[1].title, "Paper Two: Scaling Laws for Large Models");
+  assert.strictEqual(papers[1].summary, "This is summary of Paper Two.");
+  assert.strictEqual(papers[1].authors, "Charlie Brown, Diana Prince, Ethan Hunt");
+  assert.strictEqual(papers[1].link, "https://arxiv.org/abs/2403.00002");
+});
+
+test("parseArxivFeedXml handles empty input or malformed entries gracefully", () => {
+  // Empty XML
+  const emptyFeed = parseArxivFeedXml("");
+  assert.deepStrictEqual(emptyFeed, [], "Empty XML should return empty array");
+
+  // Entry without ID (should be skipped)
+  const malformedFeedXml = `<feed>
+    <entry>
+      <title>Paper Without ID</title>
+      <summary>Some summary</summary>
+      <author><name>John Doe</name></author>
+    </entry>
+  </feed>`;
+  const result = parseArxivFeedXml(malformedFeedXml);
+  assert.deepStrictEqual(result, [], "Entries without valid IDs should be excluded");
+});
+
+test("cleanJsonText handles unclosed markdown tags and excessive trailing backslashes", () => {
+  // Markdown json without closing block
+  const unclosedMarkdown = "```json\n{\"status\": \"active\"";
+  const cleaned = cleanJsonText(unclosedMarkdown);
+  assert.strictEqual(cleaned, "{\"status\": \"active\"", "Should strip opening markdown block and return remainder");
+
+  // Trailing backslash inside string value
+  const trailingBackslash = '{"text": "this is a trailing slash\\\\"}';
+  const cleanedSlash = cleanJsonText(trailingBackslash);
+  const parsed = JSON.parse(cleanedSlash);
+  assert.strictEqual(parsed.text, "this is a trailing slash\\");
+});
+
+test("extractArxivId handles strange whitespace, prefix variants, and non-arxiv paths", () => {
+  assert.strictEqual(extractArxivId("   arxiv:1706.03762   "), null, "Prefix with 'arxiv:' is not standard, should return null");
+  assert.strictEqual(extractArxivId("https://arxiv.org/abs/1212.56789"), "1212.56789", "Should match 5-digit suffixes");
+  assert.strictEqual(extractArxivId("https://arxiv.org/abs/9912.1234"), "9912.1234", "Should match 4-digit suffixes");
+});
+
+test("generateSlug handles international characters and diacritics", () => {
+  assert.strictEqual(generateSlug("Clément's Theorem"), "cl-ment-s-theorem", "Should clean accents or non-ascii characters");
+  assert.strictEqual(generateSlug("Café & Resumé"), "caf-resum", "Should handle special characters gracefully");
+  assert.strictEqual(generateSlug("  ---  Multiple ---   Spaces   "), "multiple-spaces", "Should collapse whitespace and multiple hyphens");
 });
 
 
