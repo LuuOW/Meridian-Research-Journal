@@ -1,6 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Key, Fingerprint, Shield, CheckCircle, AlertCircle, Sparkles, Loader2, RefreshCw, X, Laptop } from "lucide-react";
 
+function stringToUint8Array(str: string): Uint8Array {
+  try {
+    let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4) {
+      base64 += "=";
+    }
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (e) {
+    return new TextEncoder().encode(str);
+  }
+}
+
 interface PasskeyPortalProps {
   token: string;
   type: "register" | "auth";
@@ -98,6 +116,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          token,
           credential: credentialData,
           deviceName: deviceName.trim() || "My Secure Device"
         })
@@ -146,11 +165,25 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
           const challenge = new Uint8Array(16);
           window.crypto.getRandomValues(challenge);
 
+          // Retrieve registered passkeys to populate allowCredentials
+          const res = await fetch("/api/passkeys/list");
+          let allowed: any[] = [];
+          if (res.ok) {
+            const data = await res.json();
+            if (data.passkeys && data.passkeys.length > 0) {
+              allowed = data.passkeys.map((p: any) => ({
+                type: "public-key" as const,
+                id: stringToUint8Array(p.id)
+              }));
+            }
+          }
+
           const requestOptions: PublicKeyCredentialRequestOptions = {
             challenge: challenge,
             rpId: window.location.hostname,
             userVerification: "preferred",
-            timeout: 60000
+            timeout: 60000,
+            allowCredentials: allowed.length > 0 ? allowed : undefined
           };
 
           const assertion = await navigator.credentials.get({

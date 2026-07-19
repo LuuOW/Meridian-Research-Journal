@@ -1,6 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
 import { X, Lock, Eye, EyeOff, AlertCircle, Sparkles, Loader2, Fingerprint, ExternalLink, Key, Shield, Laptop } from "lucide-react";
 
+function stringToUint8Array(str: string): Uint8Array {
+  try {
+    let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4) {
+      base64 += "=";
+    }
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (e) {
+    return new TextEncoder().encode(str);
+  }
+}
+
 interface EditorPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -24,6 +42,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
 
   // Password fallback state
   const [password, setPassword] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -34,10 +53,12 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setActiveTab("passkey");
+      setRegisterPassword("");
       checkPasskeys();
     } else {
       stopPolling();
       setPortalToken(null);
+      setRegisterPassword("");
     }
     return () => stopPolling();
   }, [isOpen]);
@@ -87,7 +108,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
           // We have passkeys registered! Let's attempt native WebAuthn authentication in iframe first.
           // Since we are in an iframe, this might fail with a SecurityError, in which case we show the auth portal fallback.
           try {
-            await attemptNativeAuth();
+            await attemptNativeAuth(data.passkeys);
           } catch (err: any) {
             console.warn("Iframe native WebAuthn blocked or failed, offering secure portal fallback.", err);
             setPasskeyStatus("iframe_restricted");
@@ -103,13 +124,31 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
     }
   };
 
-  const attemptNativeAuth = async () => {
+  const attemptNativeAuth = async (passkeysList?: any[]) => {
     if (!navigator.credentials || !navigator.credentials.get) {
       throw new Error("WebAuthn not supported");
     }
 
     const challenge = new Uint8Array(16);
     window.crypto.getRandomValues(challenge);
+
+    let list = passkeysList;
+    if (!list) {
+      try {
+        const res = await fetch("/api/passkeys/list");
+        if (res.ok) {
+          const data = await res.json();
+          list = data.passkeys || [];
+        }
+      } catch (e) {
+        console.error("Error fetching passkeys for native auth:", e);
+      }
+    }
+
+    const allowed = (list || []).map((p: any) => ({
+      type: "public-key" as const,
+      id: stringToUint8Array(p.id)
+    }));
 
     // This will trigger the browser's credential manager.
     // If we're inside a sandboxed iframe without proper permissions, it will throw an error immediately.
@@ -118,7 +157,8 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         challenge: challenge,
         rpId: window.location.hostname,
         userVerification: "preferred",
-        timeout: 10000
+        timeout: 10000,
+        allowCredentials: allowed.length > 0 ? allowed : undefined
       }
     });
 
@@ -131,13 +171,13 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
     }
   };
 
-  const generatePortal = async (type: "register" | "auth") => {
+  const generatePortal = async (type: "register" | "auth", password?: string) => {
     setPasskeyStatus("checking");
     try {
       const res = await fetch("/api/passkeys/generate-portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type })
+        body: JSON.stringify({ type, password })
       });
 
       if (res.ok) {
@@ -147,7 +187,8 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         setPasskeyStatus("polling");
         startPolling(data.token);
       } else {
-        setErrorMsg("Failed to initialize secure portal.");
+        const errData = await res.json().catch(() => ({}));
+        setErrorMsg(errData.error || "Failed to initialize secure portal.");
         setPasskeyStatus(type === "register" ? "register_needed" : "iframe_restricted");
       }
     } catch (err: any) {
@@ -271,22 +312,45 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
               )}
 
               {passkeyStatus === "register_needed" && (
-                <div className="space-y-4 text-center py-2 animate-fade-in">
-                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 mx-auto">
-                    <Laptop className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1">
+                <div className="space-y-4 py-2 animate-fade-in">
+                  <div className="text-center space-y-1">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 mx-auto mb-2">
+                      <Laptop className="w-6 h-6" />
+                    </div>
                     <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100">Register Device Passkey</h4>
                     <p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed max-w-xs mx-auto">
-                      No biometric passkey has been registered for this device yet. Click below to open the secure, one-time URL registration portal.
+                      To prevent unauthorized registrations, please enter the Editor Password to authorize before creating a registration link.
                     </p>
                   </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-mono">
+                      Editor Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Enter editor password"
+                      value={registerPassword}
+                      onChange={(e) => {
+                        setRegisterPassword(e.target.value);
+                        setErrorMsg(null);
+                      }}
+                      className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-sans"
+                    />
+                  </div>
+
                   <button
-                    onClick={() => generatePortal("register")}
+                    onClick={() => {
+                      if (!registerPassword.trim()) {
+                        setErrorMsg("Please enter the editor password to authorize registration.");
+                        return;
+                      }
+                      generatePortal("register", registerPassword.trim());
+                    }}
                     className="w-full py-3 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black font-bold rounded-xl text-xs shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Key className="w-4 h-4" />
-                    <span>Create One-Time Register Portal</span>
+                    <span>Authorize & Create Portal</span>
                   </button>
                 </div>
               )}
@@ -302,13 +366,21 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
                       Browser security policies restrict direct biometric prompts within the preview pane. Generate a secure, one-time authorization link to bypass the sandbox.
                     </p>
                   </div>
-                  <button
-                    onClick={() => generatePortal("auth")}
-                    className="w-full py-3 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black font-bold rounded-xl text-xs shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Fingerprint className="w-4 h-4" />
-                    <span>Generate One-Time Auth Portal</span>
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => generatePortal("auth")}
+                      className="w-full py-3 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black font-bold rounded-xl text-xs shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Fingerprint className="w-4 h-4" />
+                      <span>Generate One-Time Auth Portal</span>
+                    </button>
+                    <button
+                      onClick={() => setPasskeyStatus("register_needed")}
+                      className="text-xs text-cyan-600 dark:text-cyan-400 hover:underline font-bold mt-2 cursor-pointer"
+                    >
+                      Register another device
+                    </button>
+                  </div>
                 </div>
               )}
 

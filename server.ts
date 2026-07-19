@@ -8,6 +8,14 @@ import { initializeApp } from "firebase/app";
 import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import nodemailer from "nodemailer";
 import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml } from "./src/lib/arxivUtils";
+import {
+  PortalTokenData,
+  validatePasskeyCredential,
+  generatePortalToken,
+  cleanExpiredTokens,
+  verifyPortalToken,
+  pollAuthToken
+} from "./src/lib/passkeyManager";
 
 dotenv.config();
 
@@ -118,12 +126,7 @@ const writePasskeys = (passkeys: any[]) => {
 };
 
 // Store temporary portal tokens for passkey device registration/authentication
-const portalTokens = new Map<string, {
-  type: "register" | "auth";
-  createdAt: number;
-  authorized?: boolean;
-  password?: string;
-}>();
+const portalTokens = new Map<string, PortalTokenData>();
 
 const readSmtpConfig = (): any => {
   try {
@@ -325,8 +328,18 @@ app.get("/api/passkeys/list", (req, res) => {
 
 // API: Register a passkey
 app.post("/api/passkeys/register", async (req, res) => {
-  const { credential, deviceName } = req.body;
-  if (!credential || !credential.id) {
+  const { credential, deviceName, token } = req.body;
+
+  if (!token) {
+    return res.status(403).json({ error: "Unauthorized: Portal token is required for registration." });
+  }
+
+  const tokenData = portalTokens.get(token);
+  if (!tokenData || tokenData.type !== "register") {
+    return res.status(403).json({ error: "Unauthorized: Invalid or expired registration portal token." });
+  }
+
+  if (!validatePasskeyCredential(credential)) {
     return res.status(400).json({ error: "Invalid credential data" });
   }
 
@@ -359,47 +372,31 @@ app.post("/api/passkeys/register", async (req, res) => {
 
 // API: Generate a portal token
 app.post("/api/passkeys/generate-portal", (req, res) => {
-  const { type } = req.body; // "register" | "auth"
-  const token = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-  
-  portalTokens.set(token, {
-    type: type || "register",
-    createdAt: Date.now(),
-    authorized: false
-  });
+  const { type, password } = req.body; // "register" | "auth"
 
-  // Clean up old tokens (older than 15 minutes)
-  const fifteenMinutes = 15 * 60 * 1000;
-  const now = Date.now();
-  for (const [t, data] of portalTokens.entries()) {
-    if (now - data.createdAt > fifteenMinutes) {
-      portalTokens.delete(t);
+  if (type === "register") {
+    const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+    if (!password || password !== expectedPassword) {
+      return res.status(403).json({ error: "Unauthorized: Incorrect editor password to authorize passkey registration." });
     }
   }
 
+  const token = generatePortalToken(type, portalTokens);
+  cleanExpiredTokens(portalTokens);
   res.json({ token });
 });
 
 // API: Verify and Authorize a Portal Token
 app.post("/api/passkeys/verify-portal", (req, res) => {
   const { token, success } = req.body;
-  if (!token) {
-    return res.status(400).json({ error: "Token is required" });
-  }
-
-  const tokenData = portalTokens.get(token);
-  if (!tokenData) {
-    return res.status(404).json({ error: "Token not found or expired" });
-  }
-
-  if (success) {
-    tokenData.authorized = true;
-    tokenData.password = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
-    portalTokens.set(token, tokenData);
+  const editorPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+  const result = verifyPortalToken(token, success, portalTokens, editorPassword);
+  
+  if (result.success) {
     return res.json({ success: true });
   }
-
-  res.status(400).json({ error: "Verification failed" });
+  
+  res.status(result.error === "Token not found or expired" ? 404 : 400).json({ error: result.error });
 });
 
 // API: Poll for Portal Token authorization status
@@ -409,16 +406,13 @@ app.get("/api/passkeys/poll-auth", (req, res) => {
     return res.status(400).json({ error: "Token is required" });
   }
 
-  const tokenData = portalTokens.get(token);
-  if (!tokenData) {
-    return res.status(404).json({ error: "Token not found or expired" });
+  const result = pollAuthToken(token, portalTokens);
+  if (result.error) {
+    return res.status(result.error === "Token not found or expired" ? 404 : 400).json({ error: result.error });
   }
 
-  if (tokenData.authorized) {
-    const password = tokenData.password || "meridian";
-    // Consume token on successful poll
-    portalTokens.delete(token);
-    return res.json({ authorized: true, password });
+  if (result.authorized) {
+    return res.json({ authorized: true, password: result.password });
   }
 
   res.json({ authorized: false });
