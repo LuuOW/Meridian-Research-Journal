@@ -109,3 +109,40 @@ export function pollAuthToken(
 
   return { authorized: false };
 }
+
+/**
+ * Validates a registration token.
+ */
+export function validateRegistrationToken(
+  token: string | null | undefined,
+  portalTokens: Map<string, PortalTokenData>
+): { valid: boolean; error?: string } {
+  if (!token) {
+    return { valid: false, error: "Unauthorized: Portal token is required for registration." };
+  }
+
+  const tokenData = portalTokens.get(token);
+  if (!tokenData) {
+    return { valid: false, error: "Unauthorized: Invalid or expired registration portal token." };
+  }
+
+  if (tokenData.type !== "register") {
+    return { valid: false, error: "Unauthorized: Token type must be register." };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Verifies that the supplied registration password matches the expected system password.
+ */
+export function verifyRegistrationPassword(
+  password: string | null | undefined,
+  expectedPassword: string
+): { authorized: boolean; error?: string } {
+  if (!password || password !== expectedPassword) {
+    return { authorized: false, error: "Unauthorized: Incorrect editor password to authorize passkey registration." };
+  }
+  return { authorized: true };
+}
+

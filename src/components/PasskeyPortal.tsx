@@ -76,6 +76,8 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
               { alg: -257, type: "public-key" } // RS256
             ],
             authenticatorSelection: {
+              residentKey: "required",
+              requireResidentKey: true,
               userVerification: "preferred"
             },
             timeout: 60000
@@ -171,10 +173,12 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
           if (res.ok) {
             const data = await res.json();
             if (data.passkeys && data.passkeys.length > 0) {
-              allowed = data.passkeys.map((p: any) => ({
-                type: "public-key" as const,
-                id: stringToUint8Array(p.id)
-              }));
+              allowed = data.passkeys
+                .filter((p: any) => !p.id.startsWith("simulated-"))
+                .map((p: any) => ({
+                  type: "public-key" as const,
+                  id: stringToUint8Array(p.id)
+                }));
             }
           }
 

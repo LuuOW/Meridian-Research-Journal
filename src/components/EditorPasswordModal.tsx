@@ -145,10 +145,12 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
       }
     }
 
-    const allowed = (list || []).map((p: any) => ({
-      type: "public-key" as const,
-      id: stringToUint8Array(p.id)
-    }));
+    const allowed = (list || [])
+      .filter((p: any) => !p.id.startsWith("simulated-"))
+      .map((p: any) => ({
+        type: "public-key" as const,
+        id: stringToUint8Array(p.id)
+      }));
 
     // This will trigger the browser's credential manager.
     // If we're inside a sandboxed iframe without proper permissions, it will throw an error immediately.

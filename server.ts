@@ -14,7 +14,9 @@ import {
   generatePortalToken,
   cleanExpiredTokens,
   verifyPortalToken,
-  pollAuthToken
+  pollAuthToken,
+  validateRegistrationToken,
+  verifyRegistrationPassword
 } from "./src/lib/passkeyManager";
 
 dotenv.config();
@@ -320,9 +322,38 @@ app.post("/api/verify-editor-password", (req, res) => {
   }
 });
 
+// Get registered passkeys, syncing with Firestore if available
+const getPasskeys = async (): Promise<any[]> => {
+  const localPasskeys = readPasskeys();
+  if (!db) {
+    return localPasskeys;
+  }
+  try {
+    const querySnapshot = await getDocs(collection(db, "passkeys"));
+    const firestorePasskeys: any[] = [];
+    querySnapshot.forEach((doc) => {
+      firestorePasskeys.push(doc.data());
+    });
+
+    // Merge them by ID
+    const mergedMap = new Map<string, any>();
+    localPasskeys.forEach((p) => mergedMap.set(p.id, p));
+    firestorePasskeys.forEach((p) => mergedMap.set(p.id, p));
+
+    const mergedList = Array.from(mergedMap.values());
+    if (mergedList.length > localPasskeys.length) {
+      writePasskeys(mergedList);
+    }
+    return mergedList;
+  } catch (error) {
+    console.error("Error reading passkeys from Firestore, falling back to local file:", error);
+    return localPasskeys;
+  }
+};
+
 // API: Get registered passkeys
-app.get("/api/passkeys/list", (req, res) => {
-  const passkeys = readPasskeys();
+app.get("/api/passkeys/list", async (req, res) => {
+  const passkeys = await getPasskeys();
   res.json({ passkeys });
 });
 
@@ -330,13 +361,9 @@ app.get("/api/passkeys/list", (req, res) => {
 app.post("/api/passkeys/register", async (req, res) => {
   const { credential, deviceName, token } = req.body;
 
-  if (!token) {
-    return res.status(403).json({ error: "Unauthorized: Portal token is required for registration." });
-  }
-
-  const tokenData = portalTokens.get(token);
-  if (!tokenData || tokenData.type !== "register") {
-    return res.status(403).json({ error: "Unauthorized: Invalid or expired registration portal token." });
+  const validation = validateRegistrationToken(token, portalTokens);
+  if (!validation.valid) {
+    return res.status(403).json({ error: validation.error });
   }
 
   if (!validatePasskeyCredential(credential)) {
@@ -376,8 +403,9 @@ app.post("/api/passkeys/generate-portal", (req, res) => {
 
   if (type === "register") {
     const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
-    if (!password || password !== expectedPassword) {
-      return res.status(403).json({ error: "Unauthorized: Incorrect editor password to authorize passkey registration." });
+    const verification = verifyRegistrationPassword(password, expectedPassword);
+    if (!verification.authorized) {
+      return res.status(403).json({ error: verification.error });
     }
   }
 

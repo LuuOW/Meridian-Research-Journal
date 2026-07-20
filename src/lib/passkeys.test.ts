@@ -6,7 +6,9 @@ import {
   generatePortalToken,
   cleanExpiredTokens,
   verifyPortalToken,
-  pollAuthToken
+  pollAuthToken,
+  validateRegistrationToken,
+  verifyRegistrationPassword
 } from "./passkeyManager";
 
 test("validatePasskeyCredential validates credential structure correctly", () => {
@@ -134,3 +136,52 @@ test("pollAuthToken monitors authorization and consumes token on success", () =>
   assert.strictEqual(poll2.password, "unlocked-secret", "Polling should return the associated password");
   assert.strictEqual(portalTokens.has(token), false, "Authorized token should be deleted/consumed on a successful poll");
 });
+
+test("validateRegistrationToken validates token correctly", () => {
+  const portalTokens = new Map<string, PortalTokenData>();
+
+  // 1. Missing token
+  const res1 = validateRegistrationToken(undefined, portalTokens);
+  assert.strictEqual(res1.valid, false);
+  assert.match(res1.error || "", /Portal token is required/);
+
+  // 2. Token not found
+  const res2 = validateRegistrationToken("invalid-token", portalTokens);
+  assert.strictEqual(res2.valid, false);
+  assert.match(res2.error || "", /Invalid or expired registration/);
+
+  // 3. Token exists but has wrong type
+  portalTokens.set("auth-token", {
+    type: "auth",
+    createdAt: Date.now(),
+    authorized: false
+  });
+  const res3 = validateRegistrationToken("auth-token", portalTokens);
+  assert.strictEqual(res3.valid, false);
+  assert.match(res3.error || "", /Token type must be register/);
+
+  // 4. Token is valid registration token
+  portalTokens.set("reg-token", {
+    type: "register",
+    createdAt: Date.now(),
+    authorized: false
+  });
+  const res4 = validateRegistrationToken("reg-token", portalTokens);
+  assert.strictEqual(res4.valid, true);
+});
+
+test("verifyRegistrationPassword checks expected password successfully", () => {
+  // 1. Password mismatch or missing
+  const res1 = verifyRegistrationPassword(undefined, "meridian");
+  assert.strictEqual(res1.authorized, false);
+  assert.match(res1.error || "", /Incorrect editor password/);
+
+  const res2 = verifyRegistrationPassword("wrong-pass", "meridian");
+  assert.strictEqual(res2.authorized, false);
+  assert.match(res2.error || "", /Incorrect editor password/);
+
+  // 2. Password matches
+  const res3 = verifyRegistrationPassword("meridian", "meridian");
+  assert.strictEqual(res3.authorized, true);
+});
+
