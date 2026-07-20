@@ -314,45 +314,21 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
               )}
 
               {passkeyStatus === "register_needed" && (
-                <div className="space-y-4 py-2 animate-fade-in">
-                  <div className="text-center space-y-1">
-                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 mx-auto mb-2">
-                      <Laptop className="w-6 h-6" />
-                    </div>
-                    <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100">Register Device Passkey</h4>
-                    <p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed max-w-xs mx-auto">
-                      To prevent unauthorized registrations, please enter the Editor Password to authorize before creating a registration link.
-                    </p>
+                <div className="space-y-4 py-2 text-center animate-fade-in">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mx-auto mb-2">
+                    <Laptop className="w-6 h-6" />
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-extrabold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-mono">
-                      Editor Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="Enter editor password"
-                      value={registerPassword}
-                      onChange={(e) => {
-                        setRegisterPassword(e.target.value);
-                        setErrorMsg(null);
-                      }}
-                      className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all font-sans"
-                    />
-                  </div>
-
+                  <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 font-sans">No Biometric Passkey Registered</h4>
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed max-w-xs mx-auto">
+                    No biometric passkey has been registered for this device yet. Please use the **Password Fallback** tab to authenticate.
+                  </p>
                   <button
                     onClick={() => {
-                      if (!registerPassword.trim()) {
-                        setErrorMsg("Please enter the editor password to authorize registration.");
-                        return;
-                      }
-                      generatePortal("register", registerPassword.trim());
+                      setActiveTab("password");
                     }}
                     className="w-full py-3 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black font-bold rounded-xl text-xs shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Key className="w-4 h-4" />
-                    <span>Authorize & Create Portal</span>
+                    <span>Use Password Fallback</span>
                   </button>
                 </div>
               )}
@@ -375,12 +351,6 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
                     >
                       <Fingerprint className="w-4 h-4" />
                       <span>Generate One-Time Auth Portal</span>
-                    </button>
-                    <button
-                      onClick={() => setPasskeyStatus("register_needed")}
-                      className="text-xs text-cyan-600 dark:text-cyan-400 hover:underline font-bold mt-2 cursor-pointer"
-                    >
-                      Register another device
                     </button>
                   </div>
                 </div>

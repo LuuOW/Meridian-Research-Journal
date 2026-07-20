@@ -170,130 +170,159 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
 
         {/* Content */}
         {!isGenerating ? (
-          <div className="p-6 overflow-y-auto flex-1 space-y-6">
-            
-            {/* Tabs */}
-            <div className="flex bg-neutral-100 dark:bg-neutral-950 p-1 rounded-full">
-              <button
-                type="button"
-                onClick={() => setActiveTab("arxiv")}
-                className={`flex-1 py-2 rounded-full text-xs font-extrabold uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === "arxiv"
-                    ? "bg-black dark:bg-neutral-800 text-white shadow-sm"
-                    : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                arXiv ID / Link
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("raw")}
-                className={`flex-1 py-2 rounded-full text-xs font-extrabold uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === "raw"
-                    ? "bg-black dark:bg-neutral-800 text-white shadow-sm"
-                    : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                Paste Text
-              </button>
-            </div>
+          (() => {
+            const dayOfWeek = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-            <form onSubmit={handleGenerate} className="space-y-5">
-              
-              {/* Form Input */}
-              {activeTab === "arxiv" ? (
-                <div className="space-y-6">
-                  {/* Daily AI Paper Prediction Promotion */}
-                  <div className="border border-cyan-500/10 rounded-3xl overflow-hidden bg-neutral-50/20 dark:bg-neutral-950/10">
-                    <DailyPrediction 
-                      onGeneratePredictedBlog={(arxivId) => handleGenerate(undefined, arxivId)}
-                      historyCount={historyCount}
-                    />
+            if (isWeekend) {
+              return (
+                <div className="p-8 flex flex-col items-center justify-center text-center flex-1 space-y-6 my-12">
+                  <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center shadow-md">
+                    <BookOpen className="w-8 h-8" />
                   </div>
-
-                  <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-neutral-800/80">
-                    <label htmlFor="arxiv-input" className="block text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">
-                      Or manual arXiv Link or Identifier
-                    </label>
-                    <input
-                      id="arxiv-input"
-                      type="text"
-                      placeholder="e.g. 2303.02517 or https://arxiv.org/abs/2303.02517"
-                      value={arxivInput}
-                      onChange={(e) => setArxivInput(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-100 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-neutral-700 font-mono text-sm transition-all bg-neutral-50/50 dark:bg-neutral-950/40 text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900"
-                    />
-                    <p className="text-[11px] text-gray-400 dark:text-neutral-500">
-                      We will automatically fetch and extract the paper details directly from arXiv.
+                  <div className="space-y-2 max-w-md">
+                    <h4 className="text-xl font-serif font-bold italic text-black dark:text-neutral-100">Weekend Generation Inactive</h4>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">
+                      Blog generation is disabled on Saturdays and Sundays because arXiv does not publish new scientific publications on weekends. Please return on Monday for today's curated paper!
                     </p>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label htmlFor="raw-text" className="block text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">
-                    Research Abstract or Body Text
-                  </label>
-                  <textarea
-                    id="raw-text"
-                    rows={6}
-                    placeholder="Paste the abstract, outline, or main sections of your paper here..."
-                    value={rawText}
-                    onChange={(e) => setRawText(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-100 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-neutral-700 text-sm transition-all bg-neutral-50/50 dark:bg-neutral-950/40 text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900 resize-none"
-                  />
-                  <p className="text-[11px] text-gray-400 dark:text-neutral-500">
-                    Useful for private drafts, preprints, or detailed sections of an unreleased article.
-                  </p>
-                </div>
-              )}
-
-              {/* Error Block */}
-              {errorMsg && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40 rounded-2xl text-red-600 dark:text-red-400 text-xs font-semibold">
-                  {errorMsg}
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isGenerating}
-                className={`w-full py-3.5 text-white dark:text-black rounded-full text-xs font-bold uppercase tracking-widest shadow-sm transition-all flex items-center justify-center gap-2 group active:scale-[0.98] ${
-                  isGenerating 
-                    ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-75" 
-                    : "bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 cursor-pointer"
-                }`}
-              >
-                <span>{isGenerating ? "Generating..." : "Generate Brand New Blog"}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </form>
-
-            {/* Suggested Examples */}
-            <div className="space-y-3 pt-2">
-              <h4 className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5 text-black dark:text-white" />
-                Suggested arXiv Papers
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {PRESET_EXAMPLES.map((ex) => (
                   <button
-                    key={ex.id}
-                    type="button"
-                    onClick={() => handlePresetClick(ex.id)}
-                    className="p-3 border border-gray-100 dark:border-neutral-800 hover:border-black dark:hover:border-neutral-400 hover:bg-neutral-50/50 dark:hover:bg-neutral-950/20 rounded-2xl text-left transition-all group cursor-pointer"
+                    onClick={onClose}
+                    className="px-6 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-full text-xs font-bold uppercase tracking-widest hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-all cursor-pointer"
                   >
-                    <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white block">{ex.title}</span>
-                    <span className="text-[9px] font-mono font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest mt-1 block">{ex.id}</span>
-                    <span className="text-[10px] text-gray-400 dark:text-neutral-400 leading-relaxed block mt-1 line-clamp-2">{ex.desc}</span>
+                    Close Window
                   </button>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            }
 
-          </div>
+            return (
+              <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                
+                {/* Tabs */}
+                <div className="flex bg-neutral-100 dark:bg-neutral-950/40 p-1 rounded-full">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("arxiv")}
+                    className={`flex-1 py-2 rounded-full text-xs font-extrabold uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      activeTab === "arxiv"
+                        ? "bg-black dark:bg-neutral-800 text-white shadow-sm"
+                        : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    arXiv ID / Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("raw")}
+                    className={`flex-1 py-2 rounded-full text-xs font-extrabold uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      activeTab === "raw"
+                        ? "bg-black dark:bg-neutral-800 text-white shadow-sm"
+                        : "text-gray-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Paste Text
+                  </button>
+                </div>
+
+                <form onSubmit={handleGenerate} className="space-y-5">
+                  
+                  {/* Form Input */}
+                  {activeTab === "arxiv" ? (
+                    <div className="space-y-6">
+                      {/* Daily AI Paper Prediction Promotion */}
+                      <div className="border border-cyan-500/10 rounded-3xl overflow-hidden bg-neutral-50/20 dark:bg-neutral-950/10">
+                        <DailyPrediction 
+                          onGeneratePredictedBlog={(arxivId) => handleGenerate(undefined, arxivId)}
+                          historyCount={historyCount}
+                        />
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-neutral-800/80">
+                        <label htmlFor="arxiv-input" className="block text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">
+                          Or manual arXiv Link or Identifier
+                        </label>
+                        <input
+                          id="arxiv-input"
+                          type="text"
+                          placeholder="e.g. 2303.02517 or https://arxiv.org/abs/2303.02517"
+                          value={arxivInput}
+                          onChange={(e) => setArxivInput(e.target.value)}
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-100 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-neutral-700 font-mono text-sm transition-all bg-neutral-50/50 dark:bg-neutral-950/40 text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900"
+                        />
+                        <p className="text-[11px] text-gray-400 dark:text-neutral-500">
+                          We will automatically fetch and extract the paper details directly from arXiv.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label htmlFor="raw-text" className="block text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">
+                        Research Abstract or Body Text
+                      </label>
+                      <textarea
+                        id="raw-text"
+                        rows={6}
+                        placeholder="Paste the abstract, outline, or main sections of your paper here..."
+                        value={rawText}
+                        onChange={(e) => setRawText(e.target.value)}
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-100 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-neutral-700 text-sm transition-all bg-neutral-50/50 dark:bg-neutral-950/40 text-neutral-800 dark:text-neutral-100 focus:bg-white dark:focus:bg-neutral-900 resize-none"
+                      />
+                      <p className="text-[11px] text-gray-400 dark:text-neutral-500">
+                        Useful for private drafts, preprints, or detailed sections of an unreleased article.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Error Block */}
+                  {errorMsg && (
+                    <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40 rounded-2xl text-red-600 dark:text-red-400 text-xs font-semibold">
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isGenerating}
+                    className={`w-full py-3.5 text-white dark:text-black rounded-full text-xs font-bold uppercase tracking-widest shadow-sm transition-all flex items-center justify-center gap-2 group active:scale-[0.98] ${
+                      isGenerating 
+                        ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-75" 
+                        : "bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 cursor-pointer"
+                    }`}
+                  >
+                    <span>{isGenerating ? "Generating..." : "Generate Brand New Blog"}</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </form>
+
+                {/* Suggested Examples */}
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5 text-black dark:text-white" />
+                    Suggested arXiv Papers
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {PRESET_EXAMPLES.map((ex) => (
+                      <button
+                        key={ex.id}
+                        type="button"
+                        onClick={() => handlePresetClick(ex.id)}
+                        className="p-3 border border-gray-100 dark:border-neutral-800 hover:border-black dark:hover:border-neutral-400 hover:bg-neutral-50/50 dark:hover:bg-neutral-950/20 rounded-2xl text-left transition-all group cursor-pointer"
+                      >
+                        <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white block">{ex.title}</span>
+                        <span className="text-[9px] font-mono font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest mt-1 block">{ex.id}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-neutral-400 leading-relaxed block mt-1 line-clamp-2">{ex.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            );
+          })()
         ) : (
           /* Loading State Overlay */
           <div className="p-8 flex flex-col items-center justify-center text-center flex-1 space-y-6">

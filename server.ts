@@ -540,6 +540,12 @@ app.post("/api/blog/generate", async (req, res) => {
     return res.status(403).json({ error: "Unauthorized: Incorrect editor password." });
   }
 
+  // Enforce weekend restriction (Saturday = 6, Sunday = 0)
+  const dayOfWeek = new Date().getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    return res.status(400).json({ error: "Today is Saturday/Sunday. Blog generation is disabled on weekends because arXiv does not publish new papers on weekends." });
+  }
+
   if (!arxivInput && !rawText) {
     return res.status(400).json({ error: "Missing arXiv input or raw text" });
   }
