@@ -98,6 +98,12 @@ export const generateSlug = (title: string): string => {
     .replace(/(^-|-$)/g, "");
 };
 
+// Helper to check if a date is a weekend (Saturday or Sunday)
+export const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+};
+
 // Helper to parse arXiv XML payload and extract title, summary, and authors list
 export interface ArxivMetadata {
   title: string;
