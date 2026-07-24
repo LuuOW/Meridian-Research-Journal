@@ -579,11 +579,27 @@ app.post("/api/blog/generate", async (req, res) => {
     }
 
     const ai = getGeminiClient();
+    const processTriggerId = Date.now();
+    const anglePerspectives = [
+      "Focus on the fundamental theoretical physics & mechanism",
+      "Focus on the mathematical formulation & algebraic structures",
+      "Focus on the computational paradigm & architectural innovations",
+      "Focus on the experimental insights & physical implications",
+      "Focus on the quantum/photonic dynamics & conceptual synthesis"
+    ];
+    const triggerAngle = anglePerspectives[processTriggerId % anglePerspectives.length];
 
     const systemInstruction = `You are a world-class academic blogger and science communicator. 
 Your task is to translate an academic paper (based on its title, abstract, or full text) into a gorgeous, highly polished, comprehensive, and technical blog article.
 The article must match the editorial style of "Ask Meridian" (https://ask-meridian.uk/blog/).
-This means it should be:
+
+CRITICAL TITLE REQUIREMENT:
+- You must carefully analyze the paper's core scientific contribution, mathematical framework, physical mechanism, or breakthrough and craft a unique, deeply thoughtful, highly engaging academic title.
+- Every time this generation process is triggered, you MUST produce a distinct, fresh, creative title that explores a different angle or emphasis of the paper.
+- NEVER reuse generic placeholder titles or repetitive title structures like "Pasted Paper Analysis" or simple verbatim paper title copies.
+- Make the title academically rigorous, captivating, and unique for this specific trigger run.
+
+This means the article should be:
 - Deeply analytical, authoritative, and scientifically rigorous (no high-level fluffy generic summaries).
 - Accessible but mathematically mature.
 - Broken down into structured sections: "Introduction", "Key Concepts & Physics", "The Theoretical/Mathematical Formulation", "Architecture or Methodology", "Key Results & Findings", and "Scientific or Practical Implications".
@@ -594,12 +610,17 @@ This means it should be:
   - It must be self-contained, responsive (viewBox="0 0 800 400"), have no external font dependencies, and look completely professional (not basic or cluttered).`;
 
     const prompt = `Please generate an exquisite Ask Meridian-style academic blog post based on the following paper details:
-Title: ${paperTitle}
+Trigger Run ID: ${processTriggerId}
+Angle Perspective for this trigger: ${triggerAngle}
+
+Paper Title: ${paperTitle}
 Authors/Context: ${paperAuthors}
 Link: ${arxivLink}
 Source Text/Abstract: ${paperSummary}
 
-The response must be valid JSON according to the schema provided. Make sure the 'content' field contains rich, deeply written Markdown text with multiple sections, technical explanations, and the required LaTeX equations.`;
+Requirements:
+1. Title: Create a fresh, highly distinct, carefully considered academic title tailored specifically to this paper and this trigger run (ID: ${processTriggerId}). Ensure it highlights ${triggerAngle}.
+2. The response must be valid JSON according to the schema provided. Make sure the 'content' field contains rich, deeply written Markdown text with multiple sections, technical explanations, and the required LaTeX equations.`;
 
     const modelsToTry = [
       "gemini-2.5-flash",
@@ -624,7 +645,7 @@ The response must be valid JSON according to the schema provided. Make sure the 
             responseSchema: {
               type: Type.OBJECT,
               properties: {
-                title: { type: Type.STRING, description: "Highly engaging, academic blog title" },
+                title: { type: Type.STRING, description: "A carefully considered, paper-specific academic blog title. MUST be fresh, unique, creative, and distinct for this generation trigger run." },
                 excerpt: { type: Type.STRING, description: "A highly polished, captivating 1-sentence excerpt summarizing the post" },
                 readingTime: { type: Type.STRING, description: "Reading time estimate, e.g. '8 min read'" },
                 arxivLink: { type: Type.STRING, description: "Link to the source Arxiv paper" },
@@ -711,9 +732,9 @@ The response must be valid JSON according to the schema provided. Make sure the 
       throw new Error(`Failed to parse AI response as valid JSON: ${parseError.message || parseError}`);
     }
     
-    // Add stable ID and slug
+    // Add stable unique ID and slug for this trigger run
     const timestamp = Date.now();
-    const slug = generateSlug(parsedBlog.title);
+    const slug = generateSlug(parsedBlog.title || paperTitle || "meridian-research");
 
     const newBlog = {
       ...parsedBlog,
@@ -726,18 +747,8 @@ The response must be valid JSON according to the schema provided. Make sure the 
       })
     };
 
-    // Save generated blog using saveBlog and getBlogs
-    const blogs = await getBlogs();
-    const isDuplicate = blogs.some((b: any) => 
-      (b.arxivLink && b.arxivLink === newBlog.arxivLink) || 
-      (b.title && b.title.toLowerCase() === newBlog.title.toLowerCase())
-    );
-    
-    if (!isDuplicate) {
-      await saveBlog(newBlog);
-    } else {
-      console.log("Duplicate blog detected (by title or arxivLink), skipping append");
-    }
+    // Always save generated blog so every trigger persists on server & survives page refresh
+    await saveBlog(newBlog);
 
     res.json({ blog: newBlog });
   } catch (error: any) {
@@ -944,6 +955,9 @@ You must select exactly TWO papers from the feed and author two full publication
 - Option A (Optics/Quantum Focus): Select a paper focusing on optics or quantum optics. Write a highly detailed academic blog post with deep technical reasoning, equations, and insights.
 - Option B (Algebra/Mathematical Focus): Select a different paper focusing on mathematical foundations, algebraic structures, operator algebras, or linear algebra in optics/quantum physics. Write a deeply mathematical analysis, showing full derivations and equations.
 
+CRITICAL TITLE REQUIREMENT:
+For both options, carefully consider the core scientific discovery, mathematical framework, or physical breakthrough of each selected paper and craft a unique, deeply thoughtful, highly compelling academic title. Every time this process triggers, create fresh, distinct titles that explore the unique novelty of the paper and never reuse generic template titles.
+
 For both options, you must write a comprehensive, long-form academic blog post (content) in markdown format. You must embed rich, professionally-crafted KaTeX/LaTeX math equations (use inline $...$ and block $$...$$) to describe the physics and derivations.`;
 
     const prompt = `Here is the user's publication history (recent blogs):
@@ -958,7 +972,7 @@ Choose exactly TWO distinct papers from the feed.
 
 For each option, generate:
 1. arxivId: The actual arXiv ID of the paper (e.g. "2304.12345").
-2. title: A catchy but serious academic title for the blog post.
+2. title: A carefully considered, fresh, unique, and serious academic title for the blog post based on the paper's core discovery.
 3. excerpt: A compelling 1-2 sentence subtitle/summary.
 4. tags: Array of 3-4 relevant tags (e.g. ["Optics", "Quantum", "Algebra", "Squeezed Light", "Lie Groups"]).
 5. ragAlignment: A 2-sentence explanation of why this paper was selected and how it extends themes in the user's reading history.

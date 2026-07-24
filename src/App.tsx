@@ -332,7 +332,7 @@ export default function App() {
         return decodeURIComponent(pathParts[2]);
       }
       const searchParams = new URLSearchParams(window.location.search);
-      return searchParams.get("blog") || searchParams.get("id");
+      return searchParams.get("blog") || searchParams.get("id") || localStorage.getItem("meridian_active_blog_id");
     };
 
     const blogId = getBlogIdFromUrl();
@@ -464,18 +464,20 @@ export default function App() {
     }
   }, []);
 
-  // Update URL pathname / search parameters when activeBlog changes
+  // Update URL pathname / search parameters and localStorage when activeBlog changes
   useEffect(() => {
     const currentPath = window.location.pathname;
     const currentSearch = window.location.search;
     
     if (activeBlog) {
+      localStorage.setItem("meridian_active_blog_id", activeBlog.id);
       const targetPath = `/blog/${activeBlog.slug || activeBlog.id}`;
       // Push history only if path is different or we are switching away from search parameters
       if (currentPath !== targetPath || currentSearch !== "") {
         window.history.pushState({}, "", targetPath);
       }
     } else {
+      localStorage.removeItem("meridian_active_blog_id");
       const targetPath = "/";
       if (currentPath !== targetPath || currentSearch !== "") {
         window.history.pushState({}, "", targetPath);
