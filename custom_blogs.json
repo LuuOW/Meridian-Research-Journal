@@ -17,7 +17,7 @@
     "slug": "unpacking-qaoa-s-performance-on-spin-glasses-a-semiclassical-journey-into-the-sherrington-kirkpatrick-model-8103",
     "bannerSvg": "<svg viewBox='0 0 800 400' xmlns='http://www.w3.org/2000/svg'><defs><filter id='glow'><feGaussianBlur stdDeviation='3' result='coloredBlur'/><feMerge><feMergeNode in='coloredBlur'/><feMergeNode in='SourceGraphic'/></feMerge></filter><radialGradient id='grad' cx='50%' cy='50%' r='50%' fx='50%' fy='50%'><stop offset='0%' style='stop-color:#00f2fe;stop-opacity:1' /><stop offset='100%' style='stop-color:#0a1128;stop-opacity:0' /></radialGradient></defs><rect width='100%' height='100%' fill='#0a1128'/><circle cx='400' cy='200' r='120' fill='url(#grad)' opacity='0.3'/><g filter='url(#glow)'><path d='M100 200 C 250 100, 550 100, 700 200 S 550 300, 400 300 S 250 300, 100 200' fill='none' stroke='#ff007f' stroke-width='3' opacity='0.6'/><path d='M120 180 C 260 80, 540 80, 680 180 S 540 320, 400 320 S 260 320, 120 180' fill='none' stroke='#00f2fe' stroke-width='2' opacity='0.7'/><circle cx='400' cy='200' r='10' fill='#8b5cf6' opacity='0.9'/><path d='M200 150 C 250 120, 350 120, 400 150 M400 150 C 450 120, 550 120, 600 150' fill='none' stroke='#38ef7d' stroke-width='1.5' opacity='0.5'/><path d='M200 250 C 250 280, 350 280, 400 250 M400 250 C 450 280, 550 280, 600 250' fill='none' stroke='#38ef7d' stroke-width='1.5' opacity='0.5'/><circle cx='200' cy='150' r='5' fill='#ff007f' opacity='0.8'/><circle cx='600' cy='150' r='5' fill='#00f2fe' opacity='0.8'/><circle cx='200' cy='250' r='5' fill='#8b5cf6' opacity='0.8'/><circle cx='600' cy='250' r='5' fill='#38ef7d' opacity='0.8'/></g></svg>",
     "id": "generated-1783718618103",
-    "views": 1523
+    "views": 1525
   },
   {
     "title": "Quantum Approximate Optimization on the Sherrington-Kirkpatrick Model: A Semiclassical Perspective",
@@ -36,7 +36,7 @@
     "id": "generated-1783717470216",
     "slug": "quantum-approximate-optimization-on-the-sherrington-kirkpatrick-model-a-semiclassical-perspective-0216",
     "date": "July 10, 2026",
-    "views": 1582
+    "views": 1583
   },
   {
     "bannerSvg": "<svg viewBox='0 0 800 400' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:#00f2fe;stop-opacity:1'/><stop offset='100%' style='stop-color:#8b5cf6;stop-opacity:1'/></linear></defs><rect width='800' height='400' fill='#0a1128'/><path d='M0 200 Q200 100 400 200 T800 200' stroke='url(#grad)' stroke-width='4' fill='none'/><circle cx='400' cy='200' r='50' fill='none' stroke='#ff007f' stroke-dasharray='10 5'/><path d='M100 350 L700 350 M100 50 L100 350' stroke='#38ef7d' stroke-width='1'/><circle cx='200' cy='200' r='4' fill='#00f2fe'/><circle cx='600' cy='200' r='4' fill='#8b5cf6'/></svg>",
@@ -55,7 +55,7 @@
     "arxivLink": "https://arxiv.org/abs/2607.07629",
     "readingTime": "9 min read",
     "title": "Unveiling the Diurnal Fingerprint: Environmental Coupling in Hybrid Aerial-Inground Optical Networks",
-    "views": 583
+    "views": 584
   },
   {
     "excerpt": "A deep dive into Ternovski & Tribelsky's elegant analytical-numerical approach to electromagnetic scattering in dense subwavelength cylinder clusters, revealing the complex topology of optical energy flows.",
