@@ -14,6 +14,7 @@ export interface BlogPost {
   optionType?: string;
   ragAlignment?: string;
   timestamp?: number;
+  views?: number;
 }
 
 export interface GenerationRequest {

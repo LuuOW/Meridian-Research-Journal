@@ -10,6 +10,7 @@ import { MathRenderer } from "./components/MathRenderer";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
 
+import { ViewCounter } from "./components/ViewCounter";
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
@@ -484,6 +485,46 @@ export default function App() {
       }
     }
   }, [activeBlog]);
+
+  // Increment article view counter when viewing a specific publication
+  useEffect(() => {
+    if (!activeBlog) return;
+    const targetId = activeBlog.id || activeBlog.slug;
+    if (!targetId) return;
+
+    let isMounted = true;
+    const registerView = async () => {
+      try {
+        const res = await fetch(`/api/blogs/${encodeURIComponent(targetId)}/view`, {
+          method: "POST"
+        });
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data.views) {
+            setActiveBlog((prev) =>
+              prev && (prev.id === activeBlog.id || prev.slug === activeBlog.slug)
+                ? { ...prev, views: data.views }
+                : prev
+            );
+            setBlogs((prevBlogs) =>
+              prevBlogs.map((b) =>
+                b.id === activeBlog.id || b.slug === activeBlog.slug
+                  ? { ...b, views: data.views }
+                  : b
+              )
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Error registering article view:", err);
+      }
+    };
+
+    registerView();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeBlog?.id]);
 
   // Synchronize activeBlog with browser back/forward navigation
   useEffect(() => {
@@ -1046,20 +1087,25 @@ export default function App() {
                         {activeBlog.excerpt}
                       </p>
 
-                      {/* Publication author details */}
-                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] font-bold font-mono text-gray-400 dark:text-neutral-500 uppercase tracking-widest pt-2">
-                        <div>
-                          <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Reviewer:</span>
-                          <span className="text-black dark:text-white font-extrabold">{activeBlog.author}</span>
+                      {/* Publication author & view metrics details */}
+                      <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-gray-100/80 dark:border-neutral-800/80">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] font-bold font-mono text-gray-400 dark:text-neutral-500 uppercase tracking-widest">
+                          <div>
+                            <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Reviewer:</span>
+                            <span className="text-black dark:text-white font-extrabold">{activeBlog.author}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Date:</span>
+                            <span className="text-black dark:text-white">{activeBlog.date}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Duration:</span>
+                            <span className="text-black dark:text-white">{activeBlog.readingTime}</span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Date:</span>
-                          <span className="text-black dark:text-white">{activeBlog.date}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 dark:text-neutral-500 mr-1.5">Duration:</span>
-                          <span className="text-black dark:text-white">{activeBlog.readingTime}</span>
-                        </div>
+
+                        {/* Discrete View Counter */}
+                        <ViewCounter views={activeBlog.views} />
                       </div>
 
                       {/* CTA Action Buttons */}

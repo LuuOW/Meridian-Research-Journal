@@ -1,6 +1,7 @@
 import React from "react";
 import { BlogPost } from "../types";
 import { BookOpen, Calendar, Clock } from "lucide-react";
+import { ViewCounter } from "./ViewCounter";
 
 interface BlogPostCardProps {
   blog: BlogPost;
@@ -27,7 +28,7 @@ export const BlogPostCard: React.FC<BlogPostCardProps & { onClick: () => void }>
       <div className="p-7 flex flex-col flex-grow">
         
         {/* Metadata */}
-        <div className="flex items-center gap-4 text-[10px] font-bold font-mono text-gray-400 dark:text-neutral-500 uppercase tracking-widest mb-3.5">
+        <div className="flex items-center gap-3.5 flex-wrap text-[10px] font-bold font-mono text-gray-400 dark:text-neutral-500 uppercase tracking-widest mb-3.5">
           <span className="flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5 text-gray-300 dark:text-neutral-700" />
             {blog.date}
@@ -36,6 +37,7 @@ export const BlogPostCard: React.FC<BlogPostCardProps & { onClick: () => void }>
             <Clock className="w-3.5 h-3.5 text-gray-300 dark:text-neutral-700" />
             {blog.readingTime}
           </span>
+          <ViewCounter views={blog.views} compact />
         </div>
 
         {/* Title and Excerpt */}
