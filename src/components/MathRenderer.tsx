@@ -9,49 +9,11 @@ import {
   Copy, 
   FileCode2
 } from "lucide-react";
+import { isMathExpression as isMath } from "../lib/mathUtils";
 
 interface MathRendererProps {
   text: string;
 }
-
-// Robust helper to check if a matched segment inside $...$ is a math expression or currency/plain text
-const isMath = (content: string): boolean => {
-  const trimmed = content.trim();
-  
-  if (!trimmed) return false;
-  if (trimmed.includes("\n")) return false;
-  
-  // Exclude pure currency/number patterns: e.g., 29, 0, 0.02, 10k, 30M, 100k, 0.011, 0.10, ~0.02
-  if (/^~?\d+(?:\.\d+)?\s*[kKmMbB]?$/.test(trimmed)) {
-    return false;
-  }
-  
-  // Reject common words that are definitely not math
-  if (/\b(until|cross|requests|million|tokens|per|day|month|year|dollars?|cents?|off|free)\b/i.test(trimmed)) {
-    return false;
-  }
-  
-  // Check if it has math-like characters or LaTeX backslash, or is a single short variable like x, p, g, T, etc.
-  const hasLaTexCommand = trimmed.includes("\\") || trimmed.includes("_") || trimmed.includes("^") || trimmed.includes("{") || trimmed.includes("}") || trimmed.includes("=") || trimmed.includes("+") || trimmed.includes("-") || trimmed.includes("<") || trimmed.includes(">") || trimmed.includes("*") || trimmed.includes("/") || trimmed.includes("(") || trimmed.includes(")") || trimmed.includes("[") || trimmed.includes("]") || trimmed.includes("|") || trimmed.includes(",") || trimmed.includes(";");
-  
-  // If it's a single letter (e.g. $k$, $p$, $g$, $T$, $x$, $i$, $j$, $s$), it's math
-  if (/^[a-zA-Z]$/.test(trimmed)) {
-    return true;
-  }
-  
-  // If it doesn't have any letters but is a math expression like 2\times 2 or 1 - s
-  if (hasLaTexCommand) {
-    return true;
-  }
-  
-  // If it has multiple spaces without math-like characters, it's probably not math
-  const spaces = (trimmed.match(/\s+/g) || []).length;
-  if (spaces > 2) {
-    return false;
-  }
-  
-  return true;
-};
 
 interface CustomCodeOrDiagramProps {
   lang: string;

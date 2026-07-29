@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Play, Pause, RotateCcw, SkipBack, SkipForward, Volume2, VolumeX, X } from "lucide-react";
 import { BlogPost } from "../types";
+import { getSpeechScript, getSentences, formatAudioTime, estimateSpeechDuration } from "../lib/audioUtils";
 
 interface AudioPlayerProps {
   blog: BlogPost;
@@ -20,42 +21,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
   const sentencesRef = useRef<string[]>([]);
   const currentSentenceIndexRef = useRef<number>(0);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
-
-  // Strip markdown & LaTeX to make a beautifully readable narration script
-  const getSpeechScript = (content: string, title: string): string => {
-    let text = `Listening to: ${title}. Published by Meridian Research. \n\n`;
-    
-    // Process markdown to speech script
-    let cleanText = content
-      // Remove LaTeX block equations
-      .replace(/\$\$([\s\S]*?)\$\$/g, " [equation mathematical formula] ")
-      // Remove inline equations
-      .replace(/\$([\s\S]*?)\$\$/g, " ")
-      .replace(/\$([^$]+)\$/g, " $1 ")
-      // Remove markdown headings
-      .replace(/###\s*(.*)/g, "$1. ")
-      .replace(/##\s*(.*)/g, "$1. ")
-      // Remove markdown horizontal rules
-      .replace(/---\s*/g, " ")
-      // Remove markdown lists and bullets
-      .replace(/[-\*]\s*/g, "")
-      // Remove markdown bold/italic
-      .replace(/[\*_]{1,3}([^*_]+)[\*_]{1,3}/g, "$1")
-      // Remove brackets
-      .replace(/[\[\]\(\)]/g, " ")
-      // Fix backslash artifacts
-      .replace(/\\/g, " ");
-
-    return text + cleanText;
-  };
-
-  const getSentences = (text: string): string[] => {
-    const matches = text.match(/[^.!?\n]+[.!?\n]*/g);
-    if (!matches) return [text];
-    return matches
-      .map((s) => s.trim())
-      .filter((s) => s.length > 1);
-  };
 
   useEffect(() => {
     synthRef.current = window.speechSynthesis;
@@ -214,11 +179,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
   };
 
   // Formatter for elapsed/total times
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${m}:${s < 10 ? "0" : ""}${s}`;
-  };
+  const formatTime = (secs: number) => formatAudioTime(secs);
 
   const totalDuration = Math.ceil(estimatedDurationRef.current / playbackSpeed);
 
