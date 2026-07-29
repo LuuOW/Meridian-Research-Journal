@@ -1258,6 +1258,8 @@ export default function App() {
           onClose={() => setIsLinkedInModalOpen(false)}
           title={activeBlog.title}
           excerpt={activeBlog.excerpt}
+          content={activeBlog.content}
+          tags={activeBlog.tags}
           arxivLink={activeBlog.arxivLink}
           blogId={activeBlog.slug || activeBlog.id}
           onDownloadPng={() => handleDownloadPng(activeBlog)}

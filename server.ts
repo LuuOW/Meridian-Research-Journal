@@ -1403,6 +1403,117 @@ Respond strictly with valid JSON conforming to the response schema.`;
   }
 });
 
+// API: AI-Enhanced LinkedIn Post Generator powered by Gemini
+app.post("/api/linkedin/generate-post", async (req, res) => {
+  const { title, excerpt, content, tags, arxivLink, blogId, tone = "technical", customPrompt } = req.body;
+
+  if (!title) {
+    return res.status(400).json({ error: "Missing article title" });
+  }
+
+  const origin = req.protocol + "://" + req.get("host");
+  const blogUrl = blogId ? `${origin}/blog/${blogId}` : (arxivLink || origin);
+
+  try {
+    const ai = getGeminiClient();
+
+    const systemInstruction = `You are a world-class scientific communications officer and LinkedIn strategist for "Ask Meridian", a premier optics and quantum physics research journal.
+Your task is to craft an incredible, highly engaging, authentic, and scannable LinkedIn post that highlights a scientific research paper or blog article.
+
+TONE STYLES:
+- "technical": Deep-dive into physical mechanisms, equations, mathematical innovations, and key quantitative findings.
+- "executive": Concise, high-impact summary focusing on technological breakthroughs, bandwidth/efficiency metrics, and industry transformations.
+- "future": Forward-looking, visionary angle exploring long-term quantum, optical, and computing paradigm shifts.
+- "punchy": Snappy, 3-sentence hook and crisp bullet points designed for maximum viral engagement.
+- "custom": Adapt strictly to the user's custom instructions provided.
+
+POST STRUCTURE REQUIREMENTS:
+1. Hook: 1-2 lines that stop the scroll with the core scientific novelty or breakthrough.
+2. Key Takeaways: 3-4 bullet points highlighting technical features, experimental/theoretical metrics, or math frameworks.
+3. Why It Matters: A short paragraph connecting this work to broader optics, quantum, or silicon photonics challenges.
+4. Call to Action: Direct readers to read the full paper breakdown on Ask Meridian with the URL (${blogUrl}).
+5. Hashtags: 3-5 relevant, highly targeted hashtags (e.g., #QuantumPhysics #Optics #SiliconPhotonics #MeridianResearch).`;
+
+    const promptText = `Article Title: "${title}"
+Article Summary: "${excerpt || ""}"
+Tags: ${(tags || []).join(", ")}
+Target Tone: ${tone}
+${customPrompt ? `Special User Instruction: "${customPrompt}"` : ""}
+Full/Partial Article Content snippet:
+"${(content || "").slice(0, 1500)}"
+
+Please write an exquisite, non-generic LinkedIn post specifically tailored to THIS research. Make sure the content reflects the actual physics, math, or methodology described in the article snippet.
+
+Respond in JSON format according to the provided schema.`;
+
+    const modelsToTry = [
+      "gemini-3.6-flash",
+      "gemini-3.5-flash",
+      "gemini-3.1-pro-preview",
+      "gemini-flash-latest"
+    ];
+
+    let response = null;
+    let lastError = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents: promptText,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                postText: { type: Type.STRING, description: "The full, beautifully formatted LinkedIn post text ready for sharing." },
+                headline: { type: Type.STRING, description: "A catchy 1-line preview title for the LinkedIn post." },
+                hashtags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-5 relevant hashtags" }
+              },
+              required: ["postText", "headline", "hashtags"]
+            }
+          }
+        });
+
+        if (response && response.text) {
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+      }
+    }
+
+    if (response && response.text) {
+      const sanitized = cleanJsonText(response.text);
+      const parsed = JSON.parse(sanitized);
+      return res.json({
+        success: true,
+        postText: parsed.postText,
+        headline: parsed.headline,
+        hashtags: parsed.hashtags,
+        tone
+      });
+    }
+
+    // Fallback if AI call failed or key not configured
+    const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
+    const fallbackText = `🔬 Hot Off the Press on Meridian: "${cleanTitle}"\n\n${excerpt || "New theoretical and experimental insights in quantum optics and photonics."}\n\nKey Highlights:\n• Advanced mathematical modeling & simulation\n• Quantitative performance enhancements\n• Published in peer-reviewed Ask Meridian research\n\nRead the full paper breakdown: ${blogUrl}\n\n#Optics #QuantumPhysics #SiliconPhotonics #MeridianResearch`;
+
+    res.json({
+      success: true,
+      postText: fallbackText,
+      headline: `Research Highlight: ${cleanTitle}`,
+      hashtags: ["#Optics", "#QuantumPhysics", "#SiliconPhotonics"],
+      tone: "fallback"
+    });
+
+  } catch (error: any) {
+    console.error("Error generating AI LinkedIn post:", error);
+    res.status(500).json({ error: error.message || "Failed to generate LinkedIn post" });
+  }
+});
+
 // Setup Vite or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

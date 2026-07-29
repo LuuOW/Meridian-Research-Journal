@@ -10,11 +10,12 @@ test("generateLinkedInDraft generates clean social media post with truncated tit
 
   const draftShort = generateLinkedInDraft(shortTitle, excerpt, "123", "https://example.com");
   assert.ok(draftShort.includes("Topological Quantum States in Silicon"), "Should include full title if <= 80 chars");
-  assert.ok(draftShort.includes("Read on Meridian: https://example.com/blog/123"), "Should format blog URL");
+  assert.ok(draftShort.includes("An in-depth summary of quantum photonic states."), "Should include article excerpt");
+  assert.ok(draftShort.includes("Read the full paper breakdown on Meridian: https://example.com/blog/123"), "Should format blog URL");
 
   const draftLong = generateLinkedInDraft(longTitle, excerpt, "456", "https://example.com");
   assert.ok(draftLong.includes("..."), "Should truncate titles longer than 80 characters");
-  assert.ok(draftLong.includes("Read on Meridian: https://example.com/blog/456"));
+  assert.ok(draftLong.includes("Read the full paper breakdown on Meridian: https://example.com/blog/456"));
 });
 
 test("generateTwitterDraft creates concise tweet format with emojis and link", () => {

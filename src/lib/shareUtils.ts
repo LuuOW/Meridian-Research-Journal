@@ -12,7 +12,8 @@ export const generateLinkedInDraft = (
 ): string => {
   const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
   const blogUrl = blogId ? `${origin}/blog/${blogId}` : origin;
-  return `${cleanTitle} just got a major upgrade. New inverse-design techniques deliver 10× greater bandwidth, up to 4× lower loss, and 100× faster design cycles—opening the door to more efficient optical communications, quantum photonics, and light-matter interaction engineering.\n\nRead on Meridian: ${blogUrl}`;
+  const cleanExcerpt = excerpt ? excerpt.trim() : "Explore the latest research findings and technical analysis on Meridian.";
+  return `💡 New Research Highlight: ${cleanTitle}\n\n${cleanExcerpt}\n\nRead the full paper breakdown on Meridian: ${blogUrl}`;
 };
 
 export const generateTwitterDraft = (
