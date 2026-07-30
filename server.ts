@@ -9,6 +9,12 @@ import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from
 import nodemailer from "nodemailer";
 import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml } from "./src/lib/arxivUtils";
 import {
+  buildLinkedInSystemInstruction,
+  buildLinkedInUserPrompt,
+  generateFallbackLinkedInPost,
+  sanitizeHashtags
+} from "./src/lib/linkedinUtils";
+import {
   PortalTokenData,
   validatePasskeyCredential,
   generatePortalToken,
@@ -1417,34 +1423,8 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
   try {
     const ai = getGeminiClient();
 
-    const systemInstruction = `You are a world-class scientific communications officer and LinkedIn strategist for "Ask Meridian", a premier optics and quantum physics research journal.
-Your task is to craft an incredible, highly engaging, authentic, and scannable LinkedIn post that highlights a scientific research paper or blog article.
-
-TONE STYLES:
-- "technical": Deep-dive into physical mechanisms, equations, mathematical innovations, and key quantitative findings.
-- "executive": Concise, high-impact summary focusing on technological breakthroughs, bandwidth/efficiency metrics, and industry transformations.
-- "future": Forward-looking, visionary angle exploring long-term quantum, optical, and computing paradigm shifts.
-- "punchy": Snappy, 3-sentence hook and crisp bullet points designed for maximum viral engagement.
-- "custom": Adapt strictly to the user's custom instructions provided.
-
-POST STRUCTURE REQUIREMENTS:
-1. Hook: 1-2 lines that stop the scroll with the core scientific novelty or breakthrough.
-2. Key Takeaways: 3-4 bullet points highlighting technical features, experimental/theoretical metrics, or math frameworks.
-3. Why It Matters: A short paragraph connecting this work to broader optics, quantum, or silicon photonics challenges.
-4. Call to Action: Direct readers to read the full paper breakdown on Ask Meridian with the URL (${blogUrl}).
-5. Hashtags: 3-5 relevant, highly targeted hashtags (e.g., #QuantumPhysics #Optics #SiliconPhotonics #MeridianResearch).`;
-
-    const promptText = `Article Title: "${title}"
-Article Summary: "${excerpt || ""}"
-Tags: ${(tags || []).join(", ")}
-Target Tone: ${tone}
-${customPrompt ? `Special User Instruction: "${customPrompt}"` : ""}
-Full/Partial Article Content snippet:
-"${(content || "").slice(0, 1500)}"
-
-Please write an exquisite, non-generic LinkedIn post specifically tailored to THIS research. Make sure the content reflects the actual physics, math, or methodology described in the article snippet.
-
-Respond in JSON format according to the provided schema.`;
+    const systemInstruction = buildLinkedInSystemInstruction(blogUrl);
+    const promptText = buildLinkedInUserPrompt({ title, excerpt, content, tags, tone, customPrompt });
 
     const modelsToTry = [
       "gemini-3.6-flash",
@@ -1491,26 +1471,19 @@ Respond in JSON format according to the provided schema.`;
         success: true,
         postText: parsed.postText,
         headline: parsed.headline,
-        hashtags: parsed.hashtags,
+        hashtags: sanitizeHashtags(parsed.hashtags),
         tone
       });
     }
 
     // Fallback if AI call failed or key not configured
-    const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
-    const fallbackText = `🔬 Hot Off the Press on Meridian: "${cleanTitle}"\n\n${excerpt || "New theoretical and experimental insights in quantum optics and photonics."}\n\nKey Highlights:\n• Advanced mathematical modeling & simulation\n• Quantitative performance enhancements\n• Published in peer-reviewed Ask Meridian research\n\nRead the full paper breakdown: ${blogUrl}\n\n#Optics #QuantumPhysics #SiliconPhotonics #MeridianResearch`;
-
-    res.json({
-      success: true,
-      postText: fallbackText,
-      headline: `Research Highlight: ${cleanTitle}`,
-      hashtags: ["#Optics", "#QuantumPhysics", "#SiliconPhotonics"],
-      tone: "fallback"
-    });
+    const fallback = generateFallbackLinkedInPost({ title, excerpt, blogUrl });
+    res.json(fallback);
 
   } catch (error: any) {
     console.error("Error generating AI LinkedIn post:", error);
-    res.status(500).json({ error: error.message || "Failed to generate LinkedIn post" });
+    const fallback = generateFallbackLinkedInPost({ title, excerpt, blogUrl });
+    res.json(fallback);
   }
 });
 
