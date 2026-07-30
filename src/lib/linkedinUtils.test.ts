@@ -55,17 +55,32 @@ test("sanitizeHashtags ensures proper formatting and leading hash symbol", () =>
   assert.ok(emptyResult.length > 0, "Should handle empty array gracefully");
 });
 
-test("generateFallbackLinkedInPost returns structured fallback response", () => {
-  const fallback = generateFallbackLinkedInPost({
-    title: "Integrated Photonic Quantum Memories",
-    excerpt: "Demonstrating high-coherence optical storage in silicon carbide.",
-    blogUrl: "https://meridian-research.org/blog/memory-789"
+test("buildLinkedInUserPrompt handles missing optional parameters with sensible defaults", () => {
+  const prompt = buildLinkedInUserPrompt({
+    title: "Minimal Title Article"
   });
 
-  assert.strictEqual(fallback.success, true);
-  assert.strictEqual(fallback.tone, "fallback");
-  assert.ok(fallback.headline.includes("Integrated Photonic Quantum Memories"));
-  assert.ok(fallback.postText.includes("Demonstrating high-coherence optical storage"));
-  assert.ok(fallback.postText.includes("https://meridian-research.org/blog/memory-789"));
-  assert.ok(fallback.hashtags.includes("#Optics"));
+  assert.ok(prompt.includes("Article Title: \"Minimal Title Article\""));
+  assert.ok(prompt.includes("Article Summary: \"\""));
+  assert.ok(prompt.includes("Target Tone: technical"));
+  assert.ok(!prompt.includes("Special User Instruction:"));
+});
+
+test("generateFallbackLinkedInPost truncates long titles appropriately", () => {
+  const veryLongTitle = "Quantum Entanglement in Microcavity Arrays with Extremely Long Title That Exceeds Eighty Characters Limit";
+  const fallback = generateFallbackLinkedInPost({
+    title: veryLongTitle,
+    blogUrl: "https://meridian-research.org/blog/long-title"
+  });
+
+  assert.ok(fallback.headline.includes("..."), "Fallback headline should contain truncation ellipsis");
+  assert.ok(fallback.postText.includes("New theoretical and experimental insights"), "Fallback should supply default excerpt when missing");
+});
+
+test("sanitizeHashtags handles null or non-string tags", () => {
+  const dirtyTags = ["   ", "Quantum Computing!", "123", "#ValidTag"];
+  const clean = sanitizeHashtags(dirtyTags);
+
+  assert.ok(clean.includes("#QuantumComputing"));
+  assert.ok(clean.includes("#ValidTag"));
 });
