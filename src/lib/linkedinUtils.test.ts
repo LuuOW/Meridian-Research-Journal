@@ -77,10 +77,34 @@ test("generateFallbackLinkedInPost truncates long titles appropriately", () => {
   assert.ok(fallback.postText.includes("New theoretical and experimental insights"), "Fallback should supply default excerpt when missing");
 });
 
-test("sanitizeHashtags handles null or non-string tags", () => {
-  const dirtyTags = ["   ", "Quantum Computing!", "123", "#ValidTag"];
-  const clean = sanitizeHashtags(dirtyTags);
+test("generateFallbackLinkedInPost handles short title and custom excerpt", () => {
+  const shortTitle = "Photonic Crystal Fibers";
+  const customExcerpt = "A novel hollow-core fiber structure for high-power laser delivery.";
+  const fallback = generateFallbackLinkedInPost({
+    title: shortTitle,
+    excerpt: customExcerpt,
+    blogUrl: "https://meridian-research.org/blog/pcf-1"
+  });
 
-  assert.ok(clean.includes("#QuantumComputing"));
-  assert.ok(clean.includes("#ValidTag"));
+  assert.strictEqual(fallback.success, true);
+  assert.strictEqual(fallback.headline, "Research Highlight: Photonic Crystal Fibers");
+  assert.ok(!fallback.headline.includes("..."), "Short title should not be truncated with ellipsis");
+  assert.ok(fallback.postText.includes(customExcerpt), "Fallback post should include the custom excerpt");
+});
+
+test("sanitizeHashtags handles non-array input gracefully", () => {
+  const invalidInput = null as unknown as string[];
+  const fallbackTags = sanitizeHashtags(invalidInput);
+
+  assert.deepStrictEqual(fallbackTags, ["#Optics", "#QuantumPhysics", "#SiliconPhotonics"]);
+});
+
+test("buildLinkedInSystemInstruction includes all 5 required post structure sections", () => {
+  const instruction = buildLinkedInSystemInstruction("https://example.com");
+
+  assert.ok(instruction.includes("1. Hook:"), "Instruction must require Hook section");
+  assert.ok(instruction.includes("2. Key Takeaways:"), "Instruction must require Key Takeaways section");
+  assert.ok(instruction.includes("3. Why It Matters:"), "Instruction must require Why It Matters section");
+  assert.ok(instruction.includes("4. Call to Action:"), "Instruction must require Call to Action section");
+  assert.ok(instruction.includes("5. Hashtags:"), "Instruction must require Hashtags section");
 });
