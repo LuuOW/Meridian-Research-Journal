@@ -8,25 +8,57 @@ export interface LinkedInPromptInput {
 }
 
 /**
+ * Counts sentences in a text block excluding URLs and standalone hashtags.
+ */
+export function countSentences(text: string): number {
+  if (!text || typeof text !== "string") return 0;
+
+  // Clean URLs and standalone hashtags
+  const cleanText = text
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/(^|\s)#\w+/g, "")
+    .replace(/[•\-\*]/g, "")
+    .trim();
+
+  if (!cleanText) return 0;
+
+  const sentences = cleanText
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  return sentences.length;
+}
+
+/**
+ * Validates if the post text is within the maximum sentence limit (default <= 5 sentences).
+ */
+export function isWithinSentenceLimit(text: string, maxSentences: number = 5): boolean {
+  return countSentences(text) <= maxSentences;
+}
+
+/**
  * Builds system instruction for Gemini LinkedIn Post generation
  */
 export const buildLinkedInSystemInstruction = (blogUrl: string): string => {
   return `You are a world-class scientific communications officer and LinkedIn strategist for "Ask Meridian", a premier optics and quantum physics research journal.
 Your task is to craft an incredible, highly engaging, authentic, and scannable LinkedIn post that highlights a scientific research paper or blog article.
 
+CRITICAL LENGTH CONSTRAINT:
+- The generated LinkedIn post body MUST BE NO LONGER THAN 5 SENTENCES IN TOTAL LENGTH (excluding hashtags and the paper URL).
+
 TONE STYLES:
-- "technical": Deep-dive into physical mechanisms, equations, mathematical innovations, and key quantitative findings.
-- "executive": Concise, high-impact summary focusing on technological breakthroughs, bandwidth/efficiency metrics, and industry transformations.
-- "future": Forward-looking, visionary angle exploring long-term quantum, optical, and computing paradigm shifts.
-- "punchy": Snappy, 3-sentence hook and crisp bullet points designed for maximum viral engagement.
-- "custom": Adapt strictly to the user's custom instructions provided.
+- "technical": Deep-dive into physical mechanisms, equations, mathematical innovations, and key quantitative findings in <= 5 sentences.
+- "executive": Concise, high-impact summary focusing on technological breakthroughs, bandwidth/efficiency metrics, and industry transformations in <= 5 sentences.
+- "future": Forward-looking, visionary angle exploring long-term quantum, optical, and computing paradigm shifts in <= 5 sentences.
+- "punchy": Snappy, crisp 3 to 5 sentence summary designed for maximum viral engagement.
+- "custom": Adapt strictly to the user's custom instructions provided while strictly honoring the maximum 5 sentence length constraint.
 
 POST STRUCTURE REQUIREMENTS:
-1. Hook: 1-2 lines that stop the scroll with the core scientific novelty or breakthrough.
-2. Key Takeaways: 3-4 bullet points highlighting technical features, experimental/theoretical metrics, or math frameworks.
-3. Why It Matters: A short paragraph connecting this work to broader optics, quantum, or silicon photonics challenges.
-4. Call to Action: Direct readers to read the full paper breakdown on Ask Meridian with the URL (${blogUrl}).
-5. Hashtags: 3-5 relevant, highly targeted hashtags (e.g., #QuantumPhysics #Optics #SiliconPhotonics #MeridianResearch).`;
+1. Hook & Core Novelty: 1-2 sentences that stop the scroll with the core scientific novelty or breakthrough.
+2. Technical Impact: 1-2 sentences highlighting technical features, experimental/theoretical metrics, or math frameworks.
+3. Call to Action: 1 sentence directing readers to read the full paper breakdown on Ask Meridian with the URL (${blogUrl}).
+4. Hashtags: 3-5 relevant, highly targeted hashtags (e.g., #QuantumPhysics #Optics #SiliconPhotonics #MeridianResearch).`;
 };
 
 /**
@@ -45,6 +77,7 @@ Full/Partial Article Content snippet:
 "${contentSnippet}"
 
 Please write an exquisite, non-generic LinkedIn post specifically tailored to THIS research. Make sure the content reflects the actual physics, math, or methodology described in the article snippet.
+STRICT REQUIREMENT: The LinkedIn companion post MUST be no longer than 5 sentences in length.
 
 Respond in JSON format according to the provided schema.`;
 };
@@ -72,7 +105,7 @@ export const generateFallbackLinkedInPost = (params: { title: string; excerpt?: 
   const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
   const cleanExcerpt = excerpt ? excerpt.trim() : "New theoretical and experimental insights in quantum optics and photonics.";
 
-  const fallbackText = `🔬 Hot Off the Press on Meridian: "${cleanTitle}"\n\n${cleanExcerpt}\n\nKey Highlights:\n• Advanced mathematical modeling & simulation\n• Quantitative performance enhancements\n• Published in peer-reviewed Ask Meridian research\n\nRead the full paper breakdown: ${blogUrl}\n\n#Optics #QuantumPhysics #SiliconPhotonics #MeridianResearch`;
+  const fallbackText = `🔬 Hot Off the Press on Meridian: "${cleanTitle}". ${cleanExcerpt} Read the full peer-reviewed paper breakdown: ${blogUrl}\n\n#Optics #QuantumPhysics #SiliconPhotonics #MeridianResearch`;
 
   return {
     success: true,
