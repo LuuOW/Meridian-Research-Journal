@@ -16,6 +16,7 @@ import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { PasskeyPortal } from "./components/PasskeyPortal";
+import { RayTracedCard } from "./components/RayTracedCard";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
@@ -801,66 +802,68 @@ export default function App() {
                             const isHidden = hiddenBlogIds.includes(blog.id);
                             const isPreloaded = !blog.id.startsWith("generated");
                             return (
-                              <div className={`relative group transition-all duration-300 ${isHidden ? "opacity-60 saturate-50" : ""}`}>
-                                <div
+                              <div className={`relative transition-all duration-300 ${isHidden ? "opacity-60 saturate-50" : ""}`}>
+                                <RayTracedCard
                                   onClick={() => {
                                     setActiveBlog(blog);
                                     window.scrollTo({ top: 0, behavior: "smooth" });
                                   }}
-                                  className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700/80 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 p-5 md:p-6 flex flex-col lg:flex-row gap-6 items-stretch cursor-pointer shadow-[0_2px_12px_-3px_rgba(0,0,0,0.015)]"
+                                  accentGlowColor="rgba(245, 158, 11, 0.25)"
                                 >
-                                  {/* Featured Graphic Thumbnail */}
-                                  <div className="w-full lg:w-[32%] rounded-xl overflow-hidden bg-[#0a1128] flex-shrink-0 aspect-[16/10] lg:aspect-auto flex items-center justify-center relative min-h-[180px]">
-                                    <div 
-                                      className="w-full h-full transform group-hover:scale-[1.02] transition-transform duration-500 pointer-events-none"
-                                      dangerouslySetInnerHTML={{ __html: blog.bannerSvg }}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
-                                  </div>
+                                  <div className="p-5 md:p-6 flex flex-col lg:flex-row gap-6 items-stretch cursor-pointer">
+                                    {/* Featured Graphic Thumbnail */}
+                                    <div className="w-full lg:w-[32%] rounded-xl overflow-hidden bg-[#0a1128] flex-shrink-0 aspect-[16/10] lg:aspect-auto flex items-center justify-center relative min-h-[180px]">
+                                      <div 
+                                        className="w-full h-full transform group-hover:scale-[1.02] transition-transform duration-500 pointer-events-none"
+                                        dangerouslySetInnerHTML={{ __html: blog.bannerSvg }}
+                                      />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+                                    </div>
 
-                                  {/* Featured Content details */}
-                                  <div className="flex-1 flex flex-col justify-between py-0.5">
-                                    <div className="space-y-3">
-                                      {/* Tags and badge */}
-                                      <div className="flex flex-wrap gap-1.5 items-center">
-                                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[8px] font-extrabold uppercase tracking-widest rounded-full border border-amber-500/10">
-                                          ★ Current Issue
-                                        </span>
-                                        {blog.tags.slice(0, 2).map((tag) => (
-                                          <span
-                                            key={tag}
-                                            className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[8px] font-extrabold uppercase tracking-widest rounded-full border border-neutral-200/20"
-                                          >
-                                            {tag}
+                                    {/* Featured Content details */}
+                                    <div className="flex-1 flex flex-col justify-between py-0.5">
+                                      <div className="space-y-3">
+                                        {/* Tags and badge */}
+                                        <div className="flex flex-wrap gap-1.5 items-center">
+                                          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[8px] font-extrabold uppercase tracking-widest rounded-full border border-amber-500/10">
+                                            ★ Current Issue
                                           </span>
-                                        ))}
+                                          {blog.tags.slice(0, 2).map((tag) => (
+                                            <span
+                                              key={tag}
+                                              className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[8px] font-extrabold uppercase tracking-widest rounded-full border border-neutral-200/20"
+                                            >
+                                              {tag}
+                                            </span>
+                                          ))}
+                                        </div>
+
+                                        {/* Title */}
+                                        <h3 className="text-xl sm:text-2xl font-serif font-bold italic tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-black dark:group-hover:text-white transition-colors leading-[1.25]">
+                                          {blog.title}
+                                        </h3>
+
+                                        {/* Excerpt */}
+                                        <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-light line-clamp-3">
+                                          {blog.excerpt}
+                                        </p>
                                       </div>
 
-                                      {/* Title */}
-                                      <h3 className="text-xl sm:text-2xl font-serif font-bold italic tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-black dark:group-hover:text-white transition-colors leading-[1.25]">
-                                        {blog.title}
-                                      </h3>
-
-                                      {/* Excerpt */}
-                                      <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-light line-clamp-3">
-                                        {blog.excerpt}
-                                      </p>
-                                    </div>
-
-                                    {/* Footer Details */}
-                                    <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4 mt-4 flex flex-wrap gap-4 items-center justify-between text-[9px] font-bold font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-                                      <div className="flex gap-4">
-                                        <span>{blog.date}</span>
-                                        <span>•</span>
-                                        <span>{blog.readingTime}</span>
+                                      {/* Footer Details */}
+                                      <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4 mt-4 flex flex-wrap gap-4 items-center justify-between text-[9px] font-bold font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+                                        <div className="flex gap-4">
+                                          <span>{blog.date}</span>
+                                          <span>•</span>
+                                          <span>{blog.readingTime}</span>
+                                        </div>
+                                        <span className="text-[11px] font-bold text-black dark:text-white border-b-2 border-transparent group-hover:border-black dark:group-hover:border-white transition-all flex items-center gap-1.5 pb-0.5 font-sans">
+                                          Read Featured Publication
+                                          <BookOpen className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform" />
+                                        </span>
                                       </div>
-                                      <span className="text-[11px] font-bold text-black dark:text-white border-b-2 border-transparent group-hover:border-black dark:group-hover:border-white transition-all flex items-center gap-1.5 pb-0.5 font-sans">
-                                        Read Featured Publication
-                                        <BookOpen className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform" />
-                                      </span>
                                     </div>
                                   </div>
-                                </div>
+                                </RayTracedCard>
 
                                 {/* Hidden Status indicator badge */}
                                 {isHidden && (
