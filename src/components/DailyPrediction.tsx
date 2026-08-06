@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Brain, ExternalLink, RefreshCw, BookOpen, Calendar, ArrowRight, CheckCircle2 } from "lucide-react";
+import { RayTracedCard } from "./RayTracedCard";
 
 interface DailyPredictionProps {
   onGeneratePredictedBlog: (arxivId: string) => void;
@@ -112,12 +113,13 @@ export const DailyPrediction: React.FC<DailyPredictionProps> = ({ onGeneratePred
   const todayDateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
   return (
-    <div className="w-full bg-white dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
-      {/* Dynamic technical top glow */}
-      <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-cyan-500 via-pink-500 to-amber-500 dark:from-cyan-700 dark:via-pink-700 dark:to-amber-600 opacity-90" />
-      
-      {/* Ambient background decoration */}
-      <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-neutral-100/40 dark:bg-neutral-950/20 rounded-full blur-2xl pointer-events-none -z-10" />
+    <RayTracedCard className="w-full" accentGlowColor="rgba(6, 182, 212, 0.28)">
+      <div className="p-6 sm:p-8 relative">
+        {/* Dynamic technical top glow */}
+        <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-cyan-500 via-pink-500 to-amber-500 dark:from-cyan-700 dark:via-pink-700 dark:to-amber-600 opacity-90" />
+        
+        {/* Ambient background decoration */}
+        <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-neutral-100/40 dark:bg-neutral-950/20 rounded-full blur-2xl pointer-events-none -z-10" />
 
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-neutral-100 dark:border-neutral-800/80 pb-5">
         <div className="space-y-1.5">
@@ -310,6 +312,7 @@ export const DailyPrediction: React.FC<DailyPredictionProps> = ({ onGeneratePred
           {errorMsg}
         </div>
       )}
-    </div>
+      </div>
+    </RayTracedCard>
   );
 };

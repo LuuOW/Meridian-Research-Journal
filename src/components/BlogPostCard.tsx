@@ -8,9 +8,20 @@ interface BlogPostCardProps {
   blog: BlogPost;
 }
 
+const getTagAccentColor = (tags: string[]): string => {
+  const tagStr = tags.join(" ").toLowerCase();
+  if (tagStr.includes("quantum")) return "rgba(6, 182, 212, 0.28)"; // Cyan
+  if (tagStr.includes("learning") || tagStr.includes("ai")) return "rgba(99, 102, 241, 0.28)"; // Indigo
+  if (tagStr.includes("physics") || tagStr.includes("thermo")) return "rgba(168, 85, 247, 0.28)"; // Purple
+  if (tagStr.includes("algorithm") || tagStr.includes("compute")) return "rgba(16, 185, 129, 0.28)"; // Emerald
+  return "rgba(245, 158, 11, 0.28)"; // Amber
+};
+
 export const BlogPostCard: React.FC<BlogPostCardProps & { onClick: () => void }> = ({ blog, onClick }) => {
+  const accentGlow = getTagAccentColor(blog.tags);
+
   return (
-    <RayTracedCard onClick={onClick} className="h-full">
+    <RayTracedCard onClick={onClick} className="h-full" accentGlowColor={accentGlow}>
       <article className="group flex flex-col h-full cursor-pointer">
         
         {/* Banner / Graphic Thumbnail */}

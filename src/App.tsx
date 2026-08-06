@@ -737,8 +737,8 @@ export default function App() {
               </div>
 
               {/* Simplified Search and Topic Filter Bar */}
-              <div className="bg-white dark:bg-neutral-900 p-5 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm mb-12">
-                <div className="flex flex-col lg:flex-row items-center gap-4">
+              <RayTracedCard className="mb-12" accentGlowColor="rgba(99, 102, 241, 0.22)">
+                <div className="p-5 flex flex-col lg:flex-row items-center gap-4">
                   <div className="relative w-full lg:flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
@@ -777,7 +777,7 @@ export default function App() {
                     ))}
                   </div>
                 </div>
-              </div>
+              </RayTracedCard>
 
               {/* Grid or Empty state layout */}
               <div className="max-w-7xl mx-auto w-full relative">
@@ -1007,20 +1007,22 @@ export default function App() {
                       </div>
                     </>
                   ) : (
-                    <div className="bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
-                      <Newspaper className="w-12 h-12 text-gray-300 dark:text-neutral-700 mx-auto mb-4" />
-                      <h3 className="text-md font-bold text-gray-900 dark:text-neutral-100 font-serif italic">No publications found</h3>
-                      <p className="text-xs text-gray-500 dark:text-neutral-400 mt-2 leading-relaxed">
-                        We couldn't find any articles matching your filters. Try checking spelling or click below to generate a new post from arXiv.
-                      </p>
-                      <button
-                        onClick={() => setIsCreateOpen(true)}
-                        className="mt-6 px-6 py-3 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold transition-all flex items-center gap-2 mx-auto cursor-pointer shadow-sm active:scale-95"
-                      >
-                        <Sparkles className="w-4 h-4 text-white dark:text-black fill-white/20" />
-                        Generate brand new post
-                      </button>
-                    </div>
+                    <RayTracedCard className="max-w-md mx-auto" accentGlowColor="rgba(236, 72, 153, 0.22)">
+                      <div className="p-12 text-center">
+                        <Newspaper className="w-12 h-12 text-gray-300 dark:text-neutral-700 mx-auto mb-4" />
+                        <h3 className="text-md font-bold text-gray-900 dark:text-neutral-100 font-serif italic">No publications found</h3>
+                        <p className="text-xs text-gray-500 dark:text-neutral-400 mt-2 leading-relaxed">
+                          We couldn't find any articles matching your filters. Try checking spelling or click below to generate a new post from arXiv.
+                        </p>
+                        <button
+                          onClick={() => setIsCreateOpen(true)}
+                          className="mt-6 px-6 py-3 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold transition-all flex items-center gap-2 mx-auto cursor-pointer shadow-sm active:scale-95"
+                        >
+                          <Sparkles className="w-4 h-4 text-white dark:text-black fill-white/20" />
+                          Generate brand new post
+                        </button>
+                      </div>
+                    </RayTracedCard>
                   )}
                 </div>
               </div>
@@ -1135,12 +1137,14 @@ export default function App() {
 
                     {/* Right Column: Dynamic Glowing Banner SVG Illustration */}
                     <div className="lg:col-span-5 flex flex-col items-center gap-4 justify-center">
-                      <div className="w-full max-w-[440px] h-auto p-2 bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-xl transition-all duration-300 transform hover:scale-[1.01]">
-                        <div 
-                          className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none"
-                          dangerouslySetInnerHTML={{ __html: activeBlog.bannerSvg }}
-                        />
-                      </div>
+                      <RayTracedCard className="w-full max-w-[440px]" accentGlowColor="rgba(14, 165, 233, 0.25)">
+                        <div className="p-2">
+                          <div 
+                            className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none"
+                            dangerouslySetInnerHTML={{ __html: activeBlog.bannerSvg }}
+                          />
+                        </div>
+                      </RayTracedCard>
                       
                       <div className="flex items-center justify-center gap-2 w-full max-w-[440px]">
                         <button
