@@ -49,6 +49,23 @@ test("parseArxivFeedXml correctly extracts multiple entries from arXiv feed", ()
   assert.strictEqual(entries[1].title, "Second Paper on Diffusion Models");
 });
 
+test("extractArxivId extracts valid IDs from URLs and strings", () => {
+  assert.strictEqual(extractArxivId("https://arxiv.org/abs/2608.12345v2"), "2608.12345");
+  assert.strictEqual(extractArxivId("http://arxiv.org/pdf/2401.99999"), "2401.99999");
+  assert.strictEqual(extractArxivId("2608.12345"), "2608.12345");
+  assert.strictEqual(extractArxivId("invalid-id"), null);
+  assert.strictEqual(extractArxivId(""), null);
+});
+
+test("cleanJsonText strips markdown fences and repairs unescaped LaTeX backslashes in JSON", () => {
+  const rawWithLatex = '```json\n{\n  "formula": "\\\\alpha + \\\\beta = \\\\gamma",\n  "text": "sample \\n new line"\n}\n```';
+  const cleaned = cleanJsonText(rawWithLatex);
+  assert.ok(!cleaned.startsWith("```"));
+  assert.ok(!cleaned.endsWith("```"));
+  const parsed = JSON.parse(cleaned);
+  assert.ok(parsed.formula.includes("alpha"));
+});
+
 test("isWeekend accurately checks day of week", () => {
   const fri = new Date("2026-07-24T10:00:00Z");
   const sat = new Date("2026-07-25T10:00:00Z");
