@@ -1195,40 +1195,42 @@ export default function App() {
 
               {/* MAIN SCHOLARLY ARTICLE BODY VIEW CONTAINER */}
               <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-                <article className="prose prose-slate max-w-none md:prose-lg bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-xl shadow-gray-200/10 dark:shadow-none p-4 sm:p-12 relative overflow-hidden transition-colors">
-                  
-                  {/* Abstract quote callout */}
-                  <div className="absolute top-0 left-0 w-1.5 h-full bg-black dark:bg-white" />
-                  
-                  <div className="flex items-center gap-2 text-[10px] font-bold font-mono text-black dark:text-white uppercase tracking-widest mb-6">
-                    <Newspaper className="w-4 h-4 text-black dark:text-white" />
-                    Full Editorial Analysis
-                  </div>
-
-                  {/* Render the math rich markdown article */}
-                  <MathRenderer text={activeBlog.content} />
-                  
-                  {/* Article footer sign-off */}
-                  <div className="border-t border-gray-100 dark:border-neutral-800 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-black dark:bg-neutral-800 flex items-center justify-center text-white dark:text-neutral-100 text-md font-bold font-serif italic">M</div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-800 dark:text-neutral-200">Meridian Research Editorial</p>
-                        <p className="text-[10px] text-gray-400 dark:text-neutral-500">Copyright © {new Date().getFullYear()} Meridian. All rights reserved.</p>
-                      </div>
-                    </div>
+                <RayTracedCard accentGlowColor="rgba(99, 102, 241, 0.22)">
+                  <article className="prose prose-slate max-w-none md:prose-lg p-4 sm:p-12 relative overflow-hidden transition-colors">
                     
-                    <button
-                      onClick={() => {
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                        setActiveBlog(null);
-                      }}
-                      className="px-6 py-2.5 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
-                    >
-                      Back to Publications
-                    </button>
-                  </div>
-                </article>
+                    {/* Abstract quote callout */}
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-black dark:bg-white" />
+                    
+                    <div className="flex items-center gap-2 text-[10px] font-bold font-mono text-black dark:text-white uppercase tracking-widest mb-6">
+                      <Newspaper className="w-4 h-4 text-black dark:text-white" />
+                      Full Editorial Analysis
+                    </div>
+
+                    {/* Render the math rich markdown article */}
+                    <MathRenderer text={activeBlog.content} />
+                    
+                    {/* Article footer sign-off */}
+                    <div className="border-t border-gray-100 dark:border-neutral-800 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-black dark:bg-neutral-800 flex items-center justify-center text-white dark:text-neutral-100 text-md font-bold font-serif italic">M</div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-800 dark:text-neutral-200">Meridian Research Editorial</p>
+                          <p className="text-[10px] text-gray-400 dark:text-neutral-500">Copyright © {new Date().getFullYear()} Meridian. All rights reserved.</p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                          setActiveBlog(null);
+                        }}
+                        className="px-6 py-2.5 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                      >
+                        Back to Publications
+                      </button>
+                    </div>
+                  </article>
+                </RayTracedCard>
               </div>
 
             </motion.div>
