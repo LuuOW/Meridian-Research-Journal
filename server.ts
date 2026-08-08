@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import { initializeApp } from "firebase/app";
 import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import nodemailer from "nodemailer";
-import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml } from "./src/lib/arxivUtils";
+import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml, extractSvgString } from "./src/lib/arxivUtils";
 import {
   buildLinkedInSystemInstruction,
   buildLinkedInUserPrompt,
@@ -819,6 +819,136 @@ Requirements:
   } catch (error: any) {
     console.error("Error generating blog:", error);
     res.status(500).json({ error: error.message || "Failed to generate blog post" });
+  }
+});
+
+// API: Regenerate Article Banner SVG
+app.post("/api/blog/regenerate-banner", async (req, res) => {
+  const { blogId, title, excerpt, content, tags, password } = req.body;
+
+  const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+  if (!password || password !== expectedPassword) {
+    return res.status(403).json({ error: "Unauthorized: Incorrect editor password." });
+  }
+
+  if (!blogId && !title) {
+    return res.status(400).json({ error: "Missing required blog details or blogId" });
+  }
+
+  try {
+    const ai = getGeminiClient();
+    const triggerId = Date.now();
+    const tagList = Array.isArray(tags) ? tags.join(", ") : (tags || "Physics, Quantum, Optics");
+
+    const systemInstruction = `You are a world-class vector artist and scientific graphic designer for "Ask Meridian".
+Your task is to generate a custom, high-end, responsive inline SVG vector illustration for an academic research article banner.
+
+REQUIREMENTS:
+- Theme & Aesthetic: Dark space/navy background (#0a1128 or #080f1e).
+- Neon accents: Electric cyan (#00f2fe), hot pink (#ff007f), purple (#8b5cf6), emerald (#38ef7d), or amber (#f59e0b).
+- Art style: Abstract, mathematical, geometric vector illustration representing the scientific concept (e.g. quantum circuits, optical lattices, neural graph nodes, wave interference, thermal manifolds, photonic crystals, laser cavity, matrix transformations).
+- Dimensions: Responsive viewBox="0 0 800 400" aspect ratio.
+- Code output: You MUST respond ONLY with the complete, valid, self-contained SVG element starting with <svg viewBox="0 0 800 400"...> and ending with </svg>. No markdown fences or extraneous surrounding text.`;
+
+    const prompt = `Generate a fresh, brand-new, unique vector SVG banner (viewBox 0 0 800 400) for this publication:
+Run ID: ${triggerId}
+Title: ${title || "Scientific Research Publication"}
+Tags: ${tagList}
+Excerpt: ${excerpt || ""}
+Context Snippet: ${(content || "").slice(0, 500)}
+
+Output strictly valid SVG XML starting with <svg> and ending with </svg>.`;
+
+    const modelsToTry = [
+      "gemini-2.5-flash",
+      "gemini-3.5-flash",
+      "gemini-3.1-pro-preview",
+      "gemini-flash-latest",
+      "gemini-3.1-flash-lite"
+    ];
+
+    let rawSvgResult = "";
+    let lastError: any = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`Attempting banner regeneration with model: ${modelName}`);
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            systemInstruction
+          }
+        });
+
+        if (response && response.text) {
+          rawSvgResult = response.text;
+          break;
+        }
+      } catch (err: any) {
+        console.warn(`Model ${modelName} failed for banner generation:`, err.message || err);
+        lastError = err;
+      }
+    }
+
+    if (!rawSvgResult && process.env.GITHUB_TOKEN) {
+      console.log("Gemini models failed. Fallback to GitHub Models for banner SVG generation...");
+      try {
+        const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: "system", content: systemInstruction },
+              { role: "user", content: prompt }
+            ],
+            model: "gpt-4o-mini"
+          })
+        });
+
+        if (githubResponse.ok) {
+          const data: any = await githubResponse.json();
+          if (data.choices && data.choices[0] && data.choices[0].message?.content) {
+            rawSvgResult = data.choices[0].message.content;
+          }
+        }
+      } catch (githubErr: any) {
+        console.error("GitHub Models fallback failed:", githubErr);
+      }
+    }
+
+    const cleanSvg = extractSvgString(rawSvgResult);
+    if (!cleanSvg || !cleanSvg.includes("<svg")) {
+      throw lastError || new Error("Failed to generate a valid SVG banner string.");
+    }
+
+    // Persist updated blog with new banner SVG in custom_blogs.json & Firestore
+    const localBlogs = readCustomBlogs();
+    const blogIdx = localBlogs.findIndex((b: any) => b.id === blogId || b.slug === blogId);
+    let updatedBlog = null;
+
+    if (blogIdx !== -1) {
+      localBlogs[blogIdx].bannerSvg = cleanSvg;
+      updatedBlog = localBlogs[blogIdx];
+      writeCustomBlogs(localBlogs);
+
+      if (db && updatedBlog && updatedBlog.id) {
+        try {
+          await setDoc(doc(db, "blogs", updatedBlog.id), updatedBlog);
+          console.log(`Updated bannerSvg for blog "${updatedBlog.id}" in Firestore.`);
+        } catch (dbErr) {
+          console.error("Error saving updated bannerSvg to Firestore:", dbErr);
+        }
+      }
+    }
+
+    res.json({ success: true, bannerSvg: cleanSvg, blog: updatedBlog });
+  } catch (error: any) {
+    console.error("Error regenerating banner:", error);
+    res.status(500).json({ error: error.message || "Failed to regenerate banner" });
   }
 });
 

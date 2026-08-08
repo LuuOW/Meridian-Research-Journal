@@ -45,6 +45,8 @@ export default function App() {
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>("");
+  const [isRegeneratingBanner, setIsRegeneratingBanner] = useState<string | null>(null);
+  const [bannerToastMsg, setBannerToastMsg] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return (localStorage.getItem("theme") as "light" | "dark") || "light";
@@ -122,6 +124,68 @@ export default function App() {
     } else {
       setIsEditorMode(false);
       setEditorPassword("");
+    }
+  };
+
+  const handleRegenerateBanner = async (blogToUpdate: BlogPost, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!blogToUpdate) return;
+
+    if (!isEditorMode) {
+      setIsEditorPasswordModalOpen(true);
+      return;
+    }
+
+    setIsRegeneratingBanner(blogToUpdate.id);
+    setBannerToastMsg(null);
+
+    try {
+      const response = await fetch("/api/blog/regenerate-banner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blogId: blogToUpdate.id,
+          title: blogToUpdate.title,
+          excerpt: blogToUpdate.excerpt,
+          content: blogToUpdate.content,
+          tags: blogToUpdate.tags,
+          password: editorPassword || "meridian"
+        })
+      });
+
+      if (!response.ok) {
+        let errText = "Failed to regenerate banner";
+        try {
+          const errJson = await response.json();
+          errText = errJson.error || errText;
+        } catch (_) {}
+        throw new Error(errText);
+      }
+
+      const data = await response.json();
+      if (data.success && data.bannerSvg) {
+        const newSvg = data.bannerSvg;
+
+        // Update state in blogs list
+        setBlogs((prev) =>
+          prev.map((b) => (b.id === blogToUpdate.id ? { ...b, bannerSvg: newSvg } : b))
+        );
+
+        // Update activeBlog state if it's currently open
+        if (activeBlog && activeBlog.id === blogToUpdate.id) {
+          setActiveBlog((prev) => (prev ? { ...prev, bannerSvg: newSvg } : null));
+        }
+
+        setBannerToastMsg("Banner SVG regenerated successfully!");
+        setTimeout(() => setBannerToastMsg(null), 3500);
+      } else {
+        throw new Error("Invalid response format received when regenerating banner.");
+      }
+    } catch (err: any) {
+      console.error("Banner regeneration error:", err);
+      alert(err.message || "Failed to regenerate banner.");
+    } finally {
+      setIsRegeneratingBanner(null);
     }
   };
 
@@ -875,6 +939,14 @@ export default function App() {
                                 {/* Editor Actions Overlay */}
                                 {isEditorMode && (
                                   <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 animate-fade-in">
+                                    <button
+                                      onClick={(e) => handleRegenerateBanner(blog, e)}
+                                      disabled={isRegeneratingBanner === blog.id}
+                                      title="Regenerate publication banner SVG"
+                                      className="p-2.5 bg-cyan-600 border border-cyan-500 hover:bg-cyan-500 text-white rounded-full shadow-lg cursor-pointer transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center"
+                                    >
+                                      <Sparkles className={`h-4 w-4 text-white ${isRegeneratingBanner === blog.id ? "animate-spin" : ""}`} />
+                                    </button>
                                     {isPreloaded ? (
                                       <button
                                         onClick={(e) => {
@@ -961,6 +1033,14 @@ export default function App() {
                               {/* Action overlay controls when Editor Mode is active */}
                               {isEditorMode && (
                                 <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 animate-fade-in">
+                                  <button
+                                    onClick={(e) => handleRegenerateBanner(blog, e)}
+                                    disabled={isRegeneratingBanner === blog.id}
+                                    title="Regenerate publication banner SVG"
+                                    className="p-2.5 bg-cyan-600 border border-cyan-500 hover:bg-cyan-500 text-white rounded-full shadow-lg cursor-pointer transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center"
+                                  >
+                                    <Sparkles className={`h-4 w-4 text-white ${isRegeneratingBanner === blog.id ? "animate-spin" : ""}`} />
+                                  </button>
                                   {isPreloaded ? (
                                     <button
                                       onClick={(e) => {
@@ -1138,53 +1218,83 @@ export default function App() {
                     {/* Right Column: Dynamic Glowing Banner SVG Illustration */}
                     <div className="lg:col-span-5 flex flex-col items-center gap-4 justify-center">
                       <RayTracedCard className="w-full max-w-[440px]" accentGlowColor="rgba(14, 165, 233, 0.25)">
-                        <div className="p-2">
+                        <div className="p-2 relative group">
                           <div 
                             className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none"
                             dangerouslySetInnerHTML={{ __html: activeBlog.bannerSvg }}
                           />
+                          {isEditorMode && (
+                            <button
+                              onClick={() => handleRegenerateBanner(activeBlog)}
+                              disabled={isRegeneratingBanner === activeBlog.id}
+                              className="absolute top-4 right-4 px-3 py-1.5 bg-neutral-900/90 hover:bg-black text-white text-[11px] font-bold rounded-xl shadow-lg border border-neutral-700/80 backdrop-blur-md flex items-center gap-1.5 transition-all opacity-90 group-hover:opacity-100 cursor-pointer disabled:opacity-50"
+                            >
+                              <Sparkles className={`w-3.5 h-3.5 text-cyan-400 ${isRegeneratingBanner === activeBlog.id ? "animate-spin" : ""}`} />
+                              {isRegeneratingBanner === activeBlog.id ? "Regenerating..." : "Regenerate Banner"}
+                            </button>
+                          )}
                         </div>
                       </RayTracedCard>
                       
-                      <div className="flex items-center justify-center gap-2 w-full max-w-[440px]">
-                        <button
-                          onClick={() => {
-                            if (!activeBlog?.bannerSvg) return;
-                            const blob = new Blob([activeBlog.bannerSvg], { type: "image/svg+xml" });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = `${activeBlog.slug || "meridian-banner"}.svg`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                          }}
-                          title="Download banner as SVG"
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60 dark:border-neutral-700/60"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          SVG
-                        </button>
-                        
-                        <button
-                          onClick={() => handleDownloadPng(activeBlog)}
-                          title="Download banner as PNG"
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          PNG
-                        </button>
+                      <div className="flex flex-col gap-2.5 w-full max-w-[440px]">
+                        <div className="flex items-center justify-center gap-2 w-full">
+                          <button
+                            onClick={() => {
+                              if (!activeBlog?.bannerSvg) return;
+                              const blob = new Blob([activeBlog.bannerSvg], { type: "image/svg+xml" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `${activeBlog.slug || "meridian-banner"}.svg`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            }}
+                            title="Download banner as SVG"
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60 dark:border-neutral-700/60"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            SVG
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDownloadPng(activeBlog)}
+                            title="Download banner as PNG"
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            PNG
+                          </button>
 
-                        <button
-                          onClick={() => setIsLinkedInModalOpen(true)}
-                          title="Draft & Share on LinkedIn"
-                          className="p-2.5 bg-[#0077b5] hover:bg-[#006297] text-white rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer border border-[#0077b5]/10 flex items-center justify-center shrink-0"
-                        >
-                          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                          </svg>
-                        </button>
+                          <button
+                            onClick={() => setIsLinkedInModalOpen(true)}
+                            title="Draft & Share on LinkedIn"
+                            className="p-2.5 bg-[#0077b5] hover:bg-[#006297] text-white rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer border border-[#0077b5]/10 flex items-center justify-center shrink-0"
+                          >
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                            </svg>
+                          </button>
+                        </div>
+
+                        {isEditorMode && (
+                          <button
+                            onClick={() => handleRegenerateBanner(activeBlog)}
+                            disabled={isRegeneratingBanner === activeBlog.id}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:via-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer border border-cyan-400/30 disabled:opacity-50"
+                          >
+                            <Sparkles className={`w-4 h-4 text-cyan-200 ${isRegeneratingBanner === activeBlog.id ? "animate-spin" : ""}`} />
+                            {isRegeneratingBanner === activeBlog.id ? "AI Vector Engine Generating Banner..." : "Regenerate Article Banner (Editor)"}
+                          </button>
+                        )}
+
+                        {bannerToastMsg && (
+                          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 animate-fade-in">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                            {bannerToastMsg}
+                          </div>
+                        )}
                       </div>
                     </div>
 

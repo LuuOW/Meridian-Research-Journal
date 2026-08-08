@@ -7,6 +7,19 @@ export const extractArxivId = (input: string): string | null => {
   return null;
 };
 
+// Helper to extract clean SVG string from LLM responses or raw strings
+export const extractSvgString = (text: string): string => {
+  if (!text) return "";
+  let clean = text.trim();
+  clean = clean.replace(/^```(xml|svg|html|json)?/i, "").replace(/```$/, "").trim();
+  const svgStart = clean.indexOf("<svg");
+  const svgEnd = clean.lastIndexOf("</svg>");
+  if (svgStart !== -1 && svgEnd !== -1 && svgEnd > svgStart) {
+    return clean.substring(svgStart, svgEnd + 6);
+  }
+  return clean;
+};
+
 // Robust helper to sanitize and repair invalid JSON strings from LLM output
 export const cleanJsonText = (text: string): string => {
   let cleaned = text.trim();

@@ -1,6 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { parseArxivXml, parseArxivFeedXml, extractArxivId, generateSlug, cleanJsonText, isWeekend } from "./arxivUtils";
+import { parseArxivXml, parseArxivFeedXml, extractArxivId, generateSlug, cleanJsonText, isWeekend, extractSvgString } from "./arxivUtils";
+
+test("extractSvgString strips code fences and extracts raw SVG XML", () => {
+  const rawWithFence = '```svg\n<svg viewBox="0 0 800 400"><rect width="800" height="400" fill="#0a1128"/></svg>\n```';
+  const extracted = extractSvgString(rawWithFence);
+  assert.strictEqual(extracted, '<svg viewBox="0 0 800 400"><rect width="800" height="400" fill="#0a1128"/></svg>');
+
+  const rawWithPrefixText = 'Here is the generated SVG:\n<svg viewBox="0 0 800 400"><circle cx="400" cy="200" r="50"/></svg>\nHope you like it!';
+  assert.strictEqual(extractSvgString(rawWithPrefixText), '<svg viewBox="0 0 800 400"><circle cx="400" cy="200" r="50"/></svg>');
+});
 
 test("parseArxivXml handles XML elements in paper metadata", () => {
   const xmlWithEntities = `
