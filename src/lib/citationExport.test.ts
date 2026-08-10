@@ -85,3 +85,29 @@ test("Citation functions handle missing/empty post fields gracefully", () => {
   assert.ok(generateMLA(emptyPost).includes("Untitled Article"));
   assert.ok(generateRIS(emptyPost).includes("TY  - JOUR"));
 });
+
+test("Citation functions handle posts without arxivLink and fallback slug to id", () => {
+  const postNoLink: BlogPost = {
+    id: "custom-id-99",
+    title: "Cavity QED & Non-Linear Optics",
+    slug: "",
+    excerpt: "Excerpt",
+    content: "Content",
+    date: "2025",
+    readingTime: "3 min read",
+    arxivLink: "",
+    bannerSvg: "",
+    author: "Alice & Bob",
+    tags: []
+  };
+
+  const bib = generateBibTeX(postNoLink);
+  assert.ok(bib.includes("@article{custom-id-99,"), "BibTeX key should fall back to ID if slug is empty");
+  assert.ok(bib.includes("url       = {https://meridian-journal.org}"), "BibTeX url should fall back to journal URL if arxivLink is empty");
+
+  const apa = generateAPA(postNoLink);
+  assert.ok(apa.endsWith("https://meridian-journal.org"), "APA should end with default journal link when no arxivLink is present");
+
+  const ris = generateRIS(postNoLink);
+  assert.ok(ris.includes("UR  - https://meridian-journal.org"));
+});

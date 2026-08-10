@@ -32,10 +32,19 @@ test("calculateEngagementScore weighs views, bookmarks, and read time correctly"
 });
 
 test("getPopularityTier classifies scores into expected tiers", () => {
-  assert.strictEqual(getPopularityTier(600), "Trending");
-  assert.strictEqual(getPopularityTier(300), "High");
-  assert.strictEqual(getPopularityTier(150), "Medium");
-  assert.strictEqual(getPopularityTier(20), "Low");
+  assert.strictEqual(getPopularityTier(500), "Trending", "500 is exact threshold for Trending");
+  assert.strictEqual(getPopularityTier(499), "High", "499 is upper bound for High");
+  assert.strictEqual(getPopularityTier(250), "High", "250 is exact threshold for High");
+  assert.strictEqual(getPopularityTier(249), "Medium", "249 is upper bound for Medium");
+  assert.strictEqual(getPopularityTier(100), "Medium", "100 is exact threshold for Medium");
+  assert.strictEqual(getPopularityTier(99), "Low", "99 is upper bound for Low");
+  assert.strictEqual(getPopularityTier(0), "Low");
+});
+
+test("calculateEngagementScore uses sensible defaults when omitted", () => {
+  // views default 0 -> 0, bookmarks default 0 -> 0, readingTime default 5 -> 10 => total = 10
+  const defaultScore = calculateEngagementScore();
+  assert.strictEqual(defaultScore, 10);
 });
 
 test("computePostAnalytics computes full analytics breakdown", () => {

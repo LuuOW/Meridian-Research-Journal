@@ -31,17 +31,25 @@ test("formatAudioTime formats seconds into clean m:ss display", () => {
   assert.strictEqual(formatAudioTime(5), "0:05");
   assert.strictEqual(formatAudioTime(65), "1:05");
   assert.strictEqual(formatAudioTime(125), "2:05");
+  assert.strictEqual(formatAudioTime(3600), "60:00", "3600 seconds should format to 60:00");
   assert.strictEqual(formatAudioTime(-10), "0:00");
   assert.strictEqual(formatAudioTime(NaN), "0:00");
 });
 
-test("estimateSpeechDuration calculates duration based on word count and speed multiplier", () => {
-  // 150 words at 1.0x speed = 60 seconds
+test("estimateSpeechDuration handles boundary conditions and non-positive speed multipliers", () => {
   assert.strictEqual(estimateSpeechDuration(150, 1.0), 60);
-  // 150 words at 2.0x speed = 30 seconds
   assert.strictEqual(estimateSpeechDuration(150, 2.0), 30);
-  // 300 words at 1.5x speed = 80 seconds
   assert.strictEqual(estimateSpeechDuration(300, 1.5), 80);
-  // invalid values fallback to 0
   assert.strictEqual(estimateSpeechDuration(0, 1.0), 0);
+  assert.strictEqual(estimateSpeechDuration(-100, 1.0), 0);
+  assert.strictEqual(estimateSpeechDuration(150, 0), 0);
+  assert.strictEqual(estimateSpeechDuration(150, -1.0), 0);
+});
+
+test("getSentences ignores single-character noise and empty strings", () => {
+  assert.deepStrictEqual(getSentences(""), [""]);
+  const sentences = getSentences("Hello world. a. b. Good day.");
+  assert.strictEqual(sentences.length, 2);
+  assert.strictEqual(sentences[0], "Hello world.");
+  assert.strictEqual(sentences[1], "Good day.");
 });

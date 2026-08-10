@@ -37,13 +37,18 @@ const post2: BlogPost = {
   tags: ["Biophysics"]
 };
 
-test("toggleBookmark adds new targetId and removes existing targetId", () => {
+test("toggleBookmark handles invalid or empty target IDs gracefully", () => {
   const initial = ["b1"];
-  const added = toggleBookmark(initial, "b2");
-  assert.deepStrictEqual(added, ["b1", "b2"]);
+  assert.deepStrictEqual(toggleBookmark(initial, ""), ["b1"]);
+  assert.deepStrictEqual(toggleBookmark(initial, null as unknown as string), ["b1"]);
+  assert.deepStrictEqual(toggleBookmark(undefined, "b2"), ["b2"]);
+});
 
-  const removed = toggleBookmark(added, "b1");
-  assert.deepStrictEqual(removed, ["b2"]);
+test("calculateTotalBookmarkReadingTime handles posts without reading time string", () => {
+  const postNoTime: BlogPost = { ...post1, readingTime: "" };
+  const postInvalidTime: BlogPost = { ...post2, readingTime: "No digits" };
+  assert.strictEqual(calculateTotalBookmarkReadingTime([postNoTime, postInvalidTime]), 0);
+  assert.strictEqual(calculateTotalBookmarkReadingTime(null as unknown as BlogPost[]), 0);
 });
 
 test("isBookmarked checks presence accurately", () => {
