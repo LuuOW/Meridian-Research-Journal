@@ -2,13 +2,15 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download } from "lucide-react";
 
-import { BlogPost } from "./types";
+import { BlogPost, GenerationJob } from "./types";
 import { PRELOADED_BLOGS } from "./data";
 import { Navbar } from "./components/Navbar";
 import { BlogPostCard } from "./components/BlogPostCard";
 import { MathRenderer } from "./components/MathRenderer";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
+import { PipelineStatusWidget } from "./components/PipelineStatusWidget";
+import { createGenerationJob, advanceJobStep, completeJob, failJob } from "./lib/pipelineUtils";
 
 import { ViewCounter } from "./components/ViewCounter";
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
@@ -45,6 +47,7 @@ export default function App() {
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>("");
+  const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [isRegeneratingBanner, setIsRegeneratingBanner] = useState<string | null>(null);
   const [bannerToastMsg, setBannerToastMsg] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
@@ -660,6 +663,65 @@ export default function App() {
     
     setIsCreateOpen(false);
     setActiveBlog(newBlog); // Automatically open the new blog
+  };
+
+  const handleStartAsyncGeneration = async (arxivInput: string) => {
+    const newJob = createGenerationJob(arxivInput);
+    setJobs((prev) => [newJob, ...prev]);
+
+    // Setup timer interval to simulate pipeline step progress
+    const intervalId = setInterval(() => {
+      setJobs((prevJobs) =>
+        prevJobs.map((j) => (j.id === newJob.id ? advanceJobStep(j) : j))
+      );
+    }, 3200);
+
+    try {
+      const response = await fetch("/api/blog/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          arxivInput,
+          rawText: "",
+          password: editorPassword || "meridian"
+        }),
+      });
+
+      clearInterval(intervalId);
+
+      if (!response.ok) {
+        let errMessage = "Failed to generate blog.";
+        try {
+          const errData = await response.json();
+          errMessage = errData.error || errMessage;
+        } catch (_) {}
+        throw new Error(errMessage);
+      }
+
+      const data = await response.json();
+      if (data.blog) {
+        setJobs((prevJobs) =>
+          prevJobs.map((j) => (j.id === newJob.id ? completeJob(j, data.blog) : j))
+        );
+        handleBlogGenerated(data.blog);
+      } else {
+        throw new Error("Invalid response format received from generator.");
+      }
+    } catch (err: any) {
+      clearInterval(intervalId);
+      setJobs((prevJobs) =>
+        prevJobs.map((j) => (j.id === newJob.id ? failJob(j, err.message) : j))
+      );
+    }
+  };
+
+  const handleDismissJob = (jobId: string) => {
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, dismissed: true } : j)));
+  };
+
+  const handleRetryJob = (arxivInput: string) => {
+    setIsCreateOpen(true);
+    setInitialArxivId(arxivInput);
   };
 
   const handleRemoveBlog = async (id: string, password?: string): Promise<boolean> => {
@@ -1364,11 +1426,25 @@ export default function App() {
             setInitialArxivId("");
           }}
           onBlogGenerated={handleBlogGenerated}
+          onStartAsyncGeneration={handleStartAsyncGeneration}
           editorPassword={editorPassword}
           initialArxivId={initialArxivId}
           historyCount={blogs.length}
+          activeJobs={jobs}
         />
       )}
+
+      {/* ASYNC GENERATION PIPELINE STATUS WIDGET */}
+      <PipelineStatusWidget
+        jobs={jobs}
+        onSelectBlog={(blog) => {
+          setActiveBlog(blog);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onDismissJob={handleDismissJob}
+        onRetryJob={handleRetryJob}
+        isEditorMode={isEditorMode}
+      />
 
       {/* LINKEDIN SHARE COMPANION OVERLAY */}
       {activeBlog && (

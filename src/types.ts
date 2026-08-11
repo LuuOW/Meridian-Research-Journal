@@ -25,3 +25,19 @@ export interface GenerationRequest {
 export interface GenerationResponse {
   blog: BlogPost;
 }
+
+export type JobStatus = "queued" | "generating" | "completed" | "failed";
+
+export interface GenerationJob {
+  id: string;
+  arxivInput: string;
+  status: JobStatus;
+  currentStepIndex: number;
+  currentStepMessage: string;
+  progressPercent: number;
+  startTime: number;
+  completedTime?: number;
+  error?: string;
+  resultBlog?: BlogPost;
+  dismissed?: boolean;
+}

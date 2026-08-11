@@ -1,26 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, Sparkles, ArrowRight } from "lucide-react";
-import { BlogPost } from "../types";
+import { X, Sparkles, ArrowRight, ExternalLink, Minimize2, CheckCircle2 } from "lucide-react";
+import { BlogPost, GenerationJob } from "../types";
+import { PIPELINE_STEPS } from "../lib/pipelineUtils";
 
 interface ArxivGeneratorProps {
   onClose: () => void;
-  onBlogGenerated: (blog: BlogPost) => void;
+  onBlogGenerated?: (blog: BlogPost) => void;
+  onStartAsyncGeneration?: (arxivInput: string) => void;
   editorPassword?: string;
   initialArxivId?: string;
   historyCount?: number;
+  activeJobs?: GenerationJob[];
 }
 
-const LOADING_STEPS = [
-  "Contacting arXiv open archives export server...",
-  "Retrieving paper abstract & metadata...",
-  "Analyzing scientific concepts & equations...",
-  "Gemini is generating editorial prose...",
-  "Finalizing publication-ready Markdown..."
-];
-
-export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogGenerated, editorPassword = "meridian", initialArxivId = "" }) => {
+export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ 
+  onClose, 
+  onBlogGenerated, 
+  onStartAsyncGeneration,
+  editorPassword = "meridian", 
+  initialArxivId = "",
+  activeJobs = []
+}) => {
   const [arxivInput, setArxivInput] = useState(initialArxivId);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const runningJob = activeJobs.find((j) => j.status === "generating" && !j.dismissed);
 
   // Simulated Ray Tracing Light State
   const [lightState, setLightState] = useState({
@@ -57,7 +61,6 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
       const tiltX = Math.round(-normY * 5); // max 5deg tilt
       const tiltY = Math.round(normX * 5);  // max 5deg tilt
 
-      // Rays project shadow in opposite direction of light source
       const shadowX = Math.round(-normX * 30);
       const shadowY = Math.round(-normY * 30 + 10);
 
@@ -76,15 +79,17 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
   
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLocalGenerating, setIsLocalGenerating] = useState(false);
   const [loadingStepIdx, setLoadingStepIdx] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const isGenerating = isLocalGenerating || Boolean(runningJob);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isGenerating) {
       interval = setInterval(() => {
-        setLoadingStepIdx((prev) => (prev + 1) % LOADING_STEPS.length);
+        setLoadingStepIdx((prev) => (prev + 1) % PIPELINE_STEPS.length);
       }, 3500);
     } else {
       setLoadingStepIdx(0);
@@ -107,7 +112,15 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
       setArxivInput(forcedArxivId);
     }
 
-    setIsGenerating(true);
+    if (onStartAsyncGeneration) {
+      // Direct trigger in background pipeline
+      onStartAsyncGeneration(inputVal);
+      // Close modal immediately or let user see progress with background dismiss option
+      setIsLocalGenerating(true);
+      return;
+    }
+
+    setIsLocalGenerating(true);
 
     try {
       const response = await fetch("/api/blog/generate", {
@@ -149,14 +162,14 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
       }
 
       if (data.blog) {
-        onBlogGenerated(data.blog);
+        if (onBlogGenerated) onBlogGenerated(data.blog);
       } else {
         throw new Error("Invalid response format received from generation engine.");
       }
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || "An unexpected error occurred during generation.");
-      setIsGenerating(false);
+      setIsLocalGenerating(false);
     }
   };
 
@@ -231,17 +244,17 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
               </div>
               <div>
                 <h3 className="text-base font-serif font-bold italic tracking-tight text-black dark:text-neutral-100">
-                  Generate Research Blog
+                  Async Research Generator
                 </h3>
                 <p className="text-[11px] text-gray-500 dark:text-neutral-400 font-mono">
-                  arXiv paper to Meridian blog
+                  Background article compilation
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              disabled={isGenerating}
               className="p-1.5 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg text-gray-400 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+              title="Close or minimize modal"
             >
               <X className="w-4 h-4" />
             </button>
@@ -285,6 +298,14 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
                 </button>
               </div>
 
+              {/* Async Info Callout */}
+              <div className="p-3 bg-cyan-950/20 dark:bg-cyan-950/40 border border-cyan-800/30 rounded-xl text-cyan-300 text-[11px] font-sans flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                <p>
+                  Articles generate asynchronously in the background. You can close this modal and continue navigating, reading, and filtering other publications anytime!
+                </p>
+              </div>
+
               {/* Error Message */}
               {errorMsg && (
                 <div className="p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 rounded-xl text-red-600 dark:text-red-400 text-xs font-semibold">
@@ -297,42 +318,60 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
                 <button
                   type="button"
                   onClick={onClose}
-                  disabled={isGenerating}
                   className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isGenerating}
-                  className={`px-5 py-2.5 rounded-xl text-white dark:text-black text-xs font-bold shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer relative overflow-hidden group/btn ${
-                    isGenerating 
-                      ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-75" 
-                      : "bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 shadow-[0_0_20px_rgba(6,182,212,0.35)]"
-                  }`}
+                  className="px-5 py-2.5 rounded-xl text-white dark:text-black text-xs font-bold shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer relative overflow-hidden group/btn bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 shadow-[0_0_20px_rgba(6,182,212,0.35)]"
                 >
-                  <span>Generate Blog</span>
+                  <span>Generate in Background</span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
                 </button>
               </div>
             </form>
           ) : (
-            /* Loading State */
-            <div className="relative z-10 py-6 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="relative w-12 h-12 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20 dark:border-cyan-400/20" />
-                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-500 dark:border-t-cyan-400 animate-spin" />
-                <div className="absolute -inset-1 rounded-full bg-cyan-500/10 dark:bg-cyan-400/20 blur-sm animate-pulse" />
-                <Sparkles className="w-5 h-5 text-cyan-500 dark:text-cyan-400 animate-pulse" />
+            /* Generating / Active Pipeline State in Modal */
+            <div className="relative z-10 py-5 space-y-4">
+              <div className="flex flex-col items-center justify-center text-center space-y-3">
+                <div className="relative w-12 h-12 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20 dark:border-cyan-400/20" />
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-500 dark:border-t-cyan-400 animate-spin" />
+                  <div className="absolute -inset-1 rounded-full bg-cyan-500/10 dark:bg-cyan-400/20 blur-sm animate-pulse" />
+                  <Sparkles className="w-5 h-5 text-cyan-500 dark:text-cyan-400 animate-pulse" />
+                </div>
+
+                <div className="space-y-1">
+                  <h4 className="text-sm font-serif font-bold italic text-black dark:text-neutral-100">
+                    Background Pipeline Active
+                  </h4>
+                  <p className="text-[11px] text-gray-500 dark:text-neutral-400 font-mono">
+                    {runningJob ? runningJob.currentStepMessage : PIPELINE_STEPS[loadingStepIdx]}
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <h4 className="text-sm font-serif font-bold italic text-black dark:text-neutral-100">
-                  Generating Review
-                </h4>
-                <p className="text-[11px] text-gray-500 dark:text-neutral-400 font-mono">
-                  {LOADING_STEPS[loadingStepIdx]}
+              {/* Progress Indicator */}
+              <div className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-full h-2 overflow-hidden relative">
+                <div 
+                  className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-300"
+                  style={{ width: `${runningJob ? runningJob.progressPercent : Math.round(((loadingStepIdx + 1) / PIPELINE_STEPS.length) * 100)}%` }}
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-neutral-100 dark:border-neutral-800">
+                <p className="text-[10px] text-neutral-400 font-mono">
+                  You can dismiss this window anytime.
                 </p>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-3 py-1.5 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black rounded-lg text-xs font-bold transition-all hover:bg-neutral-800 dark:hover:bg-neutral-200 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  <span>Dismiss &amp; Navigate</span>
+                </button>
               </div>
             </div>
           )}
@@ -341,4 +380,5 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({ onClose, onBlogG
     </div>
   );
 };
+
 
