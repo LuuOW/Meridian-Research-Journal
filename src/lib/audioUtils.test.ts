@@ -47,7 +47,7 @@ test("estimateSpeechDuration handles boundary conditions and non-positive speed 
 });
 
 test("getSentences ignores single-character noise and empty strings", () => {
-  assert.deepStrictEqual(getSentences(""), [""]);
+  assert.deepStrictEqual(getSentences(""), []);
   const sentences = getSentences("Hello world. a. b. Good day.");
   assert.strictEqual(sentences.length, 2);
   assert.strictEqual(sentences[0], "Hello world.");

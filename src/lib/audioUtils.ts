@@ -31,11 +31,12 @@ export const getSpeechScript = (content: string, title: string): string => {
 };
 
 export const getSentences = (text: string): string[] => {
+  if (!text || !text.trim()) return [];
   const matches = text.match(/[^.!?\n]+[.!?\n]*/g);
-  if (!matches) return [text];
+  if (!matches) return [];
   return matches
     .map((s) => s.trim())
-    .filter((s) => s.length > 1);
+    .filter((s) => s.replace(/[.!?\s]/g, "").length > 1);
 };
 
 export const formatAudioTime = (seconds: number): string => {

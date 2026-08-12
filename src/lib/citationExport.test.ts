@@ -103,11 +103,11 @@ test("Citation functions handle posts without arxivLink and fallback slug to id"
 
   const bib = generateBibTeX(postNoLink);
   assert.ok(bib.includes("@article{custom-id-99,"), "BibTeX key should fall back to ID if slug is empty");
-  assert.ok(bib.includes("url       = {https://meridian-journal.org}"), "BibTeX url should fall back to journal URL if arxivLink is empty");
+  assert.ok(bib.includes("url       = {https://meridian-journal.org/post/custom-id-99}"), "BibTeX url should fall back to journal post URL if arxivLink is empty");
 
   const apa = generateAPA(postNoLink);
-  assert.ok(apa.endsWith("https://meridian-journal.org"), "APA should end with default journal link when no arxivLink is present");
+  assert.ok(apa.endsWith("https://meridian-journal.org/post/custom-id-99"), "APA should end with default journal post link when no arxivLink is present");
 
   const ris = generateRIS(postNoLink);
-  assert.ok(ris.includes("UR  - https://meridian-journal.org"));
+  assert.ok(ris.includes("UR  - https://meridian-journal.org/post/custom-id-99"));
 });
