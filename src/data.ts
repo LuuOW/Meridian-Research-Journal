@@ -1,4 +1,5 @@
 import { BlogPost } from "./types";
+import { ensureAnimatedSvg } from "./lib/svgUtils";
 
 const RAW_PRELOADED_BLOGS: BlogPost[] = [
   {
@@ -548,6 +549,7 @@ export const PRELOADED_BLOGS: BlogPost[] = RAW_PRELOADED_BLOGS.map((blog, index)
   }
   return {
     ...blog,
+    bannerSvg: ensureAnimatedSvg(blog.bannerSvg),
     date: formatDate(d)
   };
 });

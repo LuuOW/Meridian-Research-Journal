@@ -3,6 +3,7 @@ import { BlogPost } from "../types";
 import { BookOpen, Calendar, Clock } from "lucide-react";
 import { ViewCounter } from "./ViewCounter";
 import { RayTracedCard } from "./RayTracedCard";
+import { ensureAnimatedSvg } from "../lib/svgUtils";
 
 interface BlogPostCardProps {
   blog: BlogPost;
@@ -28,7 +29,7 @@ export const BlogPostCard: React.FC<BlogPostCardProps & { onClick: () => void }>
         <div className="relative aspect-[16/9] overflow-hidden bg-[#0a1128] flex-shrink-0">
           <div 
             className="w-full h-full transform group-hover:scale-[1.03] transition-transform duration-500 pointer-events-none"
-            dangerouslySetInnerHTML={{ __html: blog.bannerSvg }}
+            dangerouslySetInnerHTML={{ __html: ensureAnimatedSvg(blog.bannerSvg) }}
           />
           {/* Soft overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />

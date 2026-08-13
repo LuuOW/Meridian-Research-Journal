@@ -11,6 +11,7 @@ import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
 import { PipelineStatusWidget } from "./components/PipelineStatusWidget";
 import { createGenerationJob, advanceJobStep, completeJob, failJob } from "./lib/pipelineUtils";
+import { ensureAnimatedSvg, prepareSvgForPngExport } from "./lib/svgUtils";
 
 import { ViewCounter } from "./components/ViewCounter";
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
@@ -195,7 +196,7 @@ export default function App() {
   const handleDownloadPng = (blog: BlogPost) => {
     if (!blog?.bannerSvg) return;
     
-    let svgString = blog.bannerSvg;
+    let svgString = prepareSvgForPngExport(blog.bannerSvg, 1200, 675);
     
     // Parse and sanitize the SVG using a forgiving HTML DOMParser to ensure 100% standard compliance and fix any malformed XML automatically
     try {
@@ -1283,7 +1284,7 @@ export default function App() {
                         <div className="p-2 relative group">
                           <div 
                             className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none"
-                            dangerouslySetInnerHTML={{ __html: activeBlog.bannerSvg }}
+                            dangerouslySetInnerHTML={{ __html: ensureAnimatedSvg(activeBlog.bannerSvg) }}
                           />
                           {isEditorMode && (
                             <button
@@ -1300,10 +1301,23 @@ export default function App() {
                       
                       <div className="flex flex-col gap-2.5 w-full max-w-[440px]">
                         <div className="flex items-center justify-center gap-2 w-full">
+                          {/* PNG is the preset default download format */}
+                          <button
+                            onClick={() => handleDownloadPng(activeBlog)}
+                            title="Download banner as PNG image (Default format)"
+                            className="flex-[1.5] flex items-center justify-center gap-2 px-4 py-2.5 bg-black dark:bg-white text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-100 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ring-2 ring-cyan-500/30"
+                          >
+                            <Download className="w-4 h-4 text-cyan-400 dark:text-cyan-600" />
+                            <span>Download PNG</span>
+                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 bg-cyan-500/20 text-cyan-300 dark:text-cyan-700 rounded-md font-mono font-bold">Default</span>
+                          </button>
+
+                          {/* Secondary SVG download format */}
                           <button
                             onClick={() => {
                               if (!activeBlog?.bannerSvg) return;
-                              const blob = new Blob([activeBlog.bannerSvg], { type: "image/svg+xml" });
+                              const animatedSvg = ensureAnimatedSvg(activeBlog.bannerSvg);
+                              const blob = new Blob([animatedSvg], { type: "image/svg+xml" });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = url;
@@ -1313,20 +1327,11 @@ export default function App() {
                               document.body.removeChild(a);
                               URL.revokeObjectURL(url);
                             }}
-                            title="Download banner as SVG"
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60 dark:border-neutral-700/60"
+                            title="Download banner as vector SVG"
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 hover:text-black dark:hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-200/60 dark:border-neutral-700/60"
                           >
                             <Download className="w-3.5 h-3.5" />
-                            SVG
-                          </button>
-                          
-                          <button
-                            onClick={() => handleDownloadPng(activeBlog)}
-                            title="Download banner as PNG"
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3.5 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            PNG
+                            <span>SVG</span>
                           </button>
 
                           <button

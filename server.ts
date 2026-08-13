@@ -669,7 +669,8 @@ This means the article should be:
 - Accessible but mathematically mature.
 - Broken down into structured sections: "Introduction", "Key Concepts & Physics", "The Theoretical/Mathematical Formulation", "Architecture or Methodology", "Key Results & Findings", and "Scientific or Practical Implications".
 - It MUST include a minimum of 3 detailed mathematical formulas formatted in standard LaTeX. Use "$formula$" for inline math and "$$formula$$" for block equations. Make sure the math is beautiful, highly relevant to the paper, and nicely spaced.
-- Generate a beautiful, custom, fully scalable inline SVG vector code string for the "bannerSvg". The SVG should represent the paper's core scientific concept in an abstract, modern, and aesthetically elite way (e.g., neural nodes, quantum wave tunnels, lattice grids, vector fields, molecules). 
+- Generate a beautiful, custom, fully scalable, dynamically animated inline SVG vector code string for the "bannerSvg". The SVG should represent the paper's core scientific concept in an abstract, modern, and aesthetically elite way (e.g., neural nodes, quantum wave tunnels, lattice grids, vector fields, molecules). 
+  - MUST include embedded CSS <style> animation keyframes (@keyframes) or SVG animation tags for flowing waveforms (stroke-dashoffset animation), pulsing/glowing quantum nodes, floating particles, or rotating geometric core structures so the vector graphic dynamically moves and animates continuously.
   - Use a dark canvas theme: dark navy background (#0a1128 or #080f1e).
   - Use glowing neon accents: electric cyan (#00f2fe), hot pink (#ff007f), purple (#8b5cf6), or emerald (#38ef7d).
   - It must be self-contained, responsive (viewBox="0 0 800 400"), have no external font dependencies, and look completely professional (not basic or cluttered).`;
