@@ -1,5 +1,83 @@
 import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { X, Lock, Eye, EyeOff, AlertCircle, Sparkles, Loader2, Fingerprint, ExternalLink, Key, Shield, Laptop } from "lucide-react";
+import {
+  calculateNormalizedCursor,
+  computeRayTracedLightState,
+  getDefaultLightState
+} from "../lib/rayTracingUtils";
+
+const STAR_PARTICLES = Array.from({ length: 16 }).map((_, i) => {
+  const angle = (i * 360) / 16;
+  const rad = (angle * Math.PI) / 180;
+  const distance = 90 + (i % 3) * 35;
+  return {
+    id: i,
+    x: Math.cos(rad) * distance,
+    y: Math.sin(rad) * distance,
+    size: 3 + (i % 4) * 2.5,
+    color: i % 4 === 0 ? "#06b6d4" : i % 4 === 1 ? "#a855f7" : i % 4 === 2 ? "#38bdf8" : "#ffffff",
+    delay: (i % 4) * 0.02,
+  };
+});
+
+const StarExplosionBurst: React.FC = () => (
+  <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center overflow-visible">
+    {/* Blinding White-Cyan Flash Orb */}
+    <motion.div
+      initial={{ scale: 0.1, opacity: 0 }}
+      animate={{
+        scale: [0.1, 3.2, 4.5],
+        opacity: [0, 1, 0],
+        filter: ["brightness(1) blur(0px)", "brightness(3) blur(4px)", "brightness(6) blur(16px)"],
+      }}
+      transition={{ duration: 0.65, ease: "easeOut" }}
+      className="absolute w-32 h-32 rounded-full bg-gradient-to-r from-white via-cyan-300 to-purple-400 shadow-[0_0_80px_35px_rgba(255,255,255,0.95)]"
+    />
+
+    {/* Primary 4-Point Lens Flare Beams */}
+    <motion.div
+      initial={{ scale: 0.2, rotate: 0, opacity: 0 }}
+      animate={{ scale: [0.2, 4.2], rotate: [0, 90], opacity: [0, 1, 0] }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="absolute w-48 h-1 bg-gradient-to-r from-transparent via-white to-transparent shadow-[0_0_25px_#06b6d4]"
+    />
+    <motion.div
+      initial={{ scale: 0.2, rotate: 90, opacity: 0 }}
+      animate={{ scale: [0.2, 4.2], rotate: [90, 180], opacity: [0, 1, 0] }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="absolute w-48 h-1 bg-gradient-to-r from-transparent via-white to-transparent shadow-[0_0_25px_#a855f7]"
+    />
+    <motion.div
+      initial={{ scale: 0.1, rotate: 45, opacity: 0 }}
+      animate={{ scale: [0.1, 3.5], rotate: [45, 135], opacity: [0, 0.8, 0] }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="absolute w-40 h-0.5 bg-gradient-to-r from-transparent via-cyan-200 to-transparent"
+    />
+
+    {/* Radial Stardust Particles */}
+    {STAR_PARTICLES.map((pt) => (
+      <motion.div
+        key={pt.id}
+        initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
+        animate={{
+          x: pt.x,
+          y: pt.y,
+          scale: [0, 2.5, 0],
+          opacity: [1, 1, 0],
+        }}
+        transition={{ duration: 0.65, delay: pt.delay, ease: "easeOut" }}
+        className="absolute rounded-full shadow-[0_0_14px_currentcolor]"
+        style={{
+          width: `${pt.size}px`,
+          height: `${pt.size}px`,
+          backgroundColor: pt.color,
+          color: pt.color,
+        }}
+      />
+    ))}
+  </div>
+);
 
 function stringToUint8Array(str: string): Uint8Array {
   try {
@@ -49,16 +127,37 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [isHovered, setIsHovered] = useState(false);
+  const [lightState, setLightState] = useState(getDefaultLightState());
+  const [showSuccessExplosion, setShowSuccessExplosion] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const { normX, normY } = calculateNormalizedCursor(e.clientX, e.clientY, rect);
+    const computed = computeRayTracedLightState(normX, normY, 5, 20);
+    setLightState(computed);
+  };
+
+  const handleMouseEnter = () => setIsHovered(true);
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setLightState(getDefaultLightState());
+  };
+
   // Reset state on open/close
   useEffect(() => {
     if (isOpen) {
       setActiveTab("passkey");
       setRegisterPassword("");
+      setShowSuccessExplosion(false);
       checkPasskeys();
     } else {
       stopPolling();
       setPortalToken(null);
       setRegisterPassword("");
+      setShowSuccessExplosion(false);
     }
     return () => stopPolling();
   }, [isOpen]);
@@ -80,6 +179,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
           if (data.authorized && data.password) {
             stopPolling();
             setPasskeyStatus("success");
+            setShowSuccessExplosion(true);
             setTimeout(() => {
               onConfirm(data.password);
             }, 1000);
@@ -167,6 +267,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
     if (assertion) {
       // For this demo context, if the browser successfully collects the credential, we authorize Editor Mode
       setPasskeyStatus("success");
+      setShowSuccessExplosion(true);
       setTimeout(() => {
         onConfirm("meridian");
       }, 1000);
@@ -224,7 +325,10 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
           const matchedPassword = password.trim();
           setPassword("");
           setErrorMsg(null);
-          onConfirm(matchedPassword);
+          setShowSuccessExplosion(true);
+          setTimeout(() => {
+            onConfirm(matchedPassword);
+          }, 600);
         } else {
           setErrorMsg("Incorrect editor password. Access denied.");
         }
@@ -244,14 +348,69 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-neutral-950/50 backdrop-blur-md transition-opacity duration-300"
+        className="fixed inset-0 bg-neutral-950/70 backdrop-blur-md transition-opacity duration-300"
         onClick={onClose}
       />
 
-      {/* Modal Card */}
-      <div className="bg-white dark:bg-zinc-900 border border-neutral-200/80 dark:border-neutral-800 rounded-[32px] w-full max-w-md shadow-2xl relative z-10 overflow-hidden transform transition-all duration-300 scale-100 flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
+      <AnimatePresence>
+        {showSuccessExplosion && <StarExplosionBurst />}
+      </AnimatePresence>
+
+      {/* Modal Card with Interactive Ray-Tracing & 3D Tilt */}
+      <div
+        ref={cardRef}
+        onMouseMove={handleMouseMove}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className="relative group p-[2px] rounded-[34px] overflow-hidden transition-transform duration-200 ease-out w-full max-w-md z-10"
+        style={{
+          transform: isHovered
+            ? `perspective(1000px) rotateX(${lightState.tiltX}deg) rotateY(${lightState.tiltY}deg) translateZ(8px)`
+            : "perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)",
+          boxShadow: isHovered
+            ? `${lightState.shadowX}px ${lightState.shadowY}px 45px -5px rgba(6, 182, 212, 0.5), 0 0 50px 10px rgba(168, 85, 247, 0.3)`
+            : `${lightState.shadowX * 0.5}px ${lightState.shadowY * 0.5}px 30px -5px rgba(6, 182, 212, 0.25)`
+        }}
+      >
+        {/* Dynamic Ray Traced Conic Neon Light Ring */}
+        <div
+          className="absolute -inset-[150%] animate-[spin_8s_linear_infinite] opacity-80 blur-xl group-hover:opacity-100 transition-opacity"
+          style={{
+            background: `conic-gradient(from ${lightState.angle}deg, #06b6d4, #6366f1, #a855f7, #ec4899, #06b6d4)`
+          }}
+        />
+
+        {/* Dynamic Neon Refraction Border */}
+        <div
+          className="absolute -inset-[150%] animate-[spin_8s_linear_infinite] opacity-95"
+          style={{
+            background: `conic-gradient(from ${lightState.angle}deg, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #06b6d4)`
+          }}
+        />
+
+        {/* Inner Card Panel */}
+        <div className="relative bg-white dark:bg-neutral-950/95 border border-neutral-200/80 dark:border-neutral-800/90 rounded-[32px] w-full shadow-2xl relative overflow-hidden flex flex-col">
+          {/* Specular Highlight Overlay */}
+          <div
+            className="absolute inset-0 pointer-events-none transition-opacity duration-300 opacity-40 group-hover:opacity-75 z-10"
+            style={{
+              background: `radial-gradient(circle 320px at ${lightState.lightX}% ${lightState.lightY}%, rgba(255, 255, 255, 0.3), rgba(6, 182, 212, 0.12) 45%, transparent 75%)`
+            }}
+          />
+
+          {/* Optical Ray Angle Sheen Sweep */}
+          <div
+            className="absolute inset-0 pointer-events-none transition-opacity duration-300 opacity-20 group-hover:opacity-40 z-10"
+            style={{
+              background: `linear-gradient(${lightState.angle}deg, transparent 40%, rgba(255, 255, 255, 0.35) 50%, transparent 60%)`
+            }}
+          />
+
+          {/* Top Shimmer Accent Line */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 bg-[length:200%_200%] animate-[shimmer_3s_linear_infinite] z-20" />
+
+          {/* Header */}
+          <div className="relative z-20 p-6 border-b border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/40">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400 border border-cyan-100 dark:border-cyan-900/30">
               <Fingerprint className="w-5 h-5" />
@@ -271,7 +430,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         </div>
 
         {/* Tab Headers */}
-        <div className="flex border-b border-neutral-100 dark:border-neutral-800/50 px-6 pt-2 bg-neutral-50/20 dark:bg-neutral-950/10">
+        <div className="relative z-20 flex border-b border-neutral-100 dark:border-neutral-800/50 px-6 pt-2 bg-neutral-50/20 dark:bg-neutral-950/10">
           <button
             onClick={() => {
               setActiveTab("passkey");
@@ -303,7 +462,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6">
+        <div className="relative z-20 p-6">
           {activeTab === "passkey" ? (
             <div className="space-y-5">
               {passkeyStatus === "checking" && (
@@ -479,5 +638,6 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };

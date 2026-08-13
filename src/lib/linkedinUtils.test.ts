@@ -6,7 +6,10 @@ import {
   sanitizeHashtags,
   generateFallbackLinkedInPost,
   countSentences,
-  isWithinSentenceLimit
+  isWithinSentenceLimit,
+  getLinkedInPostCache,
+  saveLinkedInPostCache,
+  clearLinkedInPostCache
 } from "./linkedinUtils";
 
 test("countSentences accurately measures sentence count excluding URLs and hashtags", () => {
@@ -17,28 +20,28 @@ test("countSentences accurately measures sentence count excluding URLs and hasht
   assert.strictEqual(countSentences(null as unknown as string), 0);
 });
 
-test("isWithinSentenceLimit confirms post text is <= 5 sentences", () => {
-  const shortPost = "First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence.";
-  const longPost = "First. Second. Third. Fourth. Fifth. Sixth sentence exceeds limit.";
+test("isWithinSentenceLimit confirms post text is <= 3 sentences", () => {
+  const shortPost = "First sentence. Second sentence. Third sentence.";
+  const longPost = "First. Second. Third. Fourth sentence exceeds limit.";
 
-  assert.strictEqual(isWithinSentenceLimit(shortPost, 5), true);
-  assert.strictEqual(isWithinSentenceLimit(longPost, 5), false);
+  assert.strictEqual(isWithinSentenceLimit(shortPost, 3), true);
+  assert.strictEqual(isWithinSentenceLimit(longPost, 3), false);
 });
 
-test("buildLinkedInSystemInstruction incorporates blog URL, tone rules, and 5-sentence constraint", () => {
+test("buildLinkedInSystemInstruction incorporates blog URL, tone rules, and 3-sentence constraint", () => {
   const blogUrl = "https://meridian-research.org/blog/photonic-crystal-123";
   const instruction = buildLinkedInSystemInstruction(blogUrl);
 
   assert.ok(instruction.includes("Ask Meridian"), "Instruction should mention Ask Meridian");
   assert.ok(instruction.includes(blogUrl), "Instruction should embed target blog URL");
-  assert.ok(instruction.includes("5 SENTENCES"), "Instruction should explicitly enforce 5 sentences limit");
+  assert.ok(instruction.includes("3 SENTENCES"), "Instruction should explicitly enforce 3 sentences limit");
   assert.ok(instruction.includes("technical"), "Instruction should outline technical tone");
   assert.ok(instruction.includes("executive"), "Instruction should outline executive tone");
   assert.ok(instruction.includes("future"), "Instruction should outline future vision tone");
   assert.ok(instruction.includes("punchy"), "Instruction should outline punchy tone");
 });
 
-test("generateFallbackLinkedInPost produces post text strictly <= 5 sentences", () => {
+test("generateFallbackLinkedInPost produces post text strictly <= 3 sentences", () => {
   const fallback = generateFallbackLinkedInPost({
     title: "High Precision Quantum Sensing",
     excerpt: "Measuring weak magnetic fields using nitrogen-vacancy centers in diamond.",
@@ -46,22 +49,22 @@ test("generateFallbackLinkedInPost produces post text strictly <= 5 sentences", 
   });
 
   assert.strictEqual(fallback.success, true);
-  assert.ok(isWithinSentenceLimit(fallback.postText, 5), "Fallback post text must be 5 sentences or fewer");
+  assert.ok(isWithinSentenceLimit(fallback.postText, 3), "Fallback post text must be 3 sentences or fewer");
 });
 
-test("buildLinkedInUserPrompt includes 5-sentence strict requirement prompt constraint", () => {
+test("buildLinkedInUserPrompt includes 3-sentence strict requirement prompt constraint", () => {
   const prompt = buildLinkedInUserPrompt({
     title: "Quantum Metasurface Nanophotonics",
     excerpt: "Breakthrough inverse design method for optical switches.",
     content: "Content snippet here...",
     tags: ["Quantum", "Optics"],
-    tone: "executive",
+    tone: "future",
     customPrompt: "Emphasize high bandwidth metrics"
   });
 
   assert.ok(prompt.includes("Article Title: \"Quantum Metasurface Nanophotonics\""));
-  assert.ok(prompt.includes("STRICT REQUIREMENT: The LinkedIn companion post MUST be no longer than 5 sentences in length."));
-  assert.ok(prompt.includes("Target Tone: executive"));
+  assert.ok(prompt.includes("STRICT REQUIREMENT: The LinkedIn companion post MUST be exactly 3 sentences in length."));
+  assert.ok(prompt.includes("Target Tone: future"));
 });
 
 test("sanitizeHashtags ensures proper formatting and leading hash symbol", () => {
@@ -82,8 +85,35 @@ test("buildLinkedInUserPrompt handles missing optional parameters with sensible 
 
   assert.ok(prompt.includes("Article Title: \"Minimal Title Article\""));
   assert.ok(prompt.includes("Article Summary: \"\""));
-  assert.ok(prompt.includes("Target Tone: technical"));
+  assert.ok(prompt.includes("Target Tone: future"));
   assert.ok(!prompt.includes("Special User Instruction:"));
+});
+
+test("saveLinkedInPostCache and getLinkedInPostCache persist posts and survive reloads", () => {
+  const articleKey = "paper-quantum-2026";
+  const postData = {
+    draftText: "First sentence on breakthrough photonics. Second sentence on mathematical framework. Third sentence inviting readers.",
+    headline: "Quantum Optics Milestone"
+  };
+
+  // Clear any existing
+  clearLinkedInPostCache(articleKey);
+  assert.strictEqual(getLinkedInPostCache(articleKey), null);
+
+  // Save to cache
+  const saved = saveLinkedInPostCache(articleKey, postData);
+  assert.strictEqual(saved.draftText, postData.draftText);
+  assert.strictEqual(saved.headline, postData.headline);
+
+  // Retrieve from cache
+  const retrieved = getLinkedInPostCache(articleKey);
+  assert.notStrictEqual(retrieved, null);
+  assert.strictEqual(retrieved?.draftText, postData.draftText);
+  assert.strictEqual(retrieved?.headline, postData.headline);
+
+  // Clear cache
+  clearLinkedInPostCache(articleKey);
+  assert.strictEqual(getLinkedInPostCache(articleKey), null);
 });
 
 test("generateFallbackLinkedInPost truncates long titles appropriately", () => {

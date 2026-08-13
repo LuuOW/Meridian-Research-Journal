@@ -10,6 +10,7 @@ import { MathRenderer } from "./components/MathRenderer";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
 import { PipelineStatusWidget } from "./components/PipelineStatusWidget";
+import { RegenerateBannerWidget } from "./components/RegenerateBannerWidget";
 import { createGenerationJob, advanceJobStep, completeJob, failJob } from "./lib/pipelineUtils";
 import { ensureAnimatedSvg, prepareSvgForPngExport } from "./lib/svgUtils";
 
@@ -18,6 +19,7 @@ import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
+import { ActiveEditorModeBanner } from "./components/ActiveEditorModeBanner";
 import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
@@ -806,6 +808,17 @@ export default function App() {
         onToggleTheme={() => setTheme(prev => prev === "light" ? "dark" : "light")}
       />
 
+      {/* Ray-Traced Active Editor Mode Banner */}
+      {isEditorMode && (
+        <ActiveEditorModeBanner
+          onOpenCreate={() => setIsCreateOpen(true)}
+          onToggleEditorMode={handleToggleEditorMode}
+          activeBlogTitle={activeBlog?.title}
+          onRegenerateBanner={activeBlog ? () => handleRegenerateBanner(activeBlog) : undefined}
+          isRegeneratingBanner={activeBlog ? isRegeneratingBanner === activeBlog.id : false}
+        />
+      )}
+
       {/* Dynamic Scroll Progress Indicator for active blog reading */}
       {activeBlog && (
         <div className="fixed top-20 left-0 w-full h-[3.5px] bg-neutral-100/70 dark:bg-neutral-900/50 z-50 pointer-events-none shadow-sm">
@@ -1286,16 +1299,6 @@ export default function App() {
                             className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none"
                             dangerouslySetInnerHTML={{ __html: ensureAnimatedSvg(activeBlog.bannerSvg) }}
                           />
-                          {isEditorMode && (
-                            <button
-                              onClick={() => handleRegenerateBanner(activeBlog)}
-                              disabled={isRegeneratingBanner === activeBlog.id}
-                              className="absolute top-4 right-4 px-3 py-1.5 bg-neutral-900/90 hover:bg-black text-white text-[11px] font-bold rounded-xl shadow-lg border border-neutral-700/80 backdrop-blur-md flex items-center gap-1.5 transition-all opacity-90 group-hover:opacity-100 cursor-pointer disabled:opacity-50"
-                            >
-                              <Sparkles className={`w-3.5 h-3.5 text-cyan-400 ${isRegeneratingBanner === activeBlog.id ? "animate-spin" : ""}`} />
-                              {isRegeneratingBanner === activeBlog.id ? "Regenerating..." : "Regenerate Banner"}
-                            </button>
-                          )}
                         </div>
                       </RayTracedCard>
                       
@@ -1345,15 +1348,12 @@ export default function App() {
                           </button>
                         </div>
 
+                        {/* Editor Mode: Single Pipeline Status Regenerate Banner Control */}
                         {isEditorMode && (
-                          <button
-                            onClick={() => handleRegenerateBanner(activeBlog)}
-                            disabled={isRegeneratingBanner === activeBlog.id}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:via-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer border border-cyan-400/30 disabled:opacity-50"
-                          >
-                            <Sparkles className={`w-4 h-4 text-cyan-200 ${isRegeneratingBanner === activeBlog.id ? "animate-spin" : ""}`} />
-                            {isRegeneratingBanner === activeBlog.id ? "AI Vector Engine Generating Banner..." : "Regenerate Article Banner (Editor)"}
-                          </button>
+                          <RegenerateBannerWidget
+                            onRegenerate={() => handleRegenerateBanner(activeBlog)}
+                            isGenerating={isRegeneratingBanner === activeBlog.id}
+                          />
                         )}
 
                         {bannerToastMsg && (
