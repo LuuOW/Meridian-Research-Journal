@@ -88,6 +88,68 @@ const writeCustomBlogs = (blogs: any[]) => {
   }
 };
 
+function generateProceduralBannerSvg(title: string, tags?: string): string {
+  const cleanTitle = (title || "Scientific Publication").replace(/["'<>]/g, "").slice(0, 60);
+  const tagText = tags ? tags.split(",")[0].trim() : "PHYSICS & QUANTUM";
+  
+  return `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:#0a1128">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050b1e" />
+      <stop offset="50%" stop-color="#0a1128" />
+      <stop offset="100%" stop-color="#141c3a" />
+    </linearGradient>
+    <linearGradient id="cyanPurple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="50%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.8" />
+      <stop offset="60%" stop-color="#a855f7" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#050b1e" stop-opacity="0" />
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark Navy Space Canvas -->
+  <rect width="800" height="400" fill="url(#bgGrad)" />
+
+  <!-- Quantum Lattice Grid -->
+  <path d="M0,50 H800 M0,100 H800 M0,150 H800 M0,200 H800 M0,250 H800 M0,300 H800 M0,350 H800" stroke="#1e293b" stroke-width="0.5" stroke-opacity="0.4" />
+  <path d="M100,0 V400 M200,0 V400 M300,0 V400 M400,0 V400 M500,0 V400 M600,0 V400 M700,0 V400" stroke="#1e293b" stroke-width="0.5" stroke-opacity="0.4" />
+
+  <!-- Abstract Optical Interference Waveform -->
+  <path d="M 50,220 Q 200,100 350,220 T 650,220 T 750,220" fill="none" stroke="url(#cyanPurple)" stroke-width="3" filter="url(#glow)" />
+  <path d="M 50,200 Q 200,300 350,200 T 650,200 T 750,200" fill="none" stroke="#06b6d4" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="6,6" />
+
+  <!-- Geometric Optical Nodes -->
+  <circle cx="200" cy="160" r="45" fill="url(#nodeGlow)" />
+  <circle cx="200" cy="160" r="8" fill="#ffffff" filter="url(#glow)" />
+  <circle cx="500" cy="240" r="60" fill="url(#nodeGlow)" />
+  <circle cx="500" cy="240" r="10" fill="#a855f7" filter="url(#glow)" />
+
+  <!-- Connecting Tensor Mesh Lines -->
+  <line x1="200" y1="160" x2="500" y2="240" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.5" stroke-dasharray="4,4" />
+  <line x1="200" y1="160" x2="350" y2="80" stroke="#a855f7" stroke-width="1" stroke-opacity="0.5" />
+  <circle cx="350" cy="80" r="5" fill="#38bdf8" />
+
+  <!-- Top Tag Pill -->
+  <rect x="50" y="45" width="160" height="24" rx="12" fill="#06b6d4" fill-opacity="0.15" stroke="#06b6d4" stroke-opacity="0.4" />
+  <text x="130" y="61" text-anchor="middle" fill="#38bdf8" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1.5">${tagText.toUpperCase()}</text>
+
+  <!-- Title Accent Overlay -->
+  <text x="50" y="340" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="800" letter-spacing="-0.5">${cleanTitle}</text>
+  <text x="50" y="365" fill="#64748b" font-family="monospace" font-size="11" letter-spacing="1">MERIDIAN RESEARCH PUBLICATION // QUANTUM INFORMATICS</text>
+</svg>`;
+}
+
 const DISPATCHED_EMAILS_FILE = path.join(process.cwd(), "dispatched_emails.json");
 const SMTP_CONFIG_FILE = path.join(process.cwd(), "smtp_config.json");
 
@@ -689,11 +751,10 @@ Requirements:
 2. The response must be valid JSON according to the schema provided. Make sure the 'content' field contains rich, deeply written Markdown text with multiple sections, technical explanations, and the required LaTeX equations.`;
 
     const modelsToTry = [
-      "gemini-2.5-flash",
-      "gemini-3.5-flash",
-      "gemini-3.1-pro-preview",
+      "gemini-3.7-flash",
       "gemini-flash-latest",
-      "gemini-3.1-flash-lite"
+      "gemini-3.1-flash-lite",
+      "gemini-3.1-pro-preview"
     ];
 
     let response = null;
@@ -861,11 +922,10 @@ Context Snippet: ${(content || "").slice(0, 500)}
 Output strictly valid SVG XML starting with <svg> and ending with </svg>.`;
 
     const modelsToTry = [
-      "gemini-2.5-flash",
-      "gemini-3.5-flash",
-      "gemini-3.1-pro-preview",
+      "gemini-3.7-flash",
       "gemini-flash-latest",
-      "gemini-3.1-flash-lite"
+      "gemini-3.1-flash-lite",
+      "gemini-3.1-pro-preview"
     ];
 
     let rawSvgResult = "";
@@ -921,9 +981,10 @@ Output strictly valid SVG XML starting with <svg> and ending with </svg>.`;
       }
     }
 
-    const cleanSvg = extractSvgString(rawSvgResult);
+    let cleanSvg = extractSvgString(rawSvgResult);
     if (!cleanSvg || !cleanSvg.includes("<svg")) {
-      throw lastError || new Error("Failed to generate a valid SVG banner string.");
+      console.warn("AI models could not return raw SVG string. Using procedural banner generator fallback.");
+      cleanSvg = generateProceduralBannerSvg(title, tagList);
     }
 
     // Persist updated blog with new banner SVG in custom_blogs.json & Firestore
@@ -996,26 +1057,42 @@ Generate a personalized, highly inspiring, and technical AI reasoning explanatio
 
 The response must be valid JSON according to the schema.`;
 
-    const modelResult = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            selectedIndex: { type: Type.INTEGER, description: "The index of the selected paper in the provided arXiv list (0-based)" },
-            reasoning: { type: Type.STRING, description: "A beautifully composed, technically mature 3-4 sentence explanation of why this paper is recommended, citing specific concepts from their past articles." }
-          },
-          required: ["selectedIndex", "reasoning"]
-        }
-      }
-    });
+    const modelsToTry = [
+      "gemini-3.7-flash",
+      "gemini-flash-latest",
+      "gemini-3.1-flash-lite",
+      "gemini-3.1-pro-preview"
+    ];
 
-    const resultText = modelResult.text;
+    let modelResult: any = null;
+    let lastErr: any = null;
+    for (const modelName of modelsToTry) {
+      try {
+        modelResult = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                selectedIndex: { type: Type.INTEGER, description: "The index of the selected paper in the provided arXiv list (0-based)" },
+                reasoning: { type: Type.STRING, description: "A beautifully composed, technically mature 3-4 sentence explanation of why this paper is recommended, citing specific concepts from their past articles." }
+              },
+              required: ["selectedIndex", "reasoning"]
+            }
+          }
+        });
+        if (modelResult && modelResult.text) break;
+      } catch (err: any) {
+        lastErr = err;
+      }
+    }
+
+    const resultText = modelResult?.text;
     if (!resultText) {
-      throw new Error("Empty response from prediction model");
+      throw lastErr || new Error("Empty response from prediction model");
     }
 
     const sanitizedText = cleanJsonText(resultText);
@@ -1176,48 +1253,64 @@ For each option, generate:
 
 Respond strictly with valid JSON conforming to the response schema.`;
 
-    const modelResult = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            optionA: {
-              type: Type.OBJECT,
-              properties: {
-                arxivId: { type: Type.STRING },
-                title: { type: Type.STRING },
-                excerpt: { type: Type.STRING },
-                tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                ragAlignment: { type: Type.STRING },
-                content: { type: Type.STRING }
-              },
-              required: ["arxivId", "title", "excerpt", "tags", "ragAlignment", "content"]
-            },
-            optionB: {
-              type: Type.OBJECT,
-              properties: {
-                arxivId: { type: Type.STRING },
-                title: { type: Type.STRING },
-                excerpt: { type: Type.STRING },
-                tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                ragAlignment: { type: Type.STRING },
-                content: { type: Type.STRING }
-              },
-              required: ["arxivId", "title", "excerpt", "tags", "ragAlignment", "content"]
-            }
-          },
-          required: ["optionA", "optionB"]
-        }
-      }
-    });
+    const modelsToTry = [
+      "gemini-3.7-flash",
+      "gemini-flash-latest",
+      "gemini-3.1-flash-lite",
+      "gemini-3.1-pro-preview"
+    ];
 
-    const resultText = modelResult.text;
+    let modelResult: any = null;
+    let lastErr: any = null;
+    for (const modelName of modelsToTry) {
+      try {
+        modelResult = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                optionA: {
+                  type: Type.OBJECT,
+                  properties: {
+                    arxivId: { type: Type.STRING },
+                    title: { type: Type.STRING },
+                    excerpt: { type: Type.STRING },
+                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    ragAlignment: { type: Type.STRING },
+                    content: { type: Type.STRING }
+                  },
+                  required: ["arxivId", "title", "excerpt", "tags", "ragAlignment", "content"]
+                },
+                optionB: {
+                  type: Type.OBJECT,
+                  properties: {
+                    arxivId: { type: Type.STRING },
+                    title: { type: Type.STRING },
+                    excerpt: { type: Type.STRING },
+                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    ragAlignment: { type: Type.STRING },
+                    content: { type: Type.STRING }
+                  },
+                  required: ["arxivId", "title", "excerpt", "tags", "ragAlignment", "content"]
+                }
+              },
+              required: ["optionA", "optionB"]
+            }
+          }
+        });
+        if (modelResult && modelResult.text) break;
+      } catch (err: any) {
+        lastErr = err;
+      }
+    }
+
+    const resultText = modelResult?.text;
     if (!resultText) {
-      throw new Error("Empty response from prediction model");
+      throw lastErr || new Error("Empty response from prediction model");
     }
 
     const sanitizedText = cleanJsonText(resultText);
@@ -1558,10 +1651,10 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
     const promptText = buildLinkedInUserPrompt({ title, excerpt, content, tags, tone, customPrompt });
 
     const modelsToTry = [
-      "gemini-3.6-flash",
-      "gemini-3.5-flash",
-      "gemini-3.1-pro-preview",
-      "gemini-flash-latest"
+      "gemini-3.7-flash",
+      "gemini-flash-latest",
+      "gemini-3.1-flash-lite",
+      "gemini-3.1-pro-preview"
     ];
 
     let response = null;
