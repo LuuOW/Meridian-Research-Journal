@@ -15,6 +15,13 @@ import {
   sanitizeHashtags
 } from "./src/lib/linkedinUtils";
 import {
+  syncAllBlogsToGitHub,
+  testGitHubConnection,
+  getGitHubSyncConfig,
+  writeLocalBlogFiles,
+  generateDataTsContent
+} from "./src/lib/githubSync";
+import {
   PortalTokenData,
   validatePasskeyCredential,
   generatePortalToken,
@@ -293,17 +300,22 @@ const getBlogs = async (): Promise<any[]> => {
   }
 };
 
-// Save a single blog to local file and Firestore
-const saveBlog = async (blog: any) => {
-  // Save locally
-  const localBlogs = readCustomBlogs();
-  const isDuplicate = localBlogs.some((b: any) => b.id === blog.id);
-  if (!isDuplicate) {
-    localBlogs.push(blog);
-    writeCustomBlogs(localBlogs);
-  }
+let lastGitHubSyncTimestamp: number | null = null;
+let lastGitHubSyncStatus: any = null;
 
-  // Save to Firestore
+// Save a single blog to local files (custom_blogs.json + src/data.ts), Firestore, and GitHub mirror
+const saveBlog = async (blog: any, reason: string = "save blog") => {
+  // 1. Save locally & keep both custom_blogs.json and src/data.ts fully updated
+  const localBlogs = readCustomBlogs();
+  const existingIdx = localBlogs.findIndex((b: any) => b.id === blog.id);
+  if (existingIdx !== -1) {
+    localBlogs[existingIdx] = { ...localBlogs[existingIdx], ...blog };
+  } else {
+    localBlogs.unshift(blog); // Newer at the top
+  }
+  writeLocalBlogFiles(localBlogs);
+
+  // 2. Save to Firestore
   if (db && blog && blog.id) {
     try {
       await setDoc(doc(db, "blogs", blog.id), blog);
@@ -312,14 +324,27 @@ const saveBlog = async (blog: any) => {
       console.error("Error saving to Firestore:", error);
     }
   }
+
+  // 3. Mirror directly to GitHub repository in background
+  syncAllBlogsToGitHub(localBlogs, `${reason}: ${blog.title?.slice(0, 40) || blog.id}`)
+    .then((result) => {
+      lastGitHubSyncTimestamp = Date.now();
+      lastGitHubSyncStatus = result;
+      if (result.success) {
+        console.log(`[GitHub Mirror] Auto-sync complete for "${blog.title?.slice(0, 30)}":`, result.message);
+      }
+    })
+    .catch((err) => {
+      console.warn("[GitHub Mirror] Background auto-sync warning:", err);
+    });
 };
 
-// Save multiple blogs to local file and Firestore
-const saveBlogs = async (blogs: any[]) => {
-  // Save locally
-  writeCustomBlogs(blogs);
+// Save multiple blogs to local files, Firestore, and GitHub mirror
+const saveBlogs = async (blogs: any[], reason: string = "batch sync") => {
+  // 1. Save locally
+  writeLocalBlogFiles(blogs);
 
-  // Save to Firestore
+  // 2. Save to Firestore
   if (db) {
     try {
       console.log(`Syncing ${blogs.length} blogs to Firestore...`);
@@ -335,27 +360,51 @@ const saveBlogs = async (blogs: any[]) => {
       console.error("Error syncing to Firestore:", error);
     }
   }
+
+  // 3. Mirror directly to GitHub repository
+  syncAllBlogsToGitHub(blogs, reason)
+    .then((result) => {
+      lastGitHubSyncTimestamp = Date.now();
+      lastGitHubSyncStatus = result;
+      if (result.success) {
+        console.log(`[GitHub Mirror] Batch auto-sync complete for ${blogs.length} blogs:`, result.message);
+      }
+    })
+    .catch((err) => {
+      console.warn("[GitHub Mirror] Batch background sync warning:", err);
+    });
 };
 
-// Delete a blog from local file and Firestore
+// Delete a blog from local files, Firestore, and GitHub mirror
 const deleteBlog = async (id: string): Promise<boolean> => {
-  // Delete locally
+  // 1. Delete locally
   const localBlogs = readCustomBlogs();
   const filtered = localBlogs.filter((b: any) => b.id !== id);
-  writeCustomBlogs(filtered);
+  writeLocalBlogFiles(filtered);
 
-  // Delete from Firestore
+  // 2. Delete from Firestore
+  let firestoreSuccess = true;
   if (db) {
     try {
       await deleteDoc(doc(db, "blogs", id));
       console.log(`Blog ${id} successfully deleted from Firestore.`);
-      return true;
     } catch (error) {
       console.error("Error deleting from Firestore:", error);
-      return false;
+      firestoreSuccess = false;
     }
   }
-  return true;
+
+  // 3. Mirror deletion to GitHub repository
+  syncAllBlogsToGitHub(filtered, `delete article ${id}`)
+    .then((result) => {
+      lastGitHubSyncTimestamp = Date.now();
+      lastGitHubSyncStatus = result;
+    })
+    .catch((err) => {
+      console.warn("[GitHub Mirror] Delete sync warning:", err);
+    });
+
+  return firestoreSuccess;
 };
 
 // View counter state & persistent tracking
@@ -446,6 +495,81 @@ app.post("/api/verify-editor-password", (req, res) => {
     res.json({ success: true });
   } else {
     res.status(403).json({ error: "Incorrect password." });
+  }
+});
+
+// API: Get GitHub Mirror Status
+app.get("/api/github/status", async (req, res) => {
+  try {
+    const config = getGitHubSyncConfig();
+    const conn = await testGitHubConnection();
+    const allBlogs = await getBlogs();
+
+    res.json({
+      configured: config.configured,
+      connected: conn.connected,
+      repo: config.repo,
+      branch: config.branch,
+      authorName: config.authorName,
+      authorEmail: config.authorEmail,
+      user: conn.user || null,
+      message: conn.message,
+      totalArticles: allBlogs.length,
+      lastSyncTimestamp: lastGitHubSyncTimestamp,
+      lastSyncStatus: lastGitHubSyncStatus
+    });
+  } catch (err: any) {
+    console.error("Error checking GitHub status:", err);
+    res.status(500).json({ error: err.message || "Failed to check GitHub status" });
+  }
+});
+
+// API: Manually trigger instant GitHub sync
+app.post("/api/github/sync", async (req, res) => {
+  const { password, reason } = req.body || {};
+  const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+
+  if (password && password !== expectedPassword) {
+    return res.status(403).json({ error: "Unauthorized: Incorrect password." });
+  }
+
+  try {
+    const allBlogs = await getBlogs();
+    const result = await syncAllBlogsToGitHub(
+      allBlogs,
+      reason || "manual mirror sync via dashboard"
+    );
+
+    lastGitHubSyncTimestamp = Date.now();
+    lastGitHubSyncStatus = result;
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("Manual GitHub sync error:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message || "Failed to execute GitHub sync",
+      message: err.message
+    });
+  }
+});
+
+// API: Export complete repository bundle (JSON + TypeScript source)
+app.get("/api/export/repo-bundle", async (req, res) => {
+  try {
+    const allBlogs = await getBlogs();
+    const dataTs = generateDataTsContent(allBlogs);
+
+    res.json({
+      totalArticles: allBlogs.length,
+      timestamp: Date.now(),
+      customBlogsJson: allBlogs,
+      dataTsSource: dataTs,
+      instructions: "To update your local GitHub clone: save customBlogsJson into custom_blogs.json, or save dataTsSource into src/data.ts, and git commit."
+    });
+  } catch (err: any) {
+    console.error("Export bundle error:", err);
+    res.status(500).json({ error: "Failed to generate export bundle" });
   }
 });
 
@@ -995,7 +1119,7 @@ Output strictly valid SVG XML starting with <svg> and ending with </svg>.`;
     if (blogIdx !== -1) {
       localBlogs[blogIdx].bannerSvg = cleanSvg;
       updatedBlog = localBlogs[blogIdx];
-      writeCustomBlogs(localBlogs);
+      writeLocalBlogFiles(localBlogs);
 
       if (db && updatedBlog && updatedBlog.id) {
         try {
@@ -1005,6 +1129,10 @@ Output strictly valid SVG XML starting with <svg> and ending with </svg>.`;
           console.error("Error saving updated bannerSvg to Firestore:", dbErr);
         }
       }
+
+      // Background GitHub sync
+      syncAllBlogsToGitHub(localBlogs, `regenerate banner for "${updatedBlog.title?.slice(0, 30)}"`)
+        .catch((err) => console.warn("[GitHub Mirror] Banner regen sync warning:", err));
     }
 
     res.json({ success: true, bannerSvg: cleanSvg, blog: updatedBlog });

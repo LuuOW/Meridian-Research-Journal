@@ -20,6 +20,7 @@ import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { ActiveEditorModeBanner } from "./components/ActiveEditorModeBanner";
+import { GitHubSyncModal } from "./components/GitHubSyncModal";
 import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
@@ -47,6 +48,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
+  const [isGitHubSyncOpen, setIsGitHubSyncOpen] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>("");
@@ -806,6 +808,7 @@ export default function App() {
         onHome={() => setActiveBlog(null)}
         theme={theme}
         onToggleTheme={() => setTheme(prev => prev === "light" ? "dark" : "light")}
+        onOpenGitHubSync={() => setIsGitHubSyncOpen(true)}
       />
 
       {/* Ray-Traced Active Editor Mode Banner */}
@@ -816,6 +819,7 @@ export default function App() {
           activeBlogTitle={activeBlog?.title}
           onRegenerateBanner={activeBlog ? () => handleRegenerateBanner(activeBlog) : undefined}
           isRegeneratingBanner={activeBlog ? isRegeneratingBanner === activeBlog.id : false}
+          onOpenGitHubSync={() => setIsGitHubSyncOpen(true)}
         />
       )}
 
@@ -1481,6 +1485,12 @@ export default function App() {
         isOpen={isAboutOpen}
         onClose={() => setIsAboutOpen(false)}
         isEditorMode={isEditorMode}
+      />
+
+      {/* GITHUB REPOSITORY MIRROR MODAL */}
+      <GitHubSyncModal
+        isOpen={isGitHubSyncOpen}
+        onClose={() => setIsGitHubSyncOpen(false)}
       />
 
       {/* EDITOR PASSWORD MODAL */}

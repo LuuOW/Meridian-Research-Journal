@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Unlock, Sparkles, ShieldCheck, Clock, Layers, LogOut, ChevronRight, Zap } from "lucide-react";
+import { Unlock, Sparkles, ShieldCheck, Clock, Layers, LogOut, ChevronRight, Zap, GitBranch } from "lucide-react";
 import {
   calculateNormalizedCursor,
   computeRayTracedLightState,
@@ -13,6 +13,7 @@ interface ActiveEditorModeBannerProps {
   activeBlogTitle?: string;
   onRegenerateBanner?: () => void;
   isRegeneratingBanner?: boolean;
+  onOpenGitHubSync?: () => void;
 }
 
 const STAR_PARTICLES = Array.from({ length: 16 }).map((_, i) => {
@@ -93,6 +94,7 @@ export const ActiveEditorModeBanner: React.FC<ActiveEditorModeBannerProps> = ({
   activeBlogTitle,
   onRegenerateBanner,
   isRegeneratingBanner,
+  onOpenGitHubSync,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -274,6 +276,18 @@ export const ActiveEditorModeBanner: React.FC<ActiveEditorModeBannerProps> = ({
                   >
                     <Layers className={`w-3.5 h-3.5 text-cyan-400 ${isRegeneratingBanner ? "animate-spin" : ""}`} />
                     <span className="hidden lg:inline">{isRegeneratingBanner ? "Regenerating..." : "Regenerate Banner"}</span>
+                  </button>
+                )}
+
+                {/* Discrete GitHub Mirror Icon-only Button */}
+                {onOpenGitHubSync && (
+                  <button
+                    onClick={onOpenGitHubSync}
+                    className="p-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-cyan-400 border border-neutral-800 hover:border-neutral-700 rounded-xl text-xs transition-all flex items-center justify-center cursor-pointer active:scale-95 shrink-0"
+                    title="GitHub Repository Mirror Status & Sync"
+                    aria-label="GitHub Mirror Status"
+                  >
+                    <GitBranch className="w-4 h-4" />
                   </button>
                 )}
 
