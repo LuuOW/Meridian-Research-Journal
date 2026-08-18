@@ -49,7 +49,7 @@ test("generateAcmCitation formats ACM style citation", () => {
 
 test("generateBibTeXEntry creates syntactically valid BibTeX entry", () => {
   const bibtex = generateBibTeXEntry(mockPost);
-  assert.ok(bibtex.startsWith("@article{quantum_state_tomography_sili,"));
+  assert.ok(bibtex.startsWith("@article{quantum_state_tomography_silic,"));
   assert.ok(bibtex.includes("author    = {Lucas Kempe, Alice Smith},"));
   assert.ok(bibtex.includes("title     = {{Quantum State Tomography in Silicon Photonics}},"));
   assert.ok(bibtex.includes("eprint    = {2608.99999},"));

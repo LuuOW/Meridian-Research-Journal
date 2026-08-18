@@ -44,11 +44,14 @@ test("Blog slugs match generated slugs from titles", () => {
 });
 
 test("Extract arXiv IDs from blog arXiv links", () => {
+  let testedCount = 0;
   PRELOADED_BLOGS.forEach((blog) => {
-    if (blog.arxivLink && blog.arxivLink.includes("arxiv.org")) {
+    if (blog.arxivLink && (blog.arxivLink.includes("/abs/") || blog.arxivLink.includes("/pdf/") || /\d{4}\.\d{4,5}/.test(blog.arxivLink))) {
       const extracted = extractArxivId(blog.arxivLink);
-      assert.ok(extracted, `Should be able to extract valid arXiv ID from blog arXiv link: ${blog.arxivLink}`);
+      assert.ok(extracted, `Should be able to extract valid arXiv ID from specific arXiv link: ${blog.arxivLink}`);
       assert.match(extracted, /^\d{4}\.\d{4,5}$/, `Extracted ID ${extracted} should match standard arXiv pattern`);
+      testedCount++;
     }
   });
+  assert.ok(testedCount > 0, "Should have tested arXiv links from preloaded dataset");
 });

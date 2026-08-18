@@ -51,8 +51,39 @@ export function parseAdvancedQuery(queryString: string): ParsedSearchQuery {
   let yearFilter: number | undefined;
   let minReadTime: number | undefined;
 
-  // Extract exact phrases wrapped in double quotes
-  let processed = raw.replace(/"([^"]+)"/g, (_, phrase) => {
+  // Extract key:"quoted value" or key:value modifiers first
+  let processed = raw;
+
+  // 1. Author with quotes or simple value: author:"Lucas Kempe" or author:Kempe
+  processed = processed.replace(/\bauthor:(?:"([^"]+)"|(\S+))/gi, (_, quoted, simple) => {
+    const val = (quoted || simple || "").trim();
+    if (val) authorFilter = val;
+    return " ";
+  });
+
+  // 2. Tag with quotes or simple value: tag:"Silicon Photonics"
+  processed = processed.replace(/\btag:(?:"([^"]+)"|(\S+))/gi, (_, quoted, simple) => {
+    const val = (quoted || simple || "").trim().toLowerCase();
+    if (val) tagFilters.push(val);
+    return " ";
+  });
+
+  // 3. Year: year:2026
+  processed = processed.replace(/\byear:(\d{4})\b/gi, (_, y) => {
+    const yVal = parseInt(y, 10);
+    if (!isNaN(yVal)) yearFilter = yVal;
+    return " ";
+  });
+
+  // 4. Minread: minread:5
+  processed = processed.replace(/\bminread:(\d+)\b/gi, (_, m) => {
+    const mVal = parseInt(m, 10);
+    if (!isNaN(mVal)) minReadTime = mVal;
+    return " ";
+  });
+
+  // 5. Extract remaining standalone exact phrases wrapped in double quotes
+  processed = processed.replace(/"([^"]+)"/g, (_, phrase) => {
     if (phrase.trim()) {
       exactPhrases.push(phrase.trim().toLowerCase());
     }
