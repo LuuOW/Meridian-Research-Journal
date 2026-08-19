@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Compass, Lock, Unlock, Sun, Moon, GitBranch } from "lucide-react";
+import { Sparkles, Compass, Lock, Unlock, Sun, Moon } from "lucide-react";
 
 interface NavbarProps {
   onOpenCreate: () => void;
@@ -9,7 +9,6 @@ interface NavbarProps {
   onHome?: () => void;
   theme: "light" | "dark";
   onToggleTheme: () => void;
-  onOpenGitHubSync?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -19,8 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleEditorMode,
   onHome,
   theme,
-  onToggleTheme,
-  onOpenGitHubSync
+  onToggleTheme
 }) => {
   const handleHomeClick = () => {
     if (onHome) {
@@ -88,18 +86,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="hidden sm:inline">Generate Blog</span>
                 <span className="sm:hidden text-[11px]">Generate</span>
               </button>
-
-              {/* Discrete GitHub Mirror Icon Button (Only in Editor Mode) */}
-              {onOpenGitHubSync && (
-                <button
-                  onClick={onOpenGitHubSync}
-                  className="p-2 sm:p-2.5 rounded-full text-neutral-500 dark:text-neutral-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 transition-all duration-200 cursor-pointer active:scale-95 shrink-0"
-                  title="GitHub Mirror & Sync Status"
-                  aria-label="GitHub Mirror & Sync Status"
-                >
-                  <GitBranch className="w-4 h-4" />
-                </button>
-              )}
             </div>
           )}
 

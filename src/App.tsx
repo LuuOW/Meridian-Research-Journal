@@ -19,8 +19,6 @@ import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
-import { ActiveEditorModeBanner } from "./components/ActiveEditorModeBanner";
-import { GitHubSyncModal } from "./components/GitHubSyncModal";
 import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
@@ -48,7 +46,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
-  const [isGitHubSyncOpen, setIsGitHubSyncOpen] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>("");
@@ -808,20 +805,7 @@ export default function App() {
         onHome={() => setActiveBlog(null)}
         theme={theme}
         onToggleTheme={() => setTheme(prev => prev === "light" ? "dark" : "light")}
-        onOpenGitHubSync={() => setIsGitHubSyncOpen(true)}
       />
-
-      {/* Ray-Traced Active Editor Mode Banner */}
-      {isEditorMode && (
-        <ActiveEditorModeBanner
-          onOpenCreate={() => setIsCreateOpen(true)}
-          onToggleEditorMode={handleToggleEditorMode}
-          activeBlogTitle={activeBlog?.title}
-          onRegenerateBanner={activeBlog ? () => handleRegenerateBanner(activeBlog) : undefined}
-          isRegeneratingBanner={activeBlog ? isRegeneratingBanner === activeBlog.id : false}
-          onOpenGitHubSync={() => setIsGitHubSyncOpen(true)}
-        />
-      )}
 
       {/* Dynamic Scroll Progress Indicator for active blog reading */}
       {activeBlog && (
@@ -927,177 +911,18 @@ export default function App() {
               <div className="max-w-7xl mx-auto w-full relative">
                 <div className="space-y-8">
                   {filteredBlogs.length > 0 ? (
-                    <>
-                      {/* Premium Featured Section (Only when no search or topic filter is active) */}
-                      {!searchQuery && !selectedTag && (
-                        <div className="mb-12">
-                          <div className="flex items-center gap-2 mb-4">
-                            <span className="flex h-2 w-2 relative">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>
-                            <h4 className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">
-                              Featured Editorial Publication
-                            </h4>
-                          </div>
-
-                          {(() => {
-                            const blog = filteredBlogs[0];
-                            const isHidden = hiddenBlogIds.includes(blog.id);
-                            const isPreloaded = !blog.id.startsWith("generated");
-                            return (
-                              <div className={`relative transition-all duration-300 ${isHidden ? "opacity-60 saturate-50" : ""}`}>
-                                <RayTracedCard
-                                  onClick={() => {
-                                    setActiveBlog(blog);
-                                    window.scrollTo({ top: 0, behavior: "smooth" });
-                                  }}
-                                  accentGlowColor="rgba(245, 158, 11, 0.25)"
-                                >
-                                  <div className="p-5 md:p-6 flex flex-col lg:flex-row gap-6 items-stretch cursor-pointer">
-                                    {/* Featured Graphic Thumbnail */}
-                                    <div className="w-full lg:w-[32%] rounded-xl overflow-hidden bg-[#0a1128] flex-shrink-0 aspect-[16/10] lg:aspect-auto flex items-center justify-center relative min-h-[180px]">
-                                      <div 
-                                        className="w-full h-full transform group-hover:scale-[1.02] transition-transform duration-500 pointer-events-none"
-                                        dangerouslySetInnerHTML={{ __html: blog.bannerSvg }}
-                                      />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
-                                    </div>
-
-                                    {/* Featured Content details */}
-                                    <div className="flex-1 flex flex-col justify-between py-0.5">
-                                      <div className="space-y-3">
-                                        {/* Tags and badge */}
-                                        <div className="flex flex-wrap gap-1.5 items-center">
-                                          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[8px] font-extrabold uppercase tracking-widest rounded-full border border-amber-500/10">
-                                            ★ Current Issue
-                                          </span>
-                                          {blog.tags.slice(0, 2).map((tag) => (
-                                            <span
-                                              key={tag}
-                                              className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 text-[8px] font-extrabold uppercase tracking-widest rounded-full border border-neutral-200/20"
-                                            >
-                                              {tag}
-                                            </span>
-                                          ))}
-                                        </div>
-
-                                        {/* Title */}
-                                        <h3 className="text-xl sm:text-2xl font-serif font-bold italic tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-black dark:group-hover:text-white transition-colors leading-[1.25]">
-                                          {blog.title}
-                                        </h3>
-
-                                        {/* Excerpt */}
-                                        <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-light line-clamp-3">
-                                          {blog.excerpt}
-                                        </p>
-                                      </div>
-
-                                      {/* Footer Details */}
-                                      <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4 mt-4 flex flex-wrap gap-4 items-center justify-between text-[9px] font-bold font-mono text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-                                        <div className="flex gap-4">
-                                          <span>{blog.date}</span>
-                                          <span>•</span>
-                                          <span>{blog.readingTime}</span>
-                                        </div>
-                                        <span className="text-[11px] font-bold text-black dark:text-white border-b-2 border-transparent group-hover:border-black dark:group-hover:border-white transition-all flex items-center gap-1.5 pb-0.5 font-sans">
-                                          Read Featured Publication
-                                          <BookOpen className="w-3.5 h-3.5 transform group-hover:translate-x-0.5 transition-transform" />
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </RayTracedCard>
-
-                                {/* Hidden Status indicator badge */}
-                                {isHidden && (
-                                  <div className="absolute top-4 left-4 px-3 py-1 bg-amber-500/90 text-white text-[9px] font-extrabold rounded-full font-mono uppercase tracking-widest shadow-sm pointer-events-none z-10">
-                                    Hidden from Feed
-                                  </div>
-                                )}
-
-                                {/* Editor Actions Overlay */}
-                                {isEditorMode && (
-                                  <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 animate-fade-in">
-                                    <button
-                                      onClick={(e) => handleRegenerateBanner(blog, e)}
-                                      disabled={isRegeneratingBanner === blog.id}
-                                      title="Regenerate publication banner SVG"
-                                      className="p-2.5 bg-cyan-600 border border-cyan-500 hover:bg-cyan-500 text-white rounded-full shadow-lg cursor-pointer transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center"
-                                    >
-                                      <Sparkles className={`h-4 w-4 text-white ${isRegeneratingBanner === blog.id ? "animate-spin" : ""}`} />
-                                    </button>
-                                    {isPreloaded ? (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleToggleHideBlog(blog.id);
-                                        }}
-                                        title={isHidden ? "Restore/Unhide publication" : "Hide publication"}
-                                        className={`p-2.5 rounded-full shadow-lg border cursor-pointer transition-all ${
-                                          isHidden
-                                            ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
-                                            : "bg-neutral-900/90 border-neutral-800 text-white hover:bg-black"
-                                        }`}
-                                      >
-                                        {isHidden ? (
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                          </svg>
-                                        ) : (
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                          </svg>
-                                        )}
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDeleteBlogId(blog.id);
-                                        }}
-                                        title="Delete custom publication"
-                                        className="p-2.5 bg-red-600 border border-red-500 hover:bg-red-700 text-white rounded-full shadow-lg cursor-pointer transition-colors"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      {/* Heading for other publications */}
-                      {!searchQuery && !selectedTag && filteredBlogs.length > 1 && (
-                        <div className="flex items-center gap-3 pt-6 pb-2">
-                          <h4 className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono">
-                            Recent Publications ({filteredBlogs.length - 1})
-                          </h4>
-                          <div className="flex-1 h-[1px] bg-neutral-200/60 dark:bg-neutral-800" />
-                        </div>
-                      )}
-
-                      {/* Standard Grid mapping */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {( !searchQuery && !selectedTag
-                          ? filteredBlogs.slice(1)
-                          : filteredBlogs
-                        ).map((blog) => {
-                          const isHidden = hiddenBlogIds.includes(blog.id);
-                          const isPreloaded = !blog.id.startsWith("generated");
-                          return (
-                            <div 
-                              key={blog.id} 
-                              className={`relative group transition-all duration-300 ${
-                                isHidden ? "opacity-60 saturate-50" : ""
-                              }`}
-                            >
+                    /* Standard Grid mapping */
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredBlogs.map((blog) => {
+                        const isHidden = hiddenBlogIds.includes(blog.id);
+                        const isPreloaded = !blog.id.startsWith("generated");
+                        return (
+                          <div 
+                            key={blog.id} 
+                            className={`relative group transition-all duration-300 ${
+                              isHidden ? "opacity-60 saturate-50" : ""
+                            }`}
+                          >
                               <BlogPostCard blog={blog} onClick={() => {
                                 setActiveBlog(blog);
                                 window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1165,7 +990,6 @@ export default function App() {
                           );
                         })}
                       </div>
-                    </>
                   ) : (
                     <RayTracedCard className="max-w-md mx-auto" accentGlowColor="rgba(236, 72, 153, 0.22)">
                       <div className="p-12 text-center">
@@ -1485,12 +1309,6 @@ export default function App() {
         isOpen={isAboutOpen}
         onClose={() => setIsAboutOpen(false)}
         isEditorMode={isEditorMode}
-      />
-
-      {/* GITHUB REPOSITORY MIRROR MODAL */}
-      <GitHubSyncModal
-        isOpen={isGitHubSyncOpen}
-        onClose={() => setIsGitHubSyncOpen(false)}
       />
 
       {/* EDITOR PASSWORD MODAL */}
