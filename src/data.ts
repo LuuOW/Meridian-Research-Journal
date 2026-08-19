@@ -18,7 +18,8 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     ],
     "id": "generated-1787148362988",
     "slug": "topological-symmetry-breaking-and-the-quantized-conservation-of-pseudoangular-momentum-in-valley-polarized-lattice-resonances-2988",
-    "date": "August 19, 2026"
+    "date": "August 19, 2026",
+    "views": 1822
   },
   {
     "title": "Algebraic Resilience in the Adversarial Regime: A Formal Framework for Fault-Tolerant Quantum Circuits",
