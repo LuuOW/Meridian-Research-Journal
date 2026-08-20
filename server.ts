@@ -29,7 +29,8 @@ import {
   verifyPortalToken,
   pollAuthToken,
   validateRegistrationToken,
-  verifyRegistrationPassword
+  verifyRegistrationPassword,
+  authenticatePasskeyCredential
 } from "./src/lib/passkeyManager";
 
 dotenv.config();
@@ -695,6 +696,37 @@ app.get("/api/passkeys/poll-auth", (req, res) => {
   }
 
   res.json({ authorized: false });
+});
+
+// API: Direct Passkey Biometric Authentication (Native WebAuthn Assertion)
+app.post("/api/passkeys/authenticate", async (req, res) => {
+  const { credentialId } = req.body;
+  const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+
+  const passkeys = await getPasskeys();
+  const authResult = authenticatePasskeyCredential(credentialId, passkeys, expectedPassword);
+
+  if (!authResult.authorized) {
+    return res.status(403).json({ error: authResult.error || "Passkey verification failed." });
+  }
+
+  // Update lastUsedAt in local storage and Firestore if available
+  if (authResult.updatedPasskeys) {
+    writePasskeys(authResult.updatedPasskeys);
+    if (db && authResult.matched) {
+      try {
+        await setDoc(doc(db, "passkeys", authResult.matched.id), authResult.matched);
+      } catch (err) {
+        console.error("Error updating passkey lastUsedAt in Firestore:", err);
+      }
+    }
+  }
+
+  res.json({
+    success: true,
+    authorized: true,
+    password: authResult.password
+  });
 });
 
 // API: Sync custom blogs from client and server

@@ -1,23 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Key, Fingerprint, Shield, CheckCircle, AlertCircle, Sparkles, Loader2, RefreshCw, X, Laptop } from "lucide-react";
-
-function stringToUint8Array(str: string): Uint8Array {
-  try {
-    let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-    while (base64.length % 4) {
-      base64 += "=";
-    }
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  } catch (e) {
-    return new TextEncoder().encode(str);
-  }
-}
+import { getEffectiveRpId, base64UrlToUint8Array } from "../lib/passkeyManager";
 
 interface PasskeyPortalProps {
   token: string;
@@ -31,16 +14,16 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
   const [deviceName, setDeviceName] = useState("");
   const [isSimulated, setIsSimulated] = useState(false);
 
-  // Set default device name
+  // Set default device name based on platform/user-agent
   useEffect(() => {
-    const userAgent = navigator.userAgent;
+    const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "";
     let name = "Secure Browser Device";
-    if (userAgent.includes("Macintosh")) name = "Apple MacBook";
-    else if (userAgent.includes("iPhone")) name = "iPhone Mobile";
-    else if (userAgent.includes("iPad")) name = "iPad Tablet";
-    else if (userAgent.includes("Windows")) name = "Windows PC";
-    else if (userAgent.includes("Android")) name = "Android Mobile";
-    else if (userAgent.includes("Linux")) name = "Linux Workstation";
+    if (userAgent.includes("Macintosh")) name = "Apple MacBook Touch ID";
+    else if (userAgent.includes("iPhone")) name = "iPhone Face ID";
+    else if (userAgent.includes("iPad")) name = "iPad Touch ID";
+    else if (userAgent.includes("Windows")) name = "Windows Hello Device";
+    else if (userAgent.includes("Android")) name = "Android Biometric Device";
+    else if (userAgent.includes("Linux")) name = "Linux Security Key";
     setDeviceName(name);
   }, []);
 
@@ -51,11 +34,12 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
 
     try {
       let credentialData: any = null;
+      const effectiveRpId = typeof window !== "undefined" ? getEffectiveRpId(window.location.hostname) : undefined;
 
-      if (!useSimulation && navigator.credentials && navigator.credentials.create) {
+      if (!useSimulation && typeof navigator !== "undefined" && navigator.credentials && navigator.credentials.create) {
         try {
           // Standard WebAuthn registration creation
-          const challenge = new Uint8Array(16);
+          const challenge = new Uint8Array(32);
           window.crypto.getRandomValues(challenge);
           const userId = new Uint8Array(16);
           window.crypto.getRandomValues(userId);
@@ -64,7 +48,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
             challenge: challenge,
             rp: {
               name: "Meridian Research",
-              id: window.location.hostname
+              id: effectiveRpId
             },
             user: {
               id: userId,
@@ -76,8 +60,8 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
               { alg: -257, type: "public-key" } // RS256
             ],
             authenticatorSelection: {
-              residentKey: "required",
-              requireResidentKey: true,
+              residentKey: "preferred",
+              requireResidentKey: false,
               userVerification: "preferred"
             },
             timeout: 60000
@@ -100,7 +84,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
         }
       } else {
         // Safe simulated passkey credential creation
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate hardware handshake
+        await new Promise(resolve => setTimeout(resolve, 1200)); // Hardware handshake simulation
         credentialData = {
           id: `simulated-passkey-${Math.random().toString(36).substring(2, 10)}-${Date.now()}`,
           type: "public-key",
@@ -110,7 +94,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
       }
 
       if (!credentialData) {
-        throw new Error("Could not acquire credential");
+        throw new Error("Could not acquire passkey credential");
       }
 
       // 1. Save passkey credential to server database
@@ -125,7 +109,8 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
       });
 
       if (!regRes.ok) {
-        throw new Error("Failed to store passkey credential on server.");
+        const regErr = await regRes.json().catch(() => ({}));
+        throw new Error(regErr.error || "Failed to store passkey credential on server.");
       }
 
       // 2. Authorize this specific one-time portal token session
@@ -143,8 +128,12 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
       }
 
       // Save locally to localStorage so this tab's origin retains the passkey ID
-      localStorage.setItem("meridian_editor_passkey_id", credentialData.id);
-      localStorage.setItem("meridian_editor_passkey_name", deviceName);
+      try {
+        localStorage.setItem("meridian_editor_passkey_id", credentialData.id);
+        localStorage.setItem("meridian_editor_passkey_name", deviceName);
+      } catch {
+        // Safe fallback if localStorage is restricted
+      }
 
       setStatus("success");
     } catch (err: any) {
@@ -161,10 +150,11 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
 
     try {
       let authSuccess = false;
+      const effectiveRpId = typeof window !== "undefined" ? getEffectiveRpId(window.location.hostname) : undefined;
 
-      if (!useSimulation && navigator.credentials && navigator.credentials.get) {
+      if (!useSimulation && typeof navigator !== "undefined" && navigator.credentials && navigator.credentials.get) {
         try {
-          const challenge = new Uint8Array(16);
+          const challenge = new Uint8Array(32);
           window.crypto.getRandomValues(challenge);
 
           // Retrieve registered passkeys to populate allowCredentials
@@ -177,14 +167,14 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
                 .filter((p: any) => !p.id.startsWith("simulated-"))
                 .map((p: any) => ({
                   type: "public-key" as const,
-                  id: stringToUint8Array(p.id)
+                  id: base64UrlToUint8Array(p.id)
                 }));
             }
           }
 
           const requestOptions: PublicKeyCredentialRequestOptions = {
             challenge: challenge,
-            rpId: window.location.hostname,
+            rpId: effectiveRpId,
             userVerification: "preferred",
             timeout: 60000,
             allowCredentials: allowed.length > 0 ? allowed : undefined
@@ -203,7 +193,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
         }
       } else {
         // Safe simulated passkey credential verification
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate biometric authentication
+        await new Promise(resolve => setTimeout(resolve, 1200)); // Biometric simulation
         authSuccess = true;
         setIsSimulated(true);
       }
@@ -289,7 +279,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
                     type="text"
                     value={deviceName}
                     onChange={(e) => setDeviceName(e.target.value)}
-                    placeholder="e.g. My Laptop Touch ID"
+                    placeholder="e.g. My MacBook Pro Touch ID"
                     className="w-full pl-10 pr-4 py-3 bg-neutral-950/60 border border-neutral-800 focus:border-cyan-500/50 outline-none rounded-xl text-xs text-white focus:bg-neutral-950 transition-all font-sans font-medium"
                   />
                 </div>
@@ -338,7 +328,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
               <p className="text-xs text-neutral-400 max-w-xs mx-auto leading-relaxed">
                 {isSimulated 
                   ? "Writing secure cryptographic challenge response parameters." 
-                  : "Please approve the biometric Touch ID / Face ID or Security Key popup prompt on your browser."}
+                  : "Please approve the biometric Touch ID / Face ID or Security Key prompt on your device."}
               </p>
             </div>
           </div>
@@ -386,7 +376,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
             </div>
             <div className="flex flex-col gap-3 max-w-xs mx-auto">
               <button
-                onClick={() => handleRegister(true)}
+                onClick={() => type === "register" ? handleRegister(true) : handleAuthenticate(true)}
                 className="w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 border border-cyan-500/10 text-cyan-400 font-bold rounded-xl text-xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 text-cyan-400" />

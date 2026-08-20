@@ -8,6 +8,7 @@ import {
   pollAuthToken,
   validateRegistrationToken,
   verifyRegistrationPassword,
+  authenticatePasskeyCredential,
   PortalTokenData
 } from "./passkeyManager.js";
 
@@ -124,3 +125,32 @@ test("verifyRegistrationPassword checks password matching", () => {
   assert.strictEqual(verifyRegistrationPassword("wrong", "expected123").authorized, false);
   assert.strictEqual(verifyRegistrationPassword("expected123", "expected123").authorized, true);
 });
+
+test("authenticatePasskeyCredential validates registered passkey and returns real editor password", () => {
+  const passkeys = [
+    {
+      id: "registered-cred-123",
+      deviceName: "MacBook Touch ID",
+      createdAt: 1000,
+      lastUsedAt: 1000
+    }
+  ];
+
+  // Missing credential ID
+  const emptyRes = authenticatePasskeyCredential("", passkeys, "super-secret-password");
+  assert.strictEqual(emptyRes.authorized, false);
+  assert.strictEqual(emptyRes.error, "Credential ID is required.");
+
+  // Unrecognized passkey
+  const unknownRes = authenticatePasskeyCredential("unknown-cred", passkeys, "super-secret-password");
+  assert.strictEqual(unknownRes.authorized, false);
+  assert.strictEqual(unknownRes.error, "Passkey credential not recognized or unregistered.");
+
+  // Valid passkey
+  const validRes = authenticatePasskeyCredential("registered-cred-123", passkeys, "super-secret-password", 5000);
+  assert.strictEqual(validRes.authorized, true);
+  assert.strictEqual(validRes.password, "super-secret-password");
+  assert.strictEqual(validRes.matched?.lastUsedAt, 5000);
+  assert.strictEqual(validRes.updatedPasskeys?.[0].lastUsedAt, 5000);
+});
+

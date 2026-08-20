@@ -6,6 +6,7 @@ import {
   computeRayTracedLightState,
   getDefaultLightState
 } from "../lib/rayTracingUtils";
+import { getEffectiveRpId, base64UrlToUint8Array } from "../lib/passkeyManager";
 
 const STAR_PARTICLES = Array.from({ length: 16 }).map((_, i) => {
   const angle = (i * 360) / 16;
@@ -79,24 +80,6 @@ const StarExplosionBurst: React.FC = () => (
   </div>
 );
 
-function stringToUint8Array(str: string): Uint8Array {
-  try {
-    let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-    while (base64.length % 4) {
-      base64 += "=";
-    }
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  } catch (e) {
-    return new TextEncoder().encode(str);
-  }
-}
-
 interface EditorPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -113,7 +96,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
   const [activeTab, setActiveTab] = useState<"passkey" | "password">("passkey");
   
   // Passkey workflow state
-  const [passkeyStatus, setPasskeyStatus] = useState<"checking" | "register_needed" | "iframe_restricted" | "polling" | "success" | "error">("checking");
+  const [passkeyStatus, setPasskeyStatus] = useState<"checking" | "ready" | "verifying" | "register_needed" | "iframe_restricted" | "polling" | "success" | "error">("checking");
   const [portalToken, setPortalToken] = useState<string | null>(null);
   const [portalType, setPortalType] = useState<"register" | "auth">("register");
   const [registeredCount, setRegisteredCount] = useState(0);
@@ -202,17 +185,18 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         setRegisteredCount(count);
 
         if (count === 0) {
-          // No passkeys registered yet, we need the user to register first
+          // No passkeys registered yet
           setPasskeyStatus("register_needed");
         } else {
-          // We have passkeys registered! Let's attempt native WebAuthn authentication in iframe first.
-          // Since we are in an iframe, this might fail with a SecurityError, in which case we show the auth portal fallback.
-          try {
-            await attemptNativeAuth(data.passkeys);
-          } catch (err: any) {
-            console.warn("Iframe native WebAuthn blocked or failed, offering secure portal fallback.", err);
+          // Detect whether we are actually running inside a sandboxed iframe
+          const isInIframe = typeof window !== "undefined" && window.self !== window.top;
+          if (isInIframe) {
+            // Preview iframe requires portal link to prevent browser security exception
             setPasskeyStatus("iframe_restricted");
             setPortalType("auth");
+          } else {
+            // Top-level website: ready for user-initiated biometric click
+            setPasskeyStatus("ready");
           }
         }
       } else {
@@ -224,16 +208,19 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
     }
   };
 
-  const attemptNativeAuth = async (passkeysList?: any[]) => {
-    if (!navigator.credentials || !navigator.credentials.get) {
-      throw new Error("WebAuthn not supported");
-    }
+  const handleNativeAuthClick = async () => {
+    setPasskeyStatus("verifying");
+    setErrorMsg(null);
 
-    const challenge = new Uint8Array(16);
-    window.crypto.getRandomValues(challenge);
+    try {
+      if (!navigator.credentials || !navigator.credentials.get) {
+        throw new Error("WebAuthn is not supported on this browser.");
+      }
 
-    let list = passkeysList;
-    if (!list) {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      let list: any[] = [];
       try {
         const res = await fetch("/api/passkeys/list");
         if (res.ok) {
@@ -243,34 +230,65 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
       } catch (e) {
         console.error("Error fetching passkeys for native auth:", e);
       }
-    }
 
-    const allowed = (list || [])
-      .filter((p: any) => !p.id.startsWith("simulated-"))
-      .map((p: any) => ({
-        type: "public-key" as const,
-        id: stringToUint8Array(p.id)
-      }));
+      const allowed = (list || [])
+        .filter((p: any) => !p.id.startsWith("simulated-"))
+        .map((p: any) => ({
+          type: "public-key" as const,
+          id: base64UrlToUint8Array(p.id)
+        }));
 
-    // This will trigger the browser's credential manager.
-    // If we're inside a sandboxed iframe without proper permissions, it will throw an error immediately.
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge: challenge,
-        rpId: window.location.hostname,
-        userVerification: "preferred",
-        timeout: 10000,
-        allowCredentials: allowed.length > 0 ? allowed : undefined
+      const effectiveRpId = typeof window !== "undefined" ? getEffectiveRpId(window.location.hostname) : undefined;
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge: challenge,
+          rpId: effectiveRpId,
+          userVerification: "preferred",
+          timeout: 60000,
+          allowCredentials: allowed.length > 0 ? allowed : undefined
+        }
+      });
+
+      if (assertion) {
+        // Authenticate assertion against server to verify credential and get the authorized session password
+        const authRes = await fetch("/api/passkeys/authenticate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credentialId: assertion.id })
+        });
+
+        if (!authRes.ok) {
+          const errData = await authRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Biometric authentication failed on server.");
+        }
+
+        const authData = await authRes.json();
+        if (authData.authorized && authData.password) {
+          setPasskeyStatus("success");
+          setShowSuccessExplosion(true);
+          setTimeout(() => {
+            onConfirm(authData.password);
+          }, 800);
+        } else {
+          throw new Error("Device authorization was rejected by the server.");
+        }
+      } else {
+        throw new Error("No biometric assertion received.");
       }
-    });
-
-    if (assertion) {
-      // For this demo context, if the browser successfully collects the credential, we authorize Editor Mode
-      setPasskeyStatus("success");
-      setShowSuccessExplosion(true);
-      setTimeout(() => {
-        onConfirm("meridian");
-      }, 1000);
+    } catch (err: any) {
+      console.warn("Passkey authentication issue:", err);
+      const isInIframe = typeof window !== "undefined" && window.self !== window.top;
+      
+      if (isInIframe && (err.name === "SecurityError" || err.name === "NotAllowedError")) {
+        setPasskeyStatus("iframe_restricted");
+        setPortalType("auth");
+      } else if (err.name === "NotAllowedError") {
+        setErrorMsg("Biometric prompt was canceled or timed out.");
+        setPasskeyStatus("ready");
+      } else {
+        setErrorMsg(err.message || "Passkey authentication failed.");
+        setPasskeyStatus("ready");
+      }
     }
   };
 
@@ -472,20 +490,114 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
                 </div>
               )}
 
+              {passkeyStatus === "ready" && (
+                <div className="space-y-5 py-2 text-center animate-fade-in">
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 mx-auto shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+                    <Fingerprint className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 font-sans">
+                      Unlock with Biometrics
+                    </h4>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-xs mx-auto">
+                      {registeredCount} biometric device{registeredCount > 1 ? "s" : ""} registered. Touch ID, Face ID, or Windows Hello will verify your identity.
+                    </p>
+                  </div>
+
+                  {errorMsg && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-xs flex items-center gap-2 text-left">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2.5">
+                    <button
+                      onClick={handleNativeAuthClick}
+                      className="w-full py-3.5 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black font-bold rounded-xl text-xs shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Fingerprint className="w-4 h-4" />
+                      <span>Unlock with Touch ID / Face ID</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPasskeyStatus("register_needed")}
+                      className="w-full py-2 bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-900 text-neutral-600 dark:text-neutral-400 font-medium rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Laptop className="w-3.5 h-3.5" />
+                      <span>Register a New Device</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {passkeyStatus === "verifying" && (
+                <div className="space-y-4 py-6 text-center animate-fade-in">
+                  <div className="relative w-14 h-14 mx-auto mb-2">
+                    <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20" />
+                    <div className="absolute inset-0 rounded-full border-t-2 border-cyan-500 animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center text-cyan-500">
+                      <Fingerprint className="w-6 h-6 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                      Awaiting Biometric Prompt...
+                    </h4>
+                    <p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed max-w-xs mx-auto">
+                      Please complete the Touch ID, Face ID, or Security Key verification on your device.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {passkeyStatus === "register_needed" && (
                 <div className="space-y-4 py-2 text-center animate-fade-in">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mx-auto mb-2">
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 mx-auto mb-2">
                     <Laptop className="w-6 h-6" />
                   </div>
-                  <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 font-sans">No Biometric Passkey Registered</h4>
+                  <h4 className="text-xs font-bold text-neutral-900 dark:text-neutral-100 font-sans">
+                    {registeredCount > 0 ? `${registeredCount} Passkey(s) Enrolled` : "No Biometric Passkey Enrolled"}
+                  </h4>
                   <p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed max-w-xs mx-auto">
-                    No biometric passkey has been registered for this device yet. Please use the **Password Fallback** tab to authenticate.
+                    Register your Touch ID, Face ID, or Security Key to enable instant biometric login.
                   </p>
+
+                  <div className="bg-neutral-50 dark:bg-neutral-900/50 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800/80 space-y-2 text-left">
+                    <label className="block text-[10px] font-extrabold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest font-mono">
+                      Editor Password (to Authorize Registration)
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Enter editor password"
+                      value={registerPassword}
+                      onChange={(e) => {
+                        setRegisterPassword(e.target.value);
+                        setErrorMsg(null);
+                      }}
+                      className="w-full px-3 py-2 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs text-neutral-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => generatePortal("register", registerPassword)}
+                      className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-xs transition-all active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Fingerprint className="w-3.5 h-3.5" />
+                      <span>Register This Device</span>
+                    </button>
+                  </div>
+
+                  <div className="relative flex py-1 items-center">
+                    <div className="flex-grow border-t border-neutral-200 dark:border-neutral-800/50"></div>
+                    <span className="flex-shrink mx-3 text-[9px] text-neutral-400 uppercase font-bold tracking-widest font-mono">or</span>
+                    <div className="flex-grow border-t border-neutral-200 dark:border-neutral-800/50"></div>
+                  </div>
+
                   <button
                     onClick={() => {
                       setActiveTab("password");
                     }}
-                    className="w-full py-3 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black font-bold rounded-xl text-xs shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 bg-neutral-950 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black font-bold rounded-xl text-xs shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Use Password Fallback</span>
                   </button>
