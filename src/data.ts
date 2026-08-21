@@ -38,7 +38,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1787339117236",
     "slug": "the-vanishing-distance-a-practical-range-boundary-for-dynamic-wavefront-shaping-a-rigorous-analysis-of-quantum-mechanisms-and-mathematical-foundations-7236",
     "date": "August 21, 2026",
-    "views": 713
+    "views": 714
   },
   {
     "title": "Topological Symmetry Breaking and the Quantized Conservation of Pseudoangular Momentum in Valley-Polarized Lattice Resonances",
