@@ -673,7 +673,7 @@ app.post("/api/passkeys/verify-portal", (req, res) => {
   const result = verifyPortalToken(token, success, portalTokens, editorPassword);
   
   if (result.success) {
-    return res.json({ success: true });
+    return res.json({ success: true, password: editorPassword });
   }
   
   res.status(result.error === "Token not found or expired" ? 404 : 400).json({ error: result.error });

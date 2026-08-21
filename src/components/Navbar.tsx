@@ -1,5 +1,7 @@
 import React from "react";
-import { Sparkles, Compass, Lock, Unlock, Sun, Moon } from "lucide-react";
+import { Sparkles, Compass, Sun, Moon, Activity, Loader2 } from "lucide-react";
+import { GenerationJob } from "../types";
+import { EditorModeButton } from "./EditorModeButton";
 
 interface NavbarProps {
   onOpenCreate: () => void;
@@ -9,6 +11,8 @@ interface NavbarProps {
   onHome?: () => void;
   theme: "light" | "dark";
   onToggleTheme: () => void;
+  onOpenPipelineStatus?: () => void;
+  activeJobs?: GenerationJob[];
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -18,7 +22,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleEditorMode,
   onHome,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  onOpenPipelineStatus,
+  activeJobs = []
 }) => {
   const handleHomeClick = () => {
     if (onHome) {
@@ -27,6 +33,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       window.location.reload();
     }
   };
+
+  const runningCount = activeJobs.filter(j => !j.dismissed && j.status === "generating").length;
+  const totalActive = activeJobs.filter(j => !j.dismissed).length;
 
   return (
     <header id="app-header" className="sticky top-0 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-gray-100 dark:border-neutral-900 z-40 transition-all duration-300">
@@ -76,7 +85,38 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Action Button & Theme/Editor Toggles */}
         <div className="flex justify-end items-center gap-1.5 sm:gap-3 shrink-0">
           {isEditorMode && (
-            <div className="flex items-center gap-2 animate-fade-in">
+            <div className="flex items-center gap-1.5 sm:gap-2 animate-fade-in">
+              {/* Dedicated Pipeline Status Mode Button */}
+              {onOpenPipelineStatus && (
+                <button
+                  id="navbar-pipeline-status-btn"
+                  onClick={onOpenPipelineStatus}
+                  className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-mono font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer border active:scale-95 whitespace-nowrap ${
+                    runningCount > 0
+                      ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 shadow-sm"
+                      : totalActive > 0
+                      ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-800"
+                      : "bg-transparent text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                  }`}
+                  title="Open Generation Pipeline Status Console"
+                >
+                  {runningCount > 0 ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />
+                  ) : (
+                    <Activity className="w-3.5 h-3.5" />
+                  )}
+                  <span className="hidden sm:inline">Pipeline Status</span>
+                  <span className="sm:hidden text-[11px]">Pipeline</span>
+                  {runningCount > 0 ? (
+                    <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping inline-block -ml-0.5" />
+                  ) : totalActive > 0 ? (
+                    <span className="px-1.5 py-0.2 bg-neutral-200 dark:bg-neutral-800 text-[9px] rounded-full">
+                      {totalActive}
+                    </span>
+                  ) : null}
+                </button>
+              )}
+
               <button
                 onClick={onOpenCreate}
                 className="px-3 sm:px-5 py-1.5 sm:py-2.5 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold shadow-sm transition-all duration-200 flex items-center gap-1.5 group active:scale-95 cursor-pointer whitespace-nowrap"
@@ -103,25 +143,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* Discrete Editor Mode Toggle */}
-          <button
-            onClick={onToggleEditorMode}
-            className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 cursor-pointer active:scale-95 shrink-0 ${
-              isEditorMode 
-                ? "text-cyan-600 bg-cyan-50 dark:bg-cyan-950/20 dark:text-cyan-400 hover:bg-cyan-100 dark:hover:bg-cyan-950/40 border border-cyan-100 dark:border-cyan-950/30" 
-                : "text-neutral-300 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 border border-transparent"
-            }`}
-            title={isEditorMode ? "Disable Editor Mode" : "Enable Editor Mode"}
-          >
-            {isEditorMode ? (
-              <Unlock className="w-4 h-4" />
-            ) : (
-              <Lock className="w-4 h-4" />
-            )}
-          </button>
+          {/* Discrete Editor Mode Button with Surrounding Vanishing Countdown Border */}
+          <EditorModeButton
+            isEditorMode={isEditorMode}
+            onToggleEditorMode={onToggleEditorMode}
+            hasRunningJobs={runningCount > 0}
+          />
         </div>
 
       </div>
     </header>
   );
 };
+

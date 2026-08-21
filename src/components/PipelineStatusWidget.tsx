@@ -9,6 +9,7 @@ interface PipelineStatusWidgetProps {
   onSelectBlog: (blog: BlogPost) => void;
   onDismissJob: (jobId: string) => void;
   onRetryJob: (arxivInput: string) => void;
+  onOpenPipelineConsole?: () => void;
   isEditorMode: boolean;
 }
 
@@ -89,6 +90,7 @@ export const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
   onSelectBlog,
   onDismissJob,
   onRetryJob,
+  onOpenPipelineConsole,
   isEditorMode
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -256,6 +258,17 @@ export const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
                     <span className="px-2 py-0.5 bg-emerald-950/80 text-emerald-300 border border-emerald-800/50 text-[9px] font-mono font-bold rounded-full">
                       {completedCount} Ready
                     </span>
+                  )}
+
+                  {/* Open Full Pipeline Console */}
+                  {onOpenPipelineConsole && (
+                    <button
+                      onClick={onOpenPipelineConsole}
+                      className="px-2 py-1 rounded-md bg-neutral-800 hover:bg-neutral-700 text-cyan-400 hover:text-cyan-300 text-[10px] font-mono font-bold transition-colors cursor-pointer border border-neutral-700/60"
+                      title="Open full Pipeline Status Mode console"
+                    >
+                      Console
+                    </button>
                   )}
 
                   {/* Collapse/Expand Toggle */}

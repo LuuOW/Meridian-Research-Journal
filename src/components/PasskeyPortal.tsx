@@ -213,6 +213,13 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
           throw new Error("Failed to authorize portal token on server.");
         }
 
+        const authData = await authRes.json().catch(() => ({}));
+        if (authData.password) {
+          try {
+            sessionStorage.setItem("meridian_editor_pwd", authData.password);
+          } catch {}
+        }
+
         setStatus("success");
       } else {
         throw new Error("Biometric authentication verification failed.");

@@ -27,10 +27,18 @@ export interface GenerationResponse {
 }
 
 export type JobStatus = "queued" | "generating" | "completed" | "failed";
+export type JobType = "article" | "banner_regen";
+
+export interface JobStepLog {
+  timestamp: number;
+  message: string;
+}
 
 export interface GenerationJob {
   id: string;
   arxivInput: string;
+  jobType?: JobType;
+  targetTitle?: string;
   status: JobStatus;
   currentStepIndex: number;
   currentStepMessage: string;
@@ -40,4 +48,5 @@ export interface GenerationJob {
   error?: string;
   resultBlog?: BlogPost;
   dismissed?: boolean;
+  stepLogs?: JobStepLog[];
 }

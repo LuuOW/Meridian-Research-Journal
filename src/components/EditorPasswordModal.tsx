@@ -161,6 +161,9 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
           const data = await res.json();
           if (data.authorized && data.password) {
             stopPolling();
+            try {
+              sessionStorage.setItem("meridian_editor_pwd", data.password);
+            } catch {}
             setPasskeyStatus("success");
             setShowSuccessExplosion(true);
             setTimeout(() => {
@@ -264,6 +267,9 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
 
         const authData = await authRes.json();
         if (authData.authorized && authData.password) {
+          try {
+            sessionStorage.setItem("meridian_editor_pwd", authData.password);
+          } catch {}
           setPasskeyStatus("success");
           setShowSuccessExplosion(true);
           setTimeout(() => {
@@ -341,6 +347,9 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         const data = await response.json();
         if (data.success) {
           const matchedPassword = password.trim();
+          try {
+            sessionStorage.setItem("meridian_editor_pwd", matchedPassword);
+          } catch {}
           setPassword("");
           setErrorMsg(null);
           setShowSuccessExplosion(true);

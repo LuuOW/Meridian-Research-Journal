@@ -10,8 +10,17 @@ import { MathRenderer } from "./components/MathRenderer";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
 import { PipelineStatusWidget } from "./components/PipelineStatusWidget";
+import { PipelineStatusModal } from "./components/PipelineStatusModal";
 import { RegenerateBannerWidget } from "./components/RegenerateBannerWidget";
-import { createGenerationJob, advanceJobStep, completeJob, failJob } from "./lib/pipelineUtils";
+import {
+  createGenerationJob,
+  createBannerGenerationJob,
+  advanceJobStep,
+  completeJob,
+  failJob,
+  loadStoredJobs,
+  saveStoredJobs
+} from "./lib/pipelineUtils";
 import { ensureAnimatedSvg, prepareSvgForPngExport } from "./lib/svgUtils";
 
 import { ViewCounter } from "./components/ViewCounter";
@@ -48,8 +57,22 @@ export default function App() {
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
-  const [editorPassword, setEditorPassword] = useState<string>("");
-  const [jobs, setJobs] = useState<GenerationJob[]>([]);
+  const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
+  const [editorPassword, setEditorPassword] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem("meridian_editor_pwd") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [jobs, setJobs] = useState<GenerationJob[]>(() => {
+    return loadStoredJobs();
+  });
+
+  // Automatically save jobs to localStorage whenever changed
+  useEffect(() => {
+    saveStoredJobs(jobs);
+  }, [jobs]);
   const [isRegeneratingBanner, setIsRegeneratingBanner] = useState<string | null>(null);
   const [bannerToastMsg, setBannerToastMsg] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
@@ -92,7 +115,7 @@ export default function App() {
     };
   }, [activeBlog]);
 
-  // Inactivity detection: Disable Editor Mode after 5 minutes of inactivity
+  // Inactivity detection: Disable Editor Mode after 5 minutes of inactivity (but defer while active generation pipeline jobs run)
   useEffect(() => {
     if (!isEditorMode) return;
 
@@ -101,8 +124,13 @@ export default function App() {
     const resetTimer = () => {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        setIsEditorMode(false);
-        setEditorPassword("");
+        const hasRunningJobs = jobs.some(j => j.status === "generating" && !j.dismissed);
+        if (!hasRunningJobs) {
+          setIsEditorMode(false);
+        } else {
+          // Defer lock while background tasks are actively running so user doesn't lose track of progress
+          resetTimer();
+        }
       }, 5 * 60 * 1000); // 5 minutes (300,000 ms)
     };
 
@@ -121,14 +149,13 @@ export default function App() {
         window.removeEventListener(event, resetTimer);
       });
     };
-  }, [isEditorMode]);
+  }, [isEditorMode, jobs]);
 
   const handleToggleEditorMode = () => {
     if (!isEditorMode) {
       setIsEditorPasswordModalOpen(true);
     } else {
       setIsEditorMode(false);
-      setEditorPassword("");
     }
   };
 
@@ -141,8 +168,19 @@ export default function App() {
       return;
     }
 
+    const activePassword = editorPassword || sessionStorage.getItem("meridian_editor_pwd") || "meridian";
+    const bannerJob = createBannerGenerationJob(blogToUpdate);
+    setJobs((prev) => [bannerJob, ...prev]);
+
     setIsRegeneratingBanner(blogToUpdate.id);
     setBannerToastMsg(null);
+
+    // Setup timer interval to simulate pipeline step progress
+    const intervalId = setInterval(() => {
+      setJobs((prevJobs) =>
+        prevJobs.map((j) => (j.id === bannerJob.id ? advanceJobStep(j) : j))
+      );
+    }, 2400);
 
     try {
       const response = await fetch("/api/blog/regenerate-banner", {
@@ -154,9 +192,11 @@ export default function App() {
           excerpt: blogToUpdate.excerpt,
           content: blogToUpdate.content,
           tags: blogToUpdate.tags,
-          password: editorPassword || "meridian"
+          password: activePassword
         })
       });
+
+      clearInterval(intervalId);
 
       if (!response.ok) {
         let errText = "Failed to regenerate banner";
@@ -170,10 +210,11 @@ export default function App() {
       const data = await response.json();
       if (data.success && data.bannerSvg) {
         const newSvg = data.bannerSvg;
+        const updatedBlog = { ...blogToUpdate, bannerSvg: newSvg };
 
         // Update state in blogs list
         setBlogs((prev) =>
-          prev.map((b) => (b.id === blogToUpdate.id ? { ...b, bannerSvg: newSvg } : b))
+          prev.map((b) => (b.id === blogToUpdate.id ? updatedBlog : b))
         );
 
         // Update activeBlog state if it's currently open
@@ -181,13 +222,22 @@ export default function App() {
           setActiveBlog((prev) => (prev ? { ...prev, bannerSvg: newSvg } : null));
         }
 
+        // Complete job in pipeline tracking
+        setJobs((prevJobs) =>
+          prevJobs.map((j) => (j.id === bannerJob.id ? completeJob(j, updatedBlog) : j))
+        );
+
         setBannerToastMsg("Banner SVG regenerated successfully!");
         setTimeout(() => setBannerToastMsg(null), 3500);
       } else {
         throw new Error("Invalid response format received when regenerating banner.");
       }
     } catch (err: any) {
+      clearInterval(intervalId);
       console.error("Banner regeneration error:", err);
+      setJobs((prevJobs) =>
+        prevJobs.map((j) => (j.id === bannerJob.id ? failJob(j, err.message) : j))
+      );
       alert(err.message || "Failed to regenerate banner.");
     } finally {
       setIsRegeneratingBanner(null);
@@ -678,6 +728,8 @@ export default function App() {
       );
     }, 3200);
 
+    const activePassword = editorPassword || sessionStorage.getItem("meridian_editor_pwd") || "meridian";
+
     try {
       const response = await fetch("/api/blog/generate", {
         method: "POST",
@@ -685,7 +737,7 @@ export default function App() {
         body: JSON.stringify({
           arxivInput,
           rawText: "",
-          password: editorPassword || "meridian"
+          password: activePassword
         }),
       });
 
@@ -719,6 +771,10 @@ export default function App() {
 
   const handleDismissJob = (jobId: string) => {
     setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, dismissed: true } : j)));
+  };
+
+  const handleClearFinishedJobs = () => {
+    setJobs((prev) => prev.filter((j) => j.status === "generating"));
   };
 
   const handleRetryJob = (arxivInput: string) => {
@@ -805,6 +861,8 @@ export default function App() {
         onHome={() => setActiveBlog(null)}
         theme={theme}
         onToggleTheme={() => setTheme(prev => prev === "light" ? "dark" : "light")}
+        onOpenPipelineStatus={() => setIsPipelineModalOpen(true)}
+        activeJobs={jobs}
       />
 
       {/* Dynamic Scroll Progress Indicator for active blog reading */}
@@ -1276,6 +1334,30 @@ export default function App() {
         }}
         onDismissJob={handleDismissJob}
         onRetryJob={handleRetryJob}
+        onOpenPipelineConsole={() => setIsPipelineModalOpen(true)}
+        isEditorMode={isEditorMode}
+      />
+
+      {/* PERSISTENT FULL-FEATURED PIPELINE STATUS CONSOLE MODAL */}
+      <PipelineStatusModal
+        isOpen={isPipelineModalOpen}
+        onClose={() => setIsPipelineModalOpen(false)}
+        jobs={jobs}
+        onSelectBlog={(blog) => {
+          setActiveBlog(blog);
+          setIsPipelineModalOpen(false);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onDismissJob={handleDismissJob}
+        onClearFinishedJobs={handleClearFinishedJobs}
+        onRetryJob={(arxivInput) => {
+          setIsPipelineModalOpen(false);
+          handleRetryJob(arxivInput);
+        }}
+        onOpenCreate={() => {
+          setIsPipelineModalOpen(false);
+          setIsCreateOpen(true);
+        }}
         isEditorMode={isEditorMode}
       />
 
