@@ -1,23 +1,5 @@
 [
   {
-    "title": "Beyond the Ballistic Limit: Quantifying the Vanishing Distance in Wavefront-Controlled Scattering Media",
-    "excerpt": "We explore the fundamental transition point where ballistic light intensity yields to the diffuse background, setting a new theoretical boundary for dynamic wavefront shaping.",
-    "readingTime": "12 min read",
-    "arxivLink": "https://arxiv.org/abs/2608.17551",
-    "bannerSvg": "<svg viewBox='0 0 800 400' xmlns='http://www.w3.org/2000/svg'><style>.pulse{animation:glow 3s infinite alternate}.wave{animation:flow 6s linear infinite}@keyframes glow{from{opacity:.3}to{opacity:1}}@keyframes flow{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}</style><rect width='800' height='400' fill='#0a1128'/><circle cx='400' cy='200' r='120' fill='none' stroke='#00f2fe' stroke-width='1' class='pulse'/><path d='M100 200 Q 400 50 700 200 T 100 200' fill='none' stroke='#ff007f' stroke-width='2' stroke-dasharray='10 5' class='wave'/><path d='M100 200 Q 400 350 700 200' fill='none' stroke='#8b5cf6' stroke-width='2' stroke-dasharray='10 5' class='wave'/></svg>",
-    "content": "### Introduction\n\nIn the era of modern photonics, the ability to sculpt the wavefront of coherent light allows us to peer through complex, opaque scattering media. While wavefront shaping (WFS) has revolutionized biomedical imaging and secure optical communications, the fundamental limitations of these techniques remain elusive. We often rely on the transport mean free path ($l_t$) to describe the randomization of light, but $l_t$ fails to capture the intricate transition between ballistic photon propagation and diffusive background noise. This article explores the 'vanishing distance,' a novel metric that establishes the critical propagation length where ballistic signal power is eclipsed by a single diffuse mode.\n\n### Key Concepts & Physics\n\nTo understand the vanishing distance, one must distinguish between the coherent ballistic component and the incoherent diffusive background. In a scattering medium, the intensity of ballistic light decays exponentially with distance $z$ according to the extinction length $l_e$. However, the diffuse light forms a complex, multi-modal speckle field. WFS works primarily by rephasing the scattered light to overcome this noise. The vanishing distance represents a 'hard' limit: once the distance $z$ exceeds this point, the ballistic contribution is no longer a viable carrier of information, mandating a transition to schemes that harness the diffusive field itself.\n\n### The Theoretical Formulation\n\nThe power of the ballistic component $P_b$ at a depth $z$ is given by the Beer-Lambert law:\n\n$$P_b(z) = P_0 \\exp\\left(-\\frac{z}{l_e}\\right)$$\n\nIn our model, the 'vanishing' condition occurs when $P_b(z)$ is equal to the power contained within a single diffusive mode. Given the total transmission $T$ and the number of channels $N$, the power per mode in the diffuse background can be approximated as:\n\n$$P_{mode} = \\frac{P_0 T}{N}$$\n\nSetting these equal, the vanishing distance $z_v$ is found by solving:\n\n$$\\exp\\left(-\\frac{z_v}{l_e}\\right) = \\frac{T}{N}$$\n\nThis transcendental relationship highlights that the vanishing distance is not merely a material constant but depends intrinsically on the scattering architecture and the modal density of the medium.\n\n### Methodology\n\nLassiette et al. employed a robust combination of Monte Carlo simulations and experimental verification to map the vanishing distance across various scattering regimes. By modeling both monodisperse and highly heterogeneous media, the researchers tracked the evolution of the Transmission Matrix (TM). The key differentiator in their methodology was the modal-power basis analysis, which strips away the geometric complexities of the scattering and focuses on the underlying energy distribution per mode.\n\n### Key Results & Findings\n\nThe most striking discovery is the convergence of the vanishing distance across diverse media types to approximately 30-40 scattering mean free paths. This threshold remains remarkably stable, suggesting that regardless of specific scatterer geometry, the fundamental physics of the wavefront collapse follows a universal law of diminishing returns for coherent transmission. Beyond this distance, any attempt to recover an image using classical ballistic wavefront shaping is essentially chasing noise.\n\n### Scientific Implications\n\nThis research provides a rigorous guideline for optical system design. For engineers and researchers in deep-tissue imaging, the vanishing distance marks the point where hardware requirements shift from ballistic phase-correction to sophisticated diffuse-field reconstruction. By acknowledging the limit of the ballistic channel, we can better allocate computational and optical resources, effectively signaling the boundary where 'seeing through walls' requires a change in fundamental approach.",
-    "author": "Meridian Research",
-    "tags": [
-      "Wavefront Shaping",
-      "Photonics",
-      "Light Scattering",
-      "Theoretical Physics"
-    ],
-    "id": "generated-1787337757580",
-    "slug": "beyond-the-ballistic-limit-quantifying-the-vanishing-distance-in-wavefront-controlled-scattering-media-7580",
-    "date": "August 21, 2026"
-  },
-  {
     "title": "Topological Symmetry Breaking and the Quantized Conservation of Pseudoangular Momentum in Valley-Polarized Lattice Resonances",
     "excerpt": "Exploring how parity-broken nanophotonic arrays encode topological information into the phase structure of light through the fundamental conservation of pseudoangular momentum.",
     "readingTime": "9 min read",
@@ -34,7 +16,7 @@
     "id": "generated-1787148362988",
     "slug": "topological-symmetry-breaking-and-the-quantized-conservation-of-pseudoangular-momentum-in-valley-polarized-lattice-resonances-2988",
     "date": "August 19, 2026",
-    "views": 1824
+    "views": 1822
   },
   {
     "title": "Algebraic Resilience in the Adversarial Regime: A Formal Framework for Fault-Tolerant Quantum Circuits",
