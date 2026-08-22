@@ -573,6 +573,17 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
               </div>
             </div>
 
+            {/* Privacy Policy & Advertising Disclosure (Google AdSense Policy Compliance) */}
+            <div className="bg-neutral-50/70 dark:bg-neutral-900/30 border border-neutral-100 dark:border-neutral-800/80 rounded-2xl p-4 flex flex-col gap-2 text-neutral-700 dark:text-neutral-300">
+              <div className="flex items-center gap-2 text-xs font-bold font-sans text-neutral-900 dark:text-neutral-100">
+                <Shield className="w-4 h-4 text-emerald-500" />
+                <span>Privacy Policy &amp; Cookie Disclosure</span>
+              </div>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-sans">
+                Meridian utilizes Google AdSense and authorized digital sellers to serve non-intrusive, privacy-respecting educational and scholarly advertisements. Third-party vendors, including Google, use cookies to serve ads based on prior visits to our website and across the internet. Users may opt out of personalized advertising by visiting Google's <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 underline font-medium">Ads Settings</a> or <a href="https://aboutads.info" target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 underline font-medium">aboutads.info</a>.
+              </p>
+            </div>
+
           </div>
 
           {/* Footer */}

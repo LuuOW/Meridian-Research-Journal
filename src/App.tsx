@@ -30,6 +30,7 @@ import { AboutModal } from "./components/AboutModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
+import { GoogleAdSlot } from "./components/GoogleAdSlot";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
@@ -1298,6 +1299,9 @@ export default function App() {
                     {/* Render the math rich markdown article */}
                     <MathRenderer text={activeBlog.content} />
                     
+                    {/* Google AdSense Sponsored Article Unit */}
+                    <GoogleAdSlot slotId="article-bottom-slot" className="my-8" />
+
                     {/* Article footer sign-off */}
                     <div className="border-t border-gray-100 dark:border-neutral-800 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
                       <div className="flex items-center gap-3">

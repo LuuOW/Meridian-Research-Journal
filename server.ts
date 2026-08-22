@@ -39,6 +39,27 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// Domain Canonical Redirection Middleware (Redirects generic Cloud Run host to custom domain ask-meridian.uk)
+app.use((req, res, next) => {
+  const host = (req.headers["x-forwarded-host"] || req.headers.host || "").toString().toLowerCase();
+  
+  // Exclude local development and AI Studio preview containers
+  const isAiStudioPreview = host.startsWith("ais-dev-") || host.startsWith("ais-pre-") || host.includes("localhost") || host.includes("127.0.0.1");
+
+  if (!isAiStudioPreview && (host.includes("meridian-blog-620868709178.us-west1.run.app") || (host.endsWith(".run.app") && !host.includes("ais-")))) {
+    const targetUrl = `https://ask-meridian.uk${req.originalUrl}`;
+    console.log(`[Redirect] 301 Permanent Redirect from ${host}${req.originalUrl} -> ${targetUrl}`);
+    return res.redirect(301, targetUrl);
+  }
+  next();
+});
+
+// Google AdSense Authorized Digital Sellers (ads.txt) Verification Endpoint
+app.get("/ads.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send("google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0\n");
+});
+
 app.use(express.json({ limit: "10mb" }));
 
 // Initialize Google GenAI client safely
