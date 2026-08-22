@@ -76,18 +76,12 @@ export const PRELOADED_BLOGS: BlogPost[] = RAW_PRELOADED_BLOGS.map((blog, index)
 }
 
 /**
- * Updates src/data.ts and custom_blogs.json on local disk
+ * Updates custom_blogs.json on local disk (without touching src/data.ts during runtime to avoid triggering Vite dev server reloads)
  */
 export function writeLocalBlogFiles(blogs: BlogPost[]): boolean {
   try {
     const customBlogsPath = path.join(process.cwd(), "custom_blogs.json");
     fs.writeFileSync(customBlogsPath, JSON.stringify(blogs, null, 2), "utf-8");
-
-    const dataTsPath = path.join(process.cwd(), "src", "data.ts");
-    if (fs.existsSync(path.dirname(dataTsPath))) {
-      const dataTsContent = generateDataTsContent(blogs);
-      fs.writeFileSync(dataTsPath, dataTsContent, "utf-8");
-    }
     return true;
   } catch (err) {
     console.error("Failed to write local blog files:", err);

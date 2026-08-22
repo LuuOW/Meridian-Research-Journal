@@ -24,7 +24,22 @@ export function loadStoredJobs(): GenerationJob[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.filter(j => j && typeof j === "object" && j.id);
+      const now = Date.now();
+      return parsed
+        .filter(j => j && typeof j === "object" && j.id)
+        .map(j => {
+          // If a job was left in "generating" state from a previous browser session, resolve it so it doesn't spin indefinitely
+          if (j.status === "generating" && (now - (j.startTime || 0) > 3 * 60 * 1000)) {
+            return {
+              ...j,
+              status: "failed",
+              currentStepMessage: "Session interrupted during generation",
+              error: "Process timed out or page was reloaded during generation.",
+              completedTime: now
+            };
+          }
+          return j;
+        });
     }
   } catch (err) {
     console.warn("Failed to load stored generation jobs:", err);

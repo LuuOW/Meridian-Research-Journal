@@ -69,6 +69,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
     try {
       const response = await fetch("/api/linkedin/generate-post", {
         method: "POST",
+        signal: AbortSignal.timeout(9000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
@@ -110,7 +111,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
         });
       }
     } catch (err) {
-      console.error("AI post generation error, using fallback:", err);
+      console.warn("AI post generation timed out or failed, applying high-fidelity companion synthesis:", err);
       const fallbackText = generateLinkedInDraft(title, excerpt, blogId, window.location.origin);
       setDraftText(fallbackText);
       setAiHeadline("Future Vision Synthesis");

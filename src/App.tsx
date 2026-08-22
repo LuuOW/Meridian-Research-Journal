@@ -192,7 +192,8 @@ export default function App() {
           excerpt: blogToUpdate.excerpt,
           content: blogToUpdate.content,
           tags: blogToUpdate.tags,
-          password: activePassword
+          password: activePassword,
+          seed: Date.now() + Math.floor(Math.random() * 1000000)
         })
       });
 
@@ -226,6 +227,18 @@ export default function App() {
         setJobs((prevJobs) =>
           prevJobs.map((j) => (j.id === bannerJob.id ? completeJob(j, updatedBlog) : j))
         );
+
+        // Persist banner override to local storage
+        try {
+          const overrides = JSON.parse(localStorage.getItem("meridian_banner_overrides") || "{}");
+          overrides[blogToUpdate.id] = newSvg;
+          localStorage.setItem("meridian_banner_overrides", JSON.stringify(overrides));
+
+          const customBlogs = blogs
+            .map((b) => (b.id === blogToUpdate.id ? updatedBlog : b))
+            .filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id));
+          localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+        } catch (_) {}
 
         setBannerToastMsg("Banner SVG regenerated successfully!");
         setTimeout(() => setBannerToastMsg(null), 3500);
@@ -442,8 +455,19 @@ export default function App() {
       }
     }
 
+    const bannerOverrides: Record<string, string> = (() => {
+      try {
+        return JSON.parse(localStorage.getItem("meridian_banner_overrides") || "{}");
+      } catch (_) {
+        return {};
+      }
+    })();
+
+    const applyOverrides = (list: BlogPost[]) =>
+      list.map((b) => (bannerOverrides[b.id] ? { ...b, bannerSvg: bannerOverrides[b.id] } : b));
+
     // Immediately render local cache + preloaded blogs so the user sees blogs instantly
-    const initialBlogs = [...localCustomBlogs, ...PRELOADED_BLOGS];
+    const initialBlogs = applyOverrides([...localCustomBlogs, ...PRELOADED_BLOGS]);
     setBlogs(initialBlogs);
 
     // Handle deep linking via path /blog/:id or query parameter on load (initial pass)
@@ -517,7 +541,7 @@ export default function App() {
           const syncedBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
           
           // Update state and local storage with the fully synced server list
-          const allBlogs = [...syncedBlogs, ...PRELOADED_BLOGS];
+          const allBlogs = applyOverrides([...syncedBlogs, ...PRELOADED_BLOGS]);
           setBlogs(allBlogs);
           localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedBlogs));
 
@@ -537,7 +561,7 @@ export default function App() {
     }
 
     // Fallback: update state and local storage with the merged local/offline list
-    const allBlogs = [...mergedCustomBlogs, ...PRELOADED_BLOGS];
+    const allBlogs = applyOverrides([...mergedCustomBlogs, ...PRELOADED_BLOGS]);
     setBlogs(allBlogs);
     localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
 
@@ -694,19 +718,21 @@ export default function App() {
   };
 
   const handleBlogGenerated = async (newBlog: BlogPost) => {
-    const updatedBlogs = [newBlog, ...blogs.filter(b => b.id !== newBlog.id)];
-    setBlogs(updatedBlogs);
-    
-    // Save generated blogs to LocalStorage as a local backup
-    const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
-    localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+    setBlogs((prev) => {
+      const updatedBlogs = [newBlog, ...prev.filter(b => b.id !== newBlog.id)];
+      const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+      try {
+        localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+      } catch (_) {}
+      return updatedBlogs;
+    });
     
     // Proactively trigger sync to the server API and Firestore securely in the background
     try {
       await fetch("/api/blogs/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blogs: customBlogs })
+        body: JSON.stringify({ blogs: [newBlog] })
       });
       console.log("Successfully synced generated blog to the server/Firestore");
     } catch (err) {

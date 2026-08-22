@@ -115,8 +115,8 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({
     if (onStartAsyncGeneration) {
       // Direct trigger in background pipeline
       onStartAsyncGeneration(inputVal);
-      // Close modal immediately or let user see progress with background dismiss option
-      setIsLocalGenerating(true);
+      // Close modal smoothly so user can see live progress in the status widget
+      onClose();
       return;
     }
 
