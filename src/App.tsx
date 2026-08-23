@@ -464,8 +464,17 @@ export default function App() {
       }
     })();
 
+    const deduplicateBlogs = (list: BlogPost[]): BlogPost[] => {
+      const seen = new Set<string>();
+      return list.filter((b) => {
+        if (!b || !b.id || seen.has(b.id)) return false;
+        seen.add(b.id);
+        return true;
+      });
+    };
+
     const applyOverrides = (list: BlogPost[]) =>
-      list.map((b) => (bannerOverrides[b.id] ? { ...b, bannerSvg: bannerOverrides[b.id] } : b));
+      deduplicateBlogs(list).map((b) => (bannerOverrides[b.id] ? { ...b, bannerSvg: bannerOverrides[b.id] } : b));
 
     // Immediately render local cache + preloaded blogs so the user sees blogs instantly
     const initialBlogs = applyOverrides([...localCustomBlogs, ...PRELOADED_BLOGS]);
