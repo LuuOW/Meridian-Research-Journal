@@ -10,6 +10,7 @@ import {
   FileCode2
 } from "lucide-react";
 import { isMathExpression as isMath } from "../lib/mathUtils";
+import { GoogleInArticleAd } from "./GoogleInArticleAd";
 
 interface MathRendererProps {
   text: string;
@@ -796,12 +797,25 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
             );
             
           case "paragraph":
-          default:
+          default: {
+            // Count paragraphs rendered before this one
+            const priorParagraphCount = blocks
+              .slice(0, bIdx)
+              .filter((b) => b.type === "paragraph" && b.content.trim().length > 20).length;
+
+            const isSecondParagraph = priorParagraphCount === 1 && block.content.trim().length > 20;
+
             return (
-              <div key={`p-${bIdx}`} className="mb-4 leading-relaxed">
-                {renderLine(block.content)}
-              </div>
+              <React.Fragment key={`p-wrapper-${bIdx}`}>
+                <div key={`p-${bIdx}`} className="mb-4 leading-relaxed">
+                  {renderLine(block.content)}
+                </div>
+                {isSecondParagraph && (
+                  <GoogleInArticleAd slotId="2342440882" className="my-6" />
+                )}
+              </React.Fragment>
             );
+          }
         }
       })}
     </div>

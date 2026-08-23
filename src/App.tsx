@@ -1124,8 +1124,14 @@ export default function App() {
                       Back to Publications
                     </button>
                     
-                    <span className="font-mono text-[10px] sm:text-xs text-black dark:text-white font-extrabold uppercase tracking-widest bg-neutral-100 dark:bg-neutral-800 px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-neutral-800 transition-colors">
-                      MERIDIAN PUBLICATION REVIEW // PEER TRANSLATED
+                    <span className={`font-mono text-[10px] sm:text-xs font-extrabold uppercase tracking-widest px-3.5 py-1.5 rounded-full border transition-colors ${
+                      activeBlog.isEditorEdition || activeBlog.tags?.some(t => t.toLowerCase().includes("editor"))
+                        ? "bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                        : "text-black dark:text-white bg-neutral-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-800"
+                    }`}>
+                      {activeBlog.isEditorEdition || activeBlog.tags?.some(t => t.toLowerCase().includes("editor"))
+                        ? "MERIDIAN SPECIAL SYNTHESIS // EDITOR'S EDITION"
+                        : "MERIDIAN PUBLICATION REVIEW // PEER TRANSLATED"}
                     </span>
                   </div>
 
@@ -1285,7 +1291,7 @@ export default function App() {
 
               {/* MAIN SCHOLARLY ARTICLE BODY VIEW CONTAINER */}
               <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-                <RayTracedCard accentGlowColor="rgba(99, 102, 241, 0.22)">
+                <div className="relative rounded-3xl bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 shadow-xl overflow-hidden transition-colors">
                   <article className="prose prose-slate max-w-none md:prose-lg p-4 sm:p-12 relative overflow-hidden transition-colors">
                     
                     {/* Abstract quote callout */}
@@ -1299,8 +1305,8 @@ export default function App() {
                     {/* Render the math rich markdown article */}
                     <MathRenderer text={activeBlog.content} />
                     
-                    {/* Google AdSense Sponsored Article Unit */}
-                    <GoogleAdSlot slotId="article-bottom-slot" className="my-8" />
+                    {/* Google AdSense Sponsored Article Unit (custom_01) */}
+                    <GoogleAdSlot slotId="9736830690" className="my-8" />
 
                     {/* Article footer sign-off */}
                     <div className="border-t border-gray-100 dark:border-neutral-800 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1323,7 +1329,7 @@ export default function App() {
                       </button>
                     </div>
                   </article>
-                </RayTracedCard>
+                </div>
               </div>
 
             </motion.div>

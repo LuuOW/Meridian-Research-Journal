@@ -15,6 +15,7 @@ export interface BlogPost {
   ragAlignment?: string;
   timestamp?: number;
   views?: number;
+  isEditorEdition?: boolean;
 }
 
 export interface GenerationRequest {

@@ -264,14 +264,15 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({
           {!isGenerating ? (
             <form onSubmit={handleGenerate} className="relative z-10 pt-4 space-y-4">
               <div>
-                <label htmlFor="arxiv-input" className="block text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest font-mono mb-1.5">
-                  arXiv Identifier or Link
+                <label htmlFor="arxiv-input" className="block text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest font-mono mb-1.5 flex items-center justify-between">
+                  <span>arXiv Identifier or Link</span>
+                  <span className="text-[9px] text-purple-600 dark:text-purple-400 font-bold lowercase">arXiv URLs only</span>
                 </label>
                 <div className="relative">
                   <input
                     id="arxiv-input"
                     type="text"
-                    placeholder="e.g. 2303.02517 or https://arxiv.org/abs/2303.02517"
+                    placeholder="e.g. 2608.20224 or https://arxiv.org/abs/2608.20224"
                     value={arxivInput}
                     onChange={(e) => setArxivInput(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-cyan-500/30 dark:focus:ring-cyan-400/30 focus:border-cyan-500 dark:focus:border-cyan-400 font-mono text-xs transition-all bg-neutral-50/90 dark:bg-neutral-950/90 text-neutral-800 dark:text-neutral-100 shadow-inner"
@@ -284,17 +285,24 @@ export const ArxivGenerator: React.FC<ArxivGeneratorProps> = ({
                 <span className="text-gray-400 dark:text-neutral-500 font-mono text-[10px]">Presets:</span>
                 <button
                   type="button"
-                  onClick={() => setArxivInput("2303.02517")}
-                  className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 border border-transparent hover:border-cyan-200 dark:hover:border-cyan-800 text-neutral-600 dark:text-neutral-300 hover:text-cyan-600 dark:hover:text-cyan-300 font-mono text-[10px] transition-colors cursor-pointer"
+                  onClick={() => setArxivInput("2608.20224")}
+                  className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-transparent hover:border-purple-200 dark:hover:border-purple-800 text-neutral-600 dark:text-neutral-300 hover:text-purple-600 dark:hover:text-purple-300 font-mono text-[10px] transition-colors cursor-pointer"
                 >
-                  2303.02517
+                  2608.20224 (Photonics)
                 </button>
                 <button
                   type="button"
-                  onClick={() => setArxivInput("2401.08765")}
+                  onClick={() => setArxivInput("2608.18005")}
                   className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 border border-transparent hover:border-cyan-200 dark:hover:border-cyan-800 text-neutral-600 dark:text-neutral-300 hover:text-cyan-600 dark:hover:text-cyan-300 font-mono text-[10px] transition-colors cursor-pointer"
                 >
-                  2401.08765
+                  2608.18005 (Topological)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setArxivInput("2608.17551")}
+                  className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 border border-transparent hover:border-cyan-200 dark:hover:border-cyan-800 text-neutral-600 dark:text-neutral-300 hover:text-cyan-600 dark:hover:text-cyan-300 font-mono text-[10px] transition-colors cursor-pointer"
+                >
+                  2608.17551 (WFS)
                 </button>
               </div>
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { BlogPost } from "../types";
-import { BookOpen, Calendar, Clock } from "lucide-react";
+import { BookOpen, Calendar, Clock, Sparkles } from "lucide-react";
 import { ViewCounter } from "./ViewCounter";
 import { RayTracedCard } from "./RayTracedCard";
 import { ensureAnimatedSvg } from "../lib/svgUtils";
@@ -40,6 +40,12 @@ export const BlogPostCard: React.FC<BlogPostCardProps & { onClick: () => void }>
           
           {/* Metadata */}
           <div className="flex items-center gap-3.5 flex-wrap text-[10px] font-bold font-mono text-gray-400 dark:text-neutral-500 uppercase tracking-widest mb-3.5">
+            {(blog.isEditorEdition || blog.tags?.some(t => t.toLowerCase().includes("editor"))) && (
+              <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 text-[9px] font-extrabold flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-purple-500 shrink-0" />
+                Editor's Edition
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-gray-300 dark:text-neutral-700" />
               {blog.date}
