@@ -577,7 +577,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "editorial-frontier-photonic-engines-8842",
     "slug": "frontier-photonic-engines-from-quantum-readouts-to-deep-tissue-imaging-8842",
     "date": "August 22, 2026",
-    "views": 467,
+    "views": 468,
     "isEditorEdition": true
   },
   {
