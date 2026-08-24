@@ -1,6 +1,7 @@
 import { BlogPost } from "./types";
+import { ensureAnimatedSvg } from "./lib/svgUtils";
 
-export const PRELOADED_BLOGS: BlogPost[] = [
+const RAW_PRELOADED_BLOGS: BlogPost[] = [
   {
     "title": "Intensity-based scattering correction enables in vivo two-photon imaging beyond 1 mm",
     "excerpt": "A comprehensive scholarly analysis exploring the fundamental mathematical physics, quantum formulations, and transformative implications of Intensity-based scattering correction enables in vivo two-photon imaging beyond 1 mm.",
@@ -576,7 +577,7 @@ export const PRELOADED_BLOGS: BlogPost[] = [
     "id": "editorial-frontier-photonic-engines-8842",
     "slug": "frontier-photonic-engines-from-quantum-readouts-to-deep-tissue-imaging-8842",
     "date": "August 22, 2026",
-    "views": 468,
+    "views": 466,
     "isEditorEdition": true
   },
   {
@@ -1138,3 +1139,29 @@ export const PRELOADED_BLOGS: BlogPost[] = [
     "views": 756
   }
 ];
+
+const today = new Date();
+const formatDate = (d: Date) => {
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+};
+
+export const PRELOADED_BLOGS: BlogPost[] = RAW_PRELOADED_BLOGS.map((blog, index) => {
+  const d = new Date(today);
+  if (index === 0) {
+    // Today
+  } else if (index === 1 || index === 2) {
+    // Yesterday
+    d.setDate(today.getDate() - 1);
+  } else if (index === 3 || index === 4) {
+    // 2 days ago
+    d.setDate(today.getDate() - 2);
+  } else {
+    // Older
+    d.setDate(today.getDate() - (index - 1));
+  }
+  return {
+    ...blog,
+    bannerSvg: ensureAnimatedSvg(blog.bannerSvg),
+    date: blog.date || formatDate(d)
+  };
+});
