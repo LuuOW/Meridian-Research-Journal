@@ -19,7 +19,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1787340727569",
     "slug": "intensity-based-scattering-correction-enables-in-vivo-two-photon-imaging-beyond-1-mm-7569",
     "date": "August 21, 2026",
-    "views": 1313
+    "views": 1315
   },
   {
     "title": "The vanishing distance: a practical range boundary for dynamic wavefront shaping: A Rigorous Analysis of Quantum Mechanisms and Mathematical Foundations",
