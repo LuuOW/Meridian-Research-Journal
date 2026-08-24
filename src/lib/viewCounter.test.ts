@@ -1,34 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert";
-
-function formatViews(views: number): string {
-  if (views >= 1000000) {
-    return (views / 1000000).toFixed(1) + "M";
-  }
-  if (views >= 10000) {
-    return (views / 1000).toFixed(1) + "k";
-  }
-  return views.toLocaleString();
-}
-
-function calculateBaseViews(idOrSlug: string): number {
-  if (!idOrSlug) return 100;
-  let hash = 0;
-  for (let i = 0; i < idOrSlug.length; i++) {
-    hash = (hash << 5) - hash + idOrSlug.charCodeAt(i);
-    hash |= 0;
-  }
-  return 320 + (Math.abs(hash) % 1530);
-}
-
-function calculateActiveReaders(idOrSlug: string, views: number): number {
-  let hash = 0;
-  for (let i = 0; i < idOrSlug.length; i++) {
-    hash = (hash << 5) - hash + idOrSlug.charCodeAt(i);
-    hash |= 0;
-  }
-  return 2 + (Math.abs(hash + views) % 17);
-}
+import { formatViews, calculateBaseViews, calculateActiveReaders } from "./viewCounter";
 
 test("formatViews formats raw view numbers into clean discrete strings", () => {
   assert.strictEqual(formatViews(450), "450");

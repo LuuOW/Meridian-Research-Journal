@@ -1,5 +1,6 @@
 import React from "react";
 import { Eye, Users } from "lucide-react";
+import { formatViews } from "../lib/viewCounter";
 
 interface ViewCounterProps {
   views?: number;
@@ -16,8 +17,8 @@ export const ViewCounter: React.FC<ViewCounterProps> = ({
   compact = false,
   showActiveDot = true,
 }) => {
-  // Format numbers nicely (e.g., 1,248)
-  const formattedViews = views.toLocaleString();
+  // Format numbers nicely using standardized view formatter
+  const formattedViews = formatViews(views);
 
   // Calculate default active readers if not explicitly provided
   const liveCount = activeReaders ?? (views > 0 ? (views % 11) + 2 : 3);
