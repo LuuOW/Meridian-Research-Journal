@@ -19,7 +19,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1787340727569",
     "slug": "intensity-based-scattering-correction-enables-in-vivo-two-photon-imaging-beyond-1-mm-7569",
     "date": "August 21, 2026",
-    "views": 1313
+    "views": 1317
   },
   {
     "title": "The vanishing distance: a practical range boundary for dynamic wavefront shaping: A Rigorous Analysis of Quantum Mechanisms and Mathematical Foundations",
@@ -577,7 +577,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "editorial-frontier-photonic-engines-8842",
     "slug": "frontier-photonic-engines-from-quantum-readouts-to-deep-tissue-imaging-8842",
     "date": "August 22, 2026",
-    "views": 468,
+    "views": 466,
     "isEditorEdition": true
   },
   {
