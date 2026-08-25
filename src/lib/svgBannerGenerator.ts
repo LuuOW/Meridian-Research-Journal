@@ -87,10 +87,12 @@ export function getProceduralCounter(): number {
   return proceduralCounter;
 }
 
-export function generateProceduralBannerSvg(title: string, tags?: string, seed?: number): string {
+export function generateProceduralBannerSvg(title: string, tags?: string | string[], seed?: number): string {
   proceduralCounter++;
   const cleanTitle = (title || "Scientific Publication").replace(/["'<>]/g, "").slice(0, 60);
-  const tagText = tags ? tags.split(",")[0].trim() : "PHYSICS & QUANTUM";
+  const tagText = Array.isArray(tags) 
+    ? (tags[0] || "PHYSICS & QUANTUM") 
+    : (typeof tags === "string" && tags.trim() ? tags.split(",")[0].trim() : "PHYSICS & QUANTUM");
   
   // Use mixed seed combining timestamp, parameter seed, and invocation counter to guarantee uniqueness
   const numSeed = (seed || Date.now()) + proceduralCounter * 7919;

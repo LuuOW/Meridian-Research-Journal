@@ -2,7 +2,8 @@
  * Helper utilities for analyzing and rendering LaTeX equations vs dollar/currency expressions.
  */
 
-export const isMathExpression = (content: string): boolean => {
+export const isMathExpression = (content: string | null | undefined): boolean => {
+  if (!content || typeof content !== "string") return false;
   const trimmed = content.trim();
   
   if (!trimmed) return false;
@@ -50,3 +51,13 @@ export const sanitizeLatexFormula = (latex: string): string => {
     .replace(/\$\$$/, "")
     .trim();
 };
+
+/**
+ * Normalizes a LaTeX formula into a readable summary string for tooltips and accessibility labels.
+ */
+export const formatMathSummary = (latex: string): string => {
+  if (!latex) return "";
+  const cleaned = sanitizeLatexFormula(latex);
+  return cleaned.replace(/\\mathrm\{([^}]+)\}/g, "$1").replace(/\\mathbf\{([^}]+)\}/g, "$1").replace(/\s+/g, " ").trim();
+};
+
