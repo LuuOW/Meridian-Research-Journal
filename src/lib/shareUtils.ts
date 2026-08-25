@@ -8,10 +8,10 @@ export const generateLinkedInDraft = (
   title: string,
   excerpt: string,
   blogId?: string,
-  origin: string = "https://meridian-research.org"
+  _origin?: string
 ): string => {
   const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
-  const blogUrl = blogId ? `${origin}/blog/${blogId}` : origin;
+  const blogUrl = blogId ? `https://ask-meridian.uk/blog/${blogId.replace(/^\/+/, "")}` : "https://ask-meridian.uk/blog";
   const cleanExcerpt = excerpt ? excerpt.trim() : "Explore the latest research findings and technical analysis on Meridian.";
   return `💡 New Research Highlight: ${cleanTitle}\n\n${cleanExcerpt}\n\nRead the full paper breakdown on Meridian: ${blogUrl}`;
 };

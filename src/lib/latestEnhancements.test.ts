@@ -174,3 +174,23 @@ test("Main article body container has 3D tilt disabled for stable readability", 
     "Article reading body must use stable flat card container for reading"
   );
 });
+
+test("Search component has tilt removed and uses SearchFilterBar with autocomplete", () => {
+  const appFile = fs.readFileSync(path.join(process.cwd(), "src/App.tsx"), "utf-8");
+  assert.ok(appFile.includes("<SearchFilterBar"), "App must use SearchFilterBar");
+  assert.ok(!appFile.includes('RayTracedCard className="mb-12"'), "Search bar must not use RayTracedCard tilt");
+
+  const searchBarFile = fs.readFileSync(path.join(process.cwd(), "src/components/SearchFilterBar.tsx"), "utf-8");
+  assert.ok(!searchBarFile.includes("rotateX"), "SearchFilterBar must not contain rotateX 3D tilt");
+  assert.ok(!searchBarFile.includes("rotateY"), "SearchFilterBar must not contain rotateY 3D tilt");
+  assert.ok(searchBarFile.includes("isSearching"), "SearchFilterBar must support searching loading state");
+});
+
+test("About modal has tilt transform removed and WhatsApp updated to 541171323723", () => {
+  const aboutFile = fs.readFileSync(path.join(process.cwd(), "src/components/AboutModal.tsx"), "utf-8");
+  assert.ok(!aboutFile.includes("rotateX(${lightState.tiltX}deg)"), "AboutModal must not tilt rotateX");
+  assert.ok(!aboutFile.includes("rotateY(${lightState.tiltY}deg)"), "AboutModal must not tilt rotateY");
+  assert.ok(aboutFile.includes("https://wa.me/541171323723"), "AboutModal WhatsApp link must be updated to 541171323723");
+  assert.ok(aboutFile.includes("+54 11 7132-3723"), "AboutModal WhatsApp text must display 54 11 7132-3723");
+});
+

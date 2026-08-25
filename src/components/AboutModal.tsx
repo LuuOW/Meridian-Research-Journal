@@ -281,17 +281,14 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
         {showExplosion && <StarExplosionBurst />}
       </AnimatePresence>
 
-      {/* Modal Card with Interactive Ray-Tracing & 3D Tilt */}
+      {/* Modal Card with Interactive Ambient Ray-Tracing (No Tilt) */}
       <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="relative group p-[2px] rounded-[34px] overflow-hidden transition-transform duration-200 ease-out w-full max-w-2xl z-10 max-h-[90vh] flex flex-col"
+        className="relative group p-[2px] rounded-[34px] overflow-hidden w-full max-w-2xl z-10 max-h-[90vh] flex flex-col"
         style={{
-          transform: isHovered
-            ? `perspective(1000px) rotateX(${lightState.tiltX}deg) rotateY(${lightState.tiltY}deg) translateZ(6px)`
-            : "perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)",
           boxShadow: isHovered
             ? `${lightState.shadowX}px ${lightState.shadowY}px 45px -5px rgba(6, 182, 212, 0.5), 0 0 50px 10px rgba(168, 85, 247, 0.3)`
             : `${lightState.shadowX * 0.5}px ${lightState.shadowY * 0.5}px 30px -5px rgba(6, 182, 212, 0.25)`
@@ -541,7 +538,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
 
                 {/* WhatsApp */}
                 <a 
-                  href="https://wa.me/541170666236"
+                  href="https://wa.me/541171323723"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
@@ -552,7 +549,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
                     </div>
                     <div>
                       <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">Direct WhatsApp</span>
-                      <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">wa.me/541170666...</span>
+                      <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">+54 11 7132-3723</span>
                     </div>
                   </div>
                   <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">

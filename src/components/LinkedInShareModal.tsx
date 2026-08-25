@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Copy, Check, ExternalLink, MessageSquare, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { generateLinkedInDraft } from "../lib/shareUtils";
 import { calculateNormalizedCursor, computeRayTracedLightState, getDefaultLightState } from "../lib/rayTracingUtils";
-import { getLinkedInPostCache, saveLinkedInPostCache } from "../lib/linkedinUtils";
+import { getLinkedInPostCache, saveLinkedInPostCache, buildLinkedInArticleUrl } from "../lib/linkedinUtils";
 
 interface LinkedInShareModalProps {
   isOpen: boolean;
@@ -67,6 +67,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
 
     setIsGenerating(true);
     try {
+      const articleUrl = buildLinkedInArticleUrl(blogId);
       const response = await fetch("/api/linkedin/generate-post", {
         method: "POST",
         signal: AbortSignal.timeout(9000),
@@ -78,6 +79,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
           tags,
           arxivLink,
           blogId,
+          articleUrl,
           tone: "future",
         })
       });
@@ -97,7 +99,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
         }
       } else {
         // Fallback to local draft
-        finalDraft = generateLinkedInDraft(title, excerpt, blogId, window.location.origin);
+        finalDraft = generateLinkedInDraft(title, excerpt, blogId);
       }
 
       setDraftText(finalDraft);
@@ -112,7 +114,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
       }
     } catch (err) {
       console.warn("AI post generation timed out or failed, applying high-fidelity companion synthesis:", err);
-      const fallbackText = generateLinkedInDraft(title, excerpt, blogId, window.location.origin);
+      const fallbackText = generateLinkedInDraft(title, excerpt, blogId);
       setDraftText(fallbackText);
       setAiHeadline("Future Vision Synthesis");
 

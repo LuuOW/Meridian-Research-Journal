@@ -9,8 +9,23 @@ import {
   isWithinSentenceLimit,
   getLinkedInPostCache,
   saveLinkedInPostCache,
-  clearLinkedInPostCache
+  clearLinkedInPostCache,
+  buildLinkedInArticleUrl
 } from "./linkedinUtils";
+
+test("buildLinkedInArticleUrl creates sticky canonical short article URLs", () => {
+  assert.strictEqual(
+    buildLinkedInArticleUrl("quantum-sensing-123"),
+    "https://ask-meridian.uk/blog/quantum-sensing-123"
+  );
+  assert.strictEqual(
+    buildLinkedInArticleUrl("/optical-computing-456"),
+    "https://ask-meridian.uk/blog/optical-computing-456"
+  );
+  assert.strictEqual(buildLinkedInArticleUrl(""), "https://ask-meridian.uk/blog");
+  assert.strictEqual(buildLinkedInArticleUrl(undefined), "https://ask-meridian.uk/blog");
+  assert.strictEqual(buildLinkedInArticleUrl(null as unknown as string), "https://ask-meridian.uk/blog");
+});
 
 test("countSentences accurately measures sentence count excluding URLs and hashtags", () => {
   const sample = "🔬 Hot Off the Press on Meridian: 'Quantum Metasurfaces'. New theoretical insights in quantum optics. Read the breakdown: https://example.com #Optics #Quantum";
@@ -125,6 +140,15 @@ test("generateFallbackLinkedInPost truncates long titles appropriately", () => {
 
   assert.ok(fallback.headline.includes("..."), "Fallback headline should contain truncation ellipsis");
   assert.ok(fallback.postText.includes("New theoretical and experimental insights"), "Fallback should supply default excerpt when missing");
+});
+
+test("generateFallbackLinkedInPost uses sticky ask-meridian.uk/blog url when blogId is passed", () => {
+  const fallback = generateFallbackLinkedInPost({
+    title: "Photonics on Chip",
+    blogId: "photonics-chip-99"
+  });
+
+  assert.ok(fallback.postText.includes("https://ask-meridian.uk/blog/photonics-chip-99"));
 });
 
 test("sanitizeHashtags handles non-array input gracefully", () => {

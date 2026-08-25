@@ -7,6 +7,17 @@ export interface CachedLinkedInPost {
 const MEMORY_CACHE = new Map<string, CachedLinkedInPost>();
 
 /**
+ * Builds the canonical short and sticky article URL for LinkedIn posts and sharing: https://ask-meridian.uk/blog/[id]
+ */
+export function buildLinkedInArticleUrl(blogId?: string): string {
+  if (!blogId || typeof blogId !== "string" || !blogId.trim()) {
+    return "https://ask-meridian.uk/blog";
+  }
+  const cleanId = blogId.trim().replace(/^\/+/, "");
+  return `https://ask-meridian.uk/blog/${cleanId}`;
+}
+
+/**
  * Retrieves cached LinkedIn post by key (blogId or title slug).
  * Checks localStorage first to survive reloads & browser closes, falling back to memory map.
  */
@@ -189,13 +200,19 @@ export const sanitizeHashtags = (hashtags: string[]): string[] => {
 /**
  * Generates structured fallback post when AI generation is unavailable
  */
-export const generateFallbackLinkedInPost = (params: { title: string; excerpt?: string; blogUrl: string }) => {
-  const { title, excerpt, blogUrl } = params;
+export const generateFallbackLinkedInPost = (params: {
+  title: string;
+  excerpt?: string;
+  blogUrl?: string;
+  blogId?: string;
+}) => {
+  const { title, excerpt, blogUrl, blogId } = params;
+  const targetUrl = blogUrl || buildLinkedInArticleUrl(blogId);
   const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
   let rawExcerpt = excerpt ? excerpt.trim() : "New theoretical and experimental insights in quantum optics and photonics.";
   if (!rawExcerpt.endsWith(".")) rawExcerpt += ".";
 
-  const fallbackText = `🔬 Breakthrough research on Meridian: "${cleanTitle}". ${rawExcerpt} Read the complete peer-reviewed paper breakdown here: ${blogUrl}\n\n#Optics #QuantumPhysics #SiliconPhotonics #MeridianResearch`;
+  const fallbackText = `🔬 Breakthrough research on Meridian: "${cleanTitle}". ${rawExcerpt} Read the complete peer-reviewed paper breakdown here: ${targetUrl}\n\n#Optics #QuantumPhysics #SiliconPhotonics #MeridianResearch`;
 
   return {
     success: true,

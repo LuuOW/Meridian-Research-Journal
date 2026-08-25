@@ -30,6 +30,8 @@ import { AboutModal } from "./components/AboutModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
+import { SearchFilterBar } from "./components/SearchFilterBar";
+import { filterBlogsIntelligently } from "./lib/autocompleteUtils";
 import { GoogleAdSlot } from "./components/GoogleAdSlot";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
@@ -54,7 +56,22 @@ export default function App() {
   const [hiddenBlogIds, setHiddenBlogIds] = useState<string[]>([]);
   const [activeAudioBlog, setActiveAudioBlog] = useState<BlogPost | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setIsSearching(true);
+  };
+
+  useEffect(() => {
+    if (isSearching) {
+      const timer = setTimeout(() => {
+        setIsSearching(false);
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery, isSearching]);
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
@@ -852,22 +869,14 @@ export default function App() {
   // Get all unique tags from active blogs
   const allTags = Array.from(new Set(blogs.flatMap((b) => b.tags)));
 
-  // Filtered list of blogs based on search and selected tag
-  const filteredBlogs = blogs.filter((b) => {
-    // Skip hidden blogs from the public feed unless in editor mode
-    if (!isEditorMode && hiddenBlogIds.includes(b.id)) return false;
-
-    // Skip draft options (they are published via the daily dispatch flow)
-    if (b.status === "draft_option") return false;
-
-    const matchesSearch =
-      b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTag = selectedTag ? b.tags.includes(selectedTag) : true;
-    
-    return matchesSearch && matchesTag;
-  });
+  // Filtered and ranked list of blogs based on intelligent multi-token search and tag selection
+  const filteredBlogs = filterBlogsIntelligently(
+    blogs,
+    searchQuery,
+    selectedTag,
+    hiddenBlogIds,
+    isEditorMode
+  );
 
   if (portalToken) {
     return (
@@ -958,61 +967,45 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Simplified Search and Topic Filter Bar */}
-              <RayTracedCard className="mb-12" accentGlowColor="rgba(99, 102, 241, 0.22)">
-                <div className="p-5 flex flex-col lg:flex-row items-center gap-4">
-                  <div className="relative w-full lg:flex-1">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      placeholder="Search publications by keyword, equations, or models..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 rounded-2xl bg-neutral-50/60 dark:bg-neutral-950/40 border border-gray-100 dark:border-neutral-800 outline-none focus:ring-2 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-neutral-700 focus:bg-white dark:focus:bg-neutral-950 text-sm transition-all dark:text-neutral-100 dark:placeholder-neutral-500"
-                    />
-                  </div>
-                  
-                  {/* Scrollable tag list */}
-                  <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto no-scrollbar py-1">
-                    <button
-                      onClick={() => setSelectedTag(null)}
-                      className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
-                        !selectedTag
-                          ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
-                          : "bg-neutral-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-750"
-                      }`}
-                    >
-                      All Topics
-                    </button>
-                    {allTags.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => setSelectedTag(tag)}
-                        className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
-                          selectedTag === tag
-                            ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
-                            : "bg-neutral-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-750"
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </RayTracedCard>
+              {/* Simplified Intelligent Search & Topic Filter Bar (No Tilt, Autocomplete, Loading Effect) */}
+              <SearchFilterBar
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
+                selectedTag={selectedTag}
+                onSelectTag={setSelectedTag}
+                allTags={allTags}
+                blogs={blogs}
+                onSelectArticle={(blog) => {
+                  setActiveBlog(blog);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                isSearching={isSearching}
+                totalResultsCount={filteredBlogs.length}
+              />
 
               {/* Grid or Empty state layout */}
               <div className="max-w-7xl mx-auto w-full relative">
                 <div className="space-y-8">
                   {filteredBlogs.length > 0 ? (
-                    /* Standard Grid mapping */
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    /* Standard Grid mapping with smooth fade-in transition */
+                    <motion.div 
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.25 }}
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    >
                       {filteredBlogs.map((blog) => {
                         const isHidden = hiddenBlogIds.includes(blog.id);
                         const isPreloaded = !blog.id.startsWith("generated");
                         return (
-                          <div 
+                          <motion.div 
                             key={blog.id} 
+                            layout
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            transition={{ duration: 0.2 }}
                             className={`relative group transition-all duration-300 ${
                               isHidden ? "opacity-60 saturate-50" : ""
                             }`}
@@ -1080,10 +1073,10 @@ export default function App() {
                                   )}
                                 </div>
                               )}
-                            </div>
-                          );
-                        })}
-                      </div>
+                          </motion.div>
+                        );
+                      })}
+                    </motion.div>
                   ) : (
                     <RayTracedCard className="max-w-md mx-auto" accentGlowColor="rgba(236, 72, 153, 0.22)">
                       <div className="p-12 text-center">

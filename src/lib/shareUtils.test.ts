@@ -3,19 +3,22 @@ import assert from "node:assert";
 import { generateLinkedInDraft, generateTwitterDraft, formatMarkdownExport } from "./shareUtils";
 import { BlogPost } from "../types";
 
-test("generateLinkedInDraft generates clean social media post with truncated title and blog link", () => {
+test("generateLinkedInDraft generates clean social media post with truncated title and sticky ask-meridian.uk/blog link", () => {
   const shortTitle = "Topological Quantum States in Silicon";
   const longTitle = "A Very Long Scientific Research Paper Title That Exceeds Eighty Characters and Needs Truncation for Social Posts";
   const excerpt = "An in-depth summary of quantum photonic states.";
 
-  const draftShort = generateLinkedInDraft(shortTitle, excerpt, "123", "https://example.com");
+  const draftShort = generateLinkedInDraft(shortTitle, excerpt, "123");
   assert.ok(draftShort.includes("Topological Quantum States in Silicon"), "Should include full title if <= 80 chars");
   assert.ok(draftShort.includes("An in-depth summary of quantum photonic states."), "Should include article excerpt");
-  assert.ok(draftShort.includes("Read the full paper breakdown on Meridian: https://example.com/blog/123"), "Should format blog URL");
+  assert.ok(draftShort.includes("Read the full paper breakdown on Meridian: https://ask-meridian.uk/blog/123"), "Should format sticky short blog URL");
 
-  const draftLong = generateLinkedInDraft(longTitle, excerpt, "456", "https://example.com");
+  const draftLong = generateLinkedInDraft(longTitle, excerpt, "456");
   assert.ok(draftLong.includes("..."), "Should truncate titles longer than 80 characters");
-  assert.ok(draftLong.includes("Read the full paper breakdown on Meridian: https://example.com/blog/456"));
+  assert.ok(draftLong.includes("Read the full paper breakdown on Meridian: https://ask-meridian.uk/blog/456"));
+
+  const draftNoId = generateLinkedInDraft(shortTitle, excerpt);
+  assert.ok(draftNoId.includes("Read the full paper breakdown on Meridian: https://ask-meridian.uk/blog"));
 });
 
 test("generateTwitterDraft creates concise tweet format with emojis and link", () => {

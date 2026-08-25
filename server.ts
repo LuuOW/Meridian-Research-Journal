@@ -1843,14 +1843,13 @@ Respond strictly with valid JSON conforming to the response schema.`;
 
 // API: AI-Enhanced LinkedIn Post Generator powered by Gemini
 app.post("/api/linkedin/generate-post", async (req, res) => {
-  const { title, excerpt, content, tags, arxivLink, blogId, tone = "technical", customPrompt } = req.body;
+  const { title, excerpt, content, tags, arxivLink, blogId, articleUrl: clientArticleUrl, tone = "technical", customPrompt } = req.body;
 
   if (!title) {
     return res.status(400).json({ error: "Missing article title" });
   }
 
-  const origin = req.protocol + "://" + req.get("host");
-  const blogUrl = blogId ? `${origin}/blog/${blogId}` : (arxivLink || origin);
+  const blogUrl = clientArticleUrl || (blogId ? `https://ask-meridian.uk/blog/${blogId.replace(/^\/+/, "")}` : "https://ask-meridian.uk/blog");
 
   try {
     const ai = getGeminiClient();
