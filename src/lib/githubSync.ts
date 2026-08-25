@@ -246,14 +246,14 @@ export async function commitFilesAtomicallyToGitHub(params: {
       const newCommitSha = newCommitData.sha;
 
       // 5. Update branch reference to point to the new commit
-      const updateRefRes = await fetch(
+      let updateRefRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`,
         {
           method: "PATCH",
           headers,
           body: JSON.stringify({
             sha: newCommitSha,
-            force: false
+            force: attempt > 1 // Use force update on retries if fast-forward had concurrency conflict
           })
         }
       );
@@ -261,7 +261,27 @@ export async function commitFilesAtomicallyToGitHub(params: {
       if (!updateRefRes.ok) {
         const errJson: any = await updateRefRes.json().catch(() => ({}));
         const errMsg = errJson.message || `Branch ref update failed (HTTP ${updateRefRes.status})`;
-        // Concurrency conflict - retry
+
+        // If non-fast-forward error, try one immediate force update with this fresh commit
+        if (errMsg.includes("not a fast forward") || updateRefRes.status === 422) {
+          const forceRefRes = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`,
+            {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify({
+                sha: newCommitSha,
+                force: true
+              })
+            }
+          );
+          if (forceRefRes.ok) {
+            const commitUrl = `https://github.com/${owner}/${repo}/commit/${newCommitSha}`;
+            return { success: true, commitUrl };
+          }
+        }
+
+        // Concurrency conflict - retry with fresh ref from origin
         if (attempt < 3) {
           await new Promise((r) => setTimeout(r, 800));
           continue;
