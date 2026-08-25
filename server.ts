@@ -59,7 +59,14 @@ app.use((req, res, next) => {
 // Google AdSense Authorized Digital Sellers (ads.txt) Verification Endpoint
 app.get("/ads.txt", (req, res) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
   res.send("google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0\n");
+});
+
+// GitHub Pages / Jekyll bypass endpoint
+app.get("/.nojekyll", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send("");
 });
 
 app.use(express.json({ limit: "10mb" }));

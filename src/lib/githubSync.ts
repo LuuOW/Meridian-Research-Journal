@@ -552,15 +552,24 @@ export async function syncAllBlogsToGitHub(
 
   console.log(`[GitHub Sync] Mirroring ${blogs.length} articles to GitHub (${config.repo}#${config.branch})... Reason: ${reason}`);
 
-  const commitMessage = `feat(blog): sync ${blogs.length} articles (${reason}) [skip ci]`;
+  const commitMessage = `feat(blog): sync ${blogs.length} articles and root ads.txt / .nojekyll (${reason}) [skip ci]`;
+  const adsTxtContent = "google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0\n";
+  const nojekyllContent = "";
+
+  const filesToSync = [
+    { path: "custom_blogs.json", content: customBlogsJson },
+    { path: "src/data.ts", content: dataTsContent },
+    { path: "ads.txt", content: adsTxtContent },
+    { path: "public/ads.txt", content: adsTxtContent },
+    { path: ".nojekyll", content: nojekyllContent },
+    { path: "public/.nojekyll", content: nojekyllContent }
+  ];
+
   const atomicResult = await commitFilesAtomicallyToGitHub({
     owner,
     repo: repoName,
     branch: config.branch,
-    files: [
-      { path: "custom_blogs.json", content: customBlogsJson },
-      { path: "src/data.ts", content: dataTsContent }
-    ],
+    files: filesToSync,
     message: commitMessage,
     token: config.token,
     authorName: config.authorName,
@@ -568,7 +577,7 @@ export async function syncAllBlogsToGitHub(
   });
 
   if (atomicResult.success) {
-    updatedFiles.push("custom_blogs.json", "src/data.ts");
+    updatedFiles.push("custom_blogs.json", "src/data.ts", "ads.txt", "public/ads.txt", ".nojekyll");
     if (atomicResult.commitUrl) commitUrls.push(atomicResult.commitUrl);
   } else {
     console.warn(`[GitHub Sync] Atomic commit attempt failed (${atomicResult.error}), falling back to sequential commits...`);
@@ -578,10 +587,7 @@ export async function syncAllBlogsToGitHub(
       owner,
       repo: repoName,
       branch: config.branch,
-      files: [
-        { path: "custom_blogs.json", content: customBlogsJson },
-        { path: "src/data.ts", content: dataTsContent }
-      ],
+      files: filesToSync,
       message: commitMessage,
       token: config.token,
       authorName: config.authorName,
@@ -589,7 +595,7 @@ export async function syncAllBlogsToGitHub(
     });
 
     if (fallbackResult.success) {
-      updatedFiles.push("custom_blogs.json", "src/data.ts");
+      updatedFiles.push("custom_blogs.json", "src/data.ts", "ads.txt", "public/ads.txt", ".nojekyll");
       if (fallbackResult.commitUrl) commitUrls.push(fallbackResult.commitUrl);
     } else {
       console.error(`[GitHub Sync] Fallback commit also failed:`, fallbackResult.error);
