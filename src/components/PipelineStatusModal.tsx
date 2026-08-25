@@ -206,6 +206,7 @@ export const PipelineStatusModal: React.FC<PipelineStatusModalProps> = ({
                   const elapsed = formatElapsedTime(job.startTime, now);
                   const isLogExpanded = expandedLogJobIds.has(job.id);
                   const isBannerJob = job.jobType === "banner_regen";
+                  const isArticleRegen = job.jobType === "article_regen";
 
                   return (
                     <div
@@ -218,7 +219,13 @@ export const PipelineStatusModal: React.FC<PipelineStatusModalProps> = ({
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0">
-                            {isBannerJob ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                            {isBannerJob ? (
+                              <ImageIcon className="w-4 h-4" />
+                            ) : isArticleRegen ? (
+                              <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+                            ) : (
+                              <FileText className="w-4 h-4" />
+                            )}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
@@ -226,7 +233,7 @@ export const PipelineStatusModal: React.FC<PipelineStatusModalProps> = ({
                                 {job.targetTitle || job.arxivInput}
                               </h4>
                               <span className="px-2 py-0.5 text-[8px] font-mono font-bold uppercase tracking-widest rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300">
-                                {isBannerJob ? "Banner Vector" : "Full Article"}
+                                {isBannerJob ? "Banner Vector" : isArticleRegen ? "Article Regen" : "Full Article"}
                               </span>
                             </div>
                             <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono mt-0.5 truncate">

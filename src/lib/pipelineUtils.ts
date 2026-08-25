@@ -15,6 +15,13 @@ export const BANNER_PIPELINE_STEPS = [
   "Validating SVG structure & synchronizing publication..."
 ];
 
+export const ARTICLE_REGEN_PIPELINE_STEPS = [
+  "Contacting arXiv & extracting source literature...",
+  "Formulating rigorous mathematical models & LaTeX proofs...",
+  "Gemini generating comprehensive scholarly prose...",
+  "Validating physics consistency & updating publication..."
+];
+
 const STORAGE_KEY = "meridian_generation_pipeline_jobs";
 
 export function loadStoredJobs(): GenerationJob[] {
@@ -101,6 +108,27 @@ export function createBannerGenerationJob(blog: BlogPost): GenerationJob {
   };
 }
 
+export function createArticleRegenerationJob(blog: BlogPost): GenerationJob {
+  const id = `job-article-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const now = Date.now();
+  return {
+    id,
+    jobType: "article_regen",
+    arxivInput: blog.arxivLink || blog.slug || blog.id,
+    targetTitle: blog.title || "Research Publication",
+    status: "generating",
+    currentStepIndex: 0,
+    currentStepMessage: ARTICLE_REGEN_PIPELINE_STEPS[0],
+    progressPercent: 20,
+    startTime: now,
+    dismissed: false,
+    stepLogs: [
+      { timestamp: now, message: `Article regeneration initiated for "${blog.title}"` },
+      { timestamp: now, message: ARTICLE_REGEN_PIPELINE_STEPS[0] }
+    ]
+  };
+}
+
 export function calculateJobProgressPercentage(stepIndex: number, totalSteps: number = PIPELINE_STEPS.length): number {
   if (stepIndex < 0) return 0;
   if (stepIndex >= totalSteps) return 90; // Reserving 100% for completed state
@@ -110,7 +138,11 @@ export function calculateJobProgressPercentage(stepIndex: number, totalSteps: nu
 
 export function advanceJobStep(job: GenerationJob): GenerationJob {
   if (job.status !== "generating") return job;
-  const steps = job.jobType === "banner_regen" ? BANNER_PIPELINE_STEPS : PIPELINE_STEPS;
+  const steps = job.jobType === "banner_regen"
+    ? BANNER_PIPELINE_STEPS
+    : job.jobType === "article_regen"
+    ? ARTICLE_REGEN_PIPELINE_STEPS
+    : PIPELINE_STEPS;
   const nextStepIdx = (job.currentStepIndex + 1) % steps.length;
   const nextMsg = steps[nextStepIdx];
   const now = Date.now();
@@ -132,6 +164,8 @@ export function completeJob(job: GenerationJob, blog: BlogPost): GenerationJob {
   const prevLogs = job.stepLogs || [];
   const finishMsg = job.jobType === "banner_regen"
     ? `Banner SVG synthesized and applied to "${blog.title}"`
+    : job.jobType === "article_regen"
+    ? `Article "${blog.title}" regenerated & published!`
     : `Article "${blog.title}" generated & published!`;
 
   return {

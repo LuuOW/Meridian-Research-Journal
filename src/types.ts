@@ -28,7 +28,7 @@ export interface GenerationResponse {
 }
 
 export type JobStatus = "queued" | "generating" | "completed" | "failed";
-export type JobType = "article" | "banner_regen";
+export type JobType = "article" | "banner_regen" | "article_regen";
 
 export interface JobStepLog {
   timestamp: number;

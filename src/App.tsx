@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download } from "lucide-react";
+import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download, FileEdit, FileText, Palette, Trash2 } from "lucide-react";
 
 import { BlogPost, GenerationJob } from "./types";
 import { PRELOADED_BLOGS } from "./data";
@@ -12,9 +12,11 @@ import { ArxivGenerator } from "./components/ArxivGenerator";
 import { PipelineStatusWidget } from "./components/PipelineStatusWidget";
 import { PipelineStatusModal } from "./components/PipelineStatusModal";
 import { RegenerateBannerWidget } from "./components/RegenerateBannerWidget";
+import { RegenerateArticleWidget } from "./components/RegenerateArticleWidget";
 import {
   createGenerationJob,
   createBannerGenerationJob,
+  createArticleRegenerationJob,
   advanceJobStep,
   completeJob,
   failJob,
@@ -93,6 +95,8 @@ export default function App() {
   }, [jobs]);
   const [isRegeneratingBanner, setIsRegeneratingBanner] = useState<string | null>(null);
   const [bannerToastMsg, setBannerToastMsg] = useState<string | null>(null);
+  const [isRegeneratingArticle, setIsRegeneratingArticle] = useState<string | null>(null);
+  const [articleToastMsg, setArticleToastMsg] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return (localStorage.getItem("theme") as "light" | "dark") || "light";
@@ -272,6 +276,100 @@ export default function App() {
       alert(err.message || "Failed to regenerate banner.");
     } finally {
       setIsRegeneratingBanner(null);
+    }
+  };
+
+  const handleRegenerateArticle = async (blogToUpdate: BlogPost, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!blogToUpdate) return;
+
+    if (!isEditorMode) {
+      setIsEditorPasswordModalOpen(true);
+      return;
+    }
+
+    const activePassword = editorPassword || sessionStorage.getItem("meridian_editor_pwd") || "meridian";
+    const articleJob = createArticleRegenerationJob(blogToUpdate);
+    setJobs((prev) => [articleJob, ...prev]);
+
+    setIsRegeneratingArticle(blogToUpdate.id);
+    setArticleToastMsg(null);
+
+    // Setup timer interval to simulate pipeline step progress
+    const intervalId = setInterval(() => {
+      setJobs((prevJobs) =>
+        prevJobs.map((j) => (j.id === articleJob.id ? advanceJobStep(j) : j))
+      );
+    }, 2400);
+
+    try {
+      const response = await fetch("/api/blog/regenerate-article", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blogId: blogToUpdate.id,
+          title: blogToUpdate.title,
+          excerpt: blogToUpdate.excerpt,
+          content: blogToUpdate.content,
+          tags: blogToUpdate.tags,
+          arxivLink: blogToUpdate.arxivLink,
+          password: activePassword,
+          seed: Date.now() + Math.floor(Math.random() * 1000000)
+        })
+      });
+
+      clearInterval(intervalId);
+
+      if (!response.ok) {
+        let errText = "Failed to regenerate article";
+        try {
+          const errJson = await response.json();
+          errText = errJson.error || errText;
+        } catch (_) {}
+        throw new Error(errText);
+      }
+
+      const data = await response.json();
+      if (data.success && data.blog) {
+        const updatedBlog: BlogPost = data.blog;
+
+        // Update state in blogs list
+        setBlogs((prev) =>
+          prev.map((b) => (b.id === blogToUpdate.id ? updatedBlog : b))
+        );
+
+        // Update activeBlog state if it's currently open
+        if (activeBlog && activeBlog.id === blogToUpdate.id) {
+          setActiveBlog(updatedBlog);
+        }
+
+        // Complete job in pipeline tracking
+        setJobs((prevJobs) =>
+          prevJobs.map((j) => (j.id === articleJob.id ? completeJob(j, updatedBlog) : j))
+        );
+
+        // Persist to local storage
+        try {
+          const customBlogs = blogs
+            .map((b) => (b.id === blogToUpdate.id ? updatedBlog : b))
+            .filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id));
+          localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+        } catch (_) {}
+
+        setArticleToastMsg("Scholarly article regenerated & updated successfully!");
+        setTimeout(() => setArticleToastMsg(null), 3500);
+      } else {
+        throw new Error("Invalid response format received when regenerating article.");
+      }
+    } catch (err: any) {
+      clearInterval(intervalId);
+      console.error("Article regeneration error:", err);
+      setJobs((prevJobs) =>
+        prevJobs.map((j) => (j.id === articleJob.id ? failJob(j, err.message) : j))
+      );
+      alert(err.message || "Failed to regenerate article.");
+    } finally {
+      setIsRegeneratingArticle(null);
     }
   };
 
@@ -1022,56 +1120,72 @@ export default function App() {
                                 </div>
                               )}
 
-                              {/* Action overlay controls when Editor Mode is active */}
+                              {/* Action overlay controls when Editor Mode is active - Discrete & Separated */}
                               {isEditorMode && (
-                                <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10 animate-fade-in">
-                                  <button
-                                    onClick={(e) => handleRegenerateBanner(blog, e)}
-                                    disabled={isRegeneratingBanner === blog.id}
-                                    title="Regenerate publication banner SVG"
-                                    className="p-2.5 bg-cyan-600 border border-cyan-500 hover:bg-cyan-500 text-white rounded-full shadow-lg cursor-pointer transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center"
-                                  >
-                                    <Sparkles className={`h-4 w-4 text-white ${isRegeneratingBanner === blog.id ? "animate-spin" : ""}`} />
-                                  </button>
-                                  {isPreloaded ? (
+                                <>
+                                  {/* Banner artwork regeneration: discrete glass pill on top-left of the card */}
+                                  <div className="absolute top-3.5 left-3.5 z-20 animate-fade-in">
                                     <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleToggleHideBlog(blog.id);
-                                      }}
-                                      title={isHidden ? "Restore/Unhide publication" : "Hide publication"}
-                                      className={`p-2.5 rounded-full shadow-lg border cursor-pointer transition-all ${
-                                        isHidden
-                                          ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
-                                          : "bg-neutral-900/90 border-neutral-800 text-white hover:bg-black"
-                                      }`}
+                                      onClick={(e) => handleRegenerateBanner(blog, e)}
+                                      disabled={isRegeneratingBanner === blog.id}
+                                      title="Regenerate Banner SVG Artwork Only"
+                                      className="px-2.5 py-1.5 bg-neutral-950/85 hover:bg-neutral-900 text-cyan-300 hover:text-cyan-200 border border-cyan-500/40 hover:border-cyan-400 rounded-lg shadow-lg cursor-pointer transition-all disabled:opacity-50 active:scale-95 flex items-center gap-1.5 text-[10px] font-mono font-bold backdrop-blur-md"
                                     >
-                                      {isHidden ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                      ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                      )}
+                                      <Palette className={`h-3.5 w-3.5 text-cyan-400 ${isRegeneratingBanner === blog.id ? "animate-spin" : ""}`} />
+                                      <span>Banner SVG</span>
                                     </button>
-                                  ) : (
+                                  </div>
+
+                                  {/* Article text regeneration & management: discrete pills on top-right of the card */}
+                                  <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-20 animate-fade-in">
                                     <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setDeleteBlogId(blog.id);
-                                      }}
-                                      title="Delete custom publication"
-                                      className="p-2.5 bg-red-600 border border-red-500 hover:bg-red-700 text-white rounded-full shadow-lg cursor-pointer transition-colors"
+                                      onClick={(e) => handleRegenerateArticle(blog, e)}
+                                      disabled={isRegeneratingArticle === blog.id}
+                                      title="Regenerate Full Article Text, LaTeX & Takeaways"
+                                      className="px-2.5 py-1.5 bg-neutral-950/85 hover:bg-neutral-900 text-emerald-300 hover:text-emerald-200 border border-emerald-500/40 hover:border-emerald-400 rounded-lg shadow-lg cursor-pointer transition-all disabled:opacity-50 active:scale-95 flex items-center gap-1.5 text-[10px] font-mono font-bold backdrop-blur-md"
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
+                                      <FileText className={`h-3.5 w-3.5 text-emerald-400 ${isRegeneratingArticle === blog.id ? "animate-pulse" : ""}`} />
+                                      <span>Article Text</span>
                                     </button>
-                                  )}
-                                </div>
+
+                                    {isPreloaded ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleHideBlog(blog.id);
+                                        }}
+                                        title={isHidden ? "Restore/Unhide publication" : "Hide publication"}
+                                        className={`p-1.5 rounded-lg shadow-lg border cursor-pointer transition-all ${
+                                          isHidden
+                                            ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
+                                            : "bg-neutral-950/85 border-neutral-700 text-neutral-300 hover:text-white hover:bg-black backdrop-blur-md"
+                                        }`}
+                                      >
+                                        {isHidden ? (
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                          </svg>
+                                        ) : (
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                          </svg>
+                                        )}
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeleteBlogId(blog.id);
+                                        }}
+                                        title="Delete custom publication"
+                                        className="p-1.5 bg-neutral-950/85 hover:bg-red-600 border border-neutral-700 hover:border-red-500 text-neutral-300 hover:text-white rounded-lg shadow-lg cursor-pointer transition-colors backdrop-blur-md"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
                               )}
                           </motion.div>
                         );
@@ -1269,18 +1383,56 @@ export default function App() {
                           </button>
                         </div>
 
-                        {/* Editor Mode: Single Pipeline Status Regenerate Banner Control */}
+                        {/* Editor Mode: Dedicated Pipeline Actions (Clearly Distinguished & Discrete) */}
                         {isEditorMode && (
-                          <RegenerateBannerWidget
-                            onRegenerate={() => handleRegenerateBanner(activeBlog)}
-                            isGenerating={isRegeneratingBanner === activeBlog.id}
-                          />
+                          <div className="space-y-4 pt-3 border-t border-neutral-200/70 dark:border-neutral-800/70">
+                            {/* Section 1: Article Prose & Derivations */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between px-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                <span className="flex items-center gap-1.5">
+                                  <FileText className="w-3 h-3 text-emerald-500" />
+                                  1. Article Synthesis
+                                </span>
+                                <span className="text-[9px] text-neutral-400 font-normal">
+                                  Prose & Math
+                                </span>
+                              </div>
+                              <RegenerateArticleWidget
+                                onRegenerate={() => handleRegenerateArticle(activeBlog)}
+                                isGenerating={isRegeneratingArticle === activeBlog.id}
+                              />
+                            </div>
+
+                            {/* Section 2: Banner Vector Artwork */}
+                            <div className="space-y-1.5 pt-2 border-t border-dashed border-neutral-200 dark:border-neutral-800">
+                              <div className="flex items-center justify-between px-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                                <span className="flex items-center gap-1.5">
+                                  <Palette className="w-3 h-3 text-cyan-500" />
+                                  2. Artwork Banner
+                                </span>
+                                <span className="text-[9px] text-neutral-400 font-normal">
+                                  Vector SVG
+                                </span>
+                              </div>
+                              <RegenerateBannerWidget
+                                onRegenerate={() => handleRegenerateBanner(activeBlog)}
+                                isGenerating={isRegeneratingBanner === activeBlog.id}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {articleToastMsg && (
+                          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 animate-fade-in shadow-sm">
+                            <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <span>{articleToastMsg}</span>
+                          </div>
                         )}
 
                         {bannerToastMsg && (
-                          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 animate-fade-in">
-                            <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                            {bannerToastMsg}
+                          <div className="p-2.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 animate-fade-in shadow-sm">
+                            <Palette className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                            <span>{bannerToastMsg}</span>
                           </div>
                         )}
                       </div>
