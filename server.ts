@@ -9,6 +9,8 @@ import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from
 import nodemailer from "nodemailer";
 import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml, extractSvgString } from "./src/lib/arxivUtils";
 import { generateProceduralBannerSvg } from "./src/lib/svgBannerGenerator";
+import { generateScientificArticleFromArxiv } from "./src/lib/paperGenerationEngine";
+import { auditArticleAgainstArxiv, auditCatalogUniqueness } from "./src/lib/arxivAuditor";
 import {
   buildLinkedInSystemInstruction,
   buildLinkedInUserPrompt,
@@ -774,175 +776,15 @@ app.get("/api/verify-github-token", async (req, res) => {
   }
 });
 
-// Procedural scholarly article generator fallback with domain-specific mathematical formulations
+// Procedural scholarly article generator with authoritative arXiv domain-specific formulations
 function generateProceduralPaperArticle(paperTitle: string, paperSummary: string, arxivLink: string, paperAuthors: string, triggerId: number) {
-  const cleanTitle = (paperTitle || "Frontier Analysis in Quantum Photonics & Mathematical Physics").replace(/[\r\n]+/g, " ").trim();
-  const summarySnippet = paperSummary ? paperSummary.slice(0, 700) : "Recent advancements in theoretical physics and mathematical architectures demonstrate novel quantum topologies and analytical methodologies.";
-  const lowerContext = (cleanTitle + " " + summarySnippet).toLowerCase();
-
-  let domainCategory = "quantum";
-  let domainTags = ["Quantum Computing", "Theoretical Physics", "Mathematical Modeling", "Optics"];
-  let mathSection = "";
-  let methodSection = "";
-  let findingsSection = "";
-
-  if (lowerContext.includes("scattering") || lowerContext.includes("wavefront") || lowerContext.includes("two-photon") || lowerContext.includes("microscop") || lowerContext.includes("fourier") || lowerContext.includes("imaging")) {
-    domainCategory = "optics_scattering";
-    domainTags = ["Optics", "Wavefront Shaping", "Biophotonics", "Scattering Media", "Deep Learning"];
-    mathSection = `## Key Theoretical Formulations & Wave Optics
-
-The propagation of coherent wavefields through inhomogeneous scattering media is governed by the vector Helmholtz wave equation with spatially disordered permittivity tensors $\\varepsilon(\\mathbf{r})$:
-
-$$\\nabla^2 \\mathbf{E}(\\mathbf{r}) + k_0^2 \\varepsilon(\\mathbf{r}) \\mathbf{E}(\\mathbf{r}) = 0$$
-
-Where the relationship between the incident illumination wavefront $\\mathbf{E}_{\\text{in}}$ and the transmitted target focus $\\mathbf{E}_{\\text{out}}$ is mapped via the complex Transmission Matrix $\\mathbf{T}$:
-
-$$\\mathbf{E}_{\\text{out}} = \\mathbf{T} \\mathbf{E}_{\\text{in}} + \\mathbf{\\eta}_{\\text{noise}}$$
-
-Performing Singular Value Decomposition (SVD) on $\\mathbf{T} = \\mathbf{U} \\mathbf{\\Sigma} \\mathbf{V}^\\dagger$ isolates open transmission eigenchannels possessing unity transmission eigenvalues $\\tau_n \\to 1$. Furthermore, the ballistic-to-diffuse energy ratio defines the vanishing distance boundary:
-
-$$L_{\\text{vanish}} = \\ell_{\\text{scat}} \\ln \\left( \\frac{I_0}{\\langle I_{\\text{diffuse}} \\rangle} \\right)$$`;
-
-    methodSection = `## Architecture & Experimental Methodology
-
-The analytical framework combines dynamic spatial light modulation with high-speed Fourier-domain intensity coupling:
-
-- **Phase 1: Wavefront Phase Synthesis** — Modulating input spatial light phases $\\phi(x, y)$ to compensate for localized wavefront aberrations.
-- **Phase 2: Eigenchannel Inversion** — Optimizing target intensity via conjugated phase matching: $\\mathbf{E}_{\\text{in}}^* = \\mathbf{T}^\\dagger \\mathbf{E}_{\\text{target}}$.
-- **Phase 3: Deep-Learning Intensity Modulation** — Computing real-time spatial excitation masks using deep neural spatial decoders with sub-millisecond latency.`;
-
-    findingsSection = `## Key Results & Empirical Findings
-
-Experimental benchmarks validate unprecedented optical penetration depths through turbid media:
-
-1. **Resolution Enhancement**: Sub-diffraction spatial confinement with Strehl ratio improvements $S > 0.88$.
-2. **Penetration Horizon**: Sustained ballistic focus beyond $1.2\\,\\text{mm}$ in biological scattering phantoms.
-3. **Contrast Fidelity**: Peak-to-background ratio (PBR) enhancement exceeding $34.2\\,\\text{dB}$.`;
-  } else if (lowerContext.includes("vacuum") || lowerContext.includes("non-linear") || lowerContext.includes("nonlinearity") || lowerContext.includes("cavity") || lowerContext.includes("anisotropy") || lowerContext.includes("bound state") || lowerContext.includes("photon")) {
-    domainCategory = "quantum_optics";
-    domainTags = ["Quantum Optics", "Nonlinear Dynamics", "Photonics", "Vacuum Non-Linearity", "Bound States"];
-    mathSection = `## Key Theoretical Formulations & Non-Linear Quantum Electrodynamics
-
-In intense background electromagnetic fields, quantum electrodynamic (QED) vacuum fluctuations induce effective photon-photon interactions characterized by the Euler-Heisenberg effective Lagrangian:
-
-$$\\mathcal{L}_{\\text{QED}} = \\frac{1}{2}(\\mathbf{E}^2 - \\mathbf{B}^2) + \\frac{2\\alpha^2}{45 m_e^4} \\left[ (\\mathbf{E}^2 - \\mathbf{B}^2)^2 + 7(\\mathbf{E}\\cdot\\mathbf{B})^2 \\right]$$
-
-For non-classical squeezed vacuum probe states $|\\xi\\rangle = \\hat{S}(\\xi)|0\\rangle$ with squeezing parameter $\\xi = r e^{i\\theta}$, the quadrature field variances satisfy:
-
-$$\\Delta X_1^2 = \\frac{1}{4}e^{-2r}, \\quad \\Delta X_2^2 = \\frac{1}{4}e^{2r}$$
-
-The phase sensitivity for optical non-linearity detection surpasses standard shot-noise limits, approaching the fundamental Heisenberg bound:
-
-$$\\Delta \\theta_{\\text{QED}} \\ge \\frac{1}{2 \\sqrt{\\langle N \\rangle (\\langle N \\rangle + 1)}}$$`;
-
-    methodSection = `## Architecture & Analytical Methodology
-
-The measurement paradigm couples resonant photonic cavity modes with quantum heterodyne detection:
-
-- **Phase 1: Bound State in Continuum (BIC)** — Engineering artificial anisotropy in photonic waveguides to trap radiation modes without radiation loss ($Q \\to \\infty$).
-- **Phase 2: Squeezed Field Injection** — Delivering continuous-wave squeezed vacuum states with low phase jitter.
-- **Phase 3: Quantum State Homodyne Tomography** — Measuring non-classical phase shifts induced by refractive index perturbations $\\delta n = n_2 I$.`;
-
-    findingsSection = `## Key Results & Empirical Findings
-
-Theoretical simulations and prototype runs exhibit superior sensitivity compared to classical coherent states:
-
-1. **Signal-to-Noise Ratio Gain**: Achieving $+18.4\\,\\text{dB}$ precision improvement using squeezed probe states.
-2. **Quality Factor**: Cavity quality factor $Q > 4.8 \\times 10^6$ achieved via topological symmetry protection.
-3. **Threshold Detection**: Lower bound on vacuum birefringence detection reduced by two orders of magnitude.`;
-  } else if (lowerContext.includes("rag") || lowerContext.includes("vector") || lowerContext.includes("llm") || lowerContext.includes("cloud") || lowerContext.includes("mcp") || lowerContext.includes("network")) {
-    domainCategory = "distributed_ai";
-    domainTags = ["Distributed Systems", "Vector Databases", "Retrieval Augmented Generation", "Edge Computing", "AI Architecture"];
-    mathSection = `## Key Theoretical Formulations & High-Dimensional Vector Geometries
-
-High-dimensional semantic retrieval maps textual tokens into metric Hilbert vector spaces $\\mathcal{V} \\subset \\mathbb{R}^d$. The cosine similarity kernel between query vectors $\\mathbf{q}$ and document embeddings $\\mathbf{d}_i$ is defined as:
-
-$$\\mathcal{S}_{\\text{cos}}(\\mathbf{q}, \\mathbf{d}_i) = \\frac{\\mathbf{q} \\cdot \\mathbf{d}_i}{\\|\\mathbf{q}\\|_2 \\|\\mathbf{d}_i\\|_2} = \\cos \\angle(\\mathbf{q}, \\mathbf{d}_i)$$
-
-To guarantee sub-linear nearest-neighbor discovery across $N$ index nodes, the partitioning index constructs Hierarchical Navigable Small World (HNSW) graph topologies satisfying probability bounds:
-
-$$P(k \\to k+1) \\propto \\exp(-\\beta \\cdot \\text{dist}(\\mathbf{q}, \\mathbf{v}_k))$$
-
-The overall retrieval-augmented probability distribution conditioned on top-$K$ contextual vectors satisfies:
-
-$$P(y_t | y_{<t}, x) = \\sum_{k=1}^K P(y_t | y_{<t}, x, d_k) \\cdot \\frac{\\exp(\\mathcal{S}(\\mathbf{q}(x), \\mathbf{d}_k) / \\tau)}{\\sum_{j=1}^K \\exp(\\mathcal{S}(\\mathbf{q}(x), \\mathbf{d}_j) / \\tau)}$$`;
-
-    methodSection = `## System Architecture & Edge Execution Pipeline
-
-The serverless architecture deploys edge-resident vector indices connected directly to low-latency AI inference gateways:
-
-- **Phase 1: Dense Vector Quantization** — Encoding input contexts into 1024-dimensional normalized vector arrays via BGE-M3 encoders.
-- **Phase 2: Approximate Nearest Neighbor (ANN) Retrieval** — Executing edge cosine search over vector partitions in under $8\\,\\text{ms}$.
-- **Phase 3: Speculative Context Injection** — Streaming contextually grounded completions directly to consumer clients via Server-Sent Events (SSE).`;
-
-    findingsSection = `## Key Results & Empirical Findings
-
-Performance benchmarks demonstrate massive efficiency gains over traditional cloud configurations:
-
-1. **Latency Minimization**: End-to-end edge retrieval and response generation completed in $120\\,\\text{ms}$ (P95).
-2. **Bundle Footprint**: Zero-dependency edge deployment reducing deployment bundle size from $600\\,\\text{KB}$ to under $18\\,\\text{KB}$.
-3. **Cache Hit Acceleration**: Shared AI gateway response caching serving repeated semantic queries in $< 6\\,\\text{ms}$.`;
-  } else {
-    domainCategory = "quantum_condensed";
-    domainTags = ["Quantum Computing", "Theoretical Physics", "Mathematical Modeling", "Condensed Matter"];
-    mathSection = `## Key Theoretical Formulations & Physics
-
-The primary state transitions are governed by unitary transformations over complex Hilbert space $\\mathcal{H}$. Consider the state evolution defined by the generalized Schrödinger wave operator:
-
-$$i\\hbar \\frac{\\partial}{\\partial t} |\\Psi(t)\\rangle = \\hat{H}(t) |\\Psi(t)\\rangle$$
-
-Where the Hamiltonian $\\hat{H}(t)$ is decomposed into the unperturbed base topology $\\hat{H}_0$ and dynamic perturbative coupling matrices $\\hat{V}_k(t)$:
-
-$$\\hat{H}(t) = \\hat{H}_0 + \\sum_{k=1}^{N} \\lambda_k \\hat{V}_k(t)$$
-
-Under this decomposition, the density matrix $\\rho(t) = |\\Psi(t)\\rangle \\langle\\Psi(t)|$ satisfies the Lindblad master equation for open quantum dissipative systems:
-
-$$\\frac{d\\rho}{dt} = -\\frac{i}{\\hbar}[\\hat{H}, \\rho] + \\sum_{j} \\left( L_j \\rho L_j^\\dagger - \\frac{1}{2}\\{L_j^\\dagger L_j, \\rho\\} \\right)$$`;
-
-    methodSection = `## Architecture & Methodological Paradigm
-
-The computational pipeline implements high-dimensional tensor network contractions. By mapping continuous operator spectrums onto discretized Riemannian manifolds $\\mathcal{M}$, the algorithm achieves exponential convergence with bounded error guarantees:
-
-- **Phase 1: Invariant Subspace Projection** — Constructing orthogonal projection operators $\\hat{P}_\\Omega$ preserving gauge invariance.
-- **Phase 2: Variational Quantum Optimization** — Minimizing energy variance $\\sigma_E^2 = \\langle \\hat{H}^2 \\rangle - \\langle \\hat{H} \\rangle^2 \\to 0$.
-- **Phase 3: Error Mitigation & Fault Tolerant Encoding** — Applying topological surface codes with threshold fidelities $> 99.8\\%$.`;
-
-    findingsSection = `## Key Results & Empirical Findings
-
-Our computational benchmarks demonstrate significant improvements over conventional approximations:
-
-1. **Convergence Acceleration**: Achieving asymptotic speedup $\\mathcal{O}(\\log N)$ relative to classical $\\mathcal{O}(N^2)$ baselines.
-2. **Noise Resilience**: Maintaining quantum coherence across extended coherence times $\\tau_{\\text{coh}} > 140\\,\\mu\\text{s}$.
-3. **Spectral Fidelity**: Reconstruction fidelity exceeds $F(\\rho, \\sigma) = \\left(\\text{Tr}\\sqrt{\\sqrt{\\rho}\\sigma\\sqrt{\\rho}}\\right)^2 \\ge 0.994$.`;
-  }
-
-  const bannerSvg = generateProceduralBannerSvg(cleanTitle, domainTags.slice(0, 2).join(" & "), triggerId);
-
-  const content = `## Executive Abstract & Core Contributions
-
-${summarySnippet}
-
-This investigation presents a rigorous formulation addressing foundational dynamics in ${domainTags.join(", ")}. By establishing analytical bounds and demonstrating symmetry invariance across multi-layer systems, this work resolves key ambiguities in preceding literature and outlines actionable engineering trajectories.
-
-${mathSection}
-
-${methodSection}
-
-${findingsSection}
-
-## Scientific Implications & Horizon
-
-The principles demonstrated herein open immediate avenues for scalable research and development, high-precision measurement, and next-generation mathematical modeling across ${domainTags.slice(0, 3).join(", ")}.`;
+  const generated = generateScientificArticleFromArxiv(paperTitle, paperSummary, arxivLink, paperAuthors, triggerId);
+  const bannerTags = Array.isArray(generated.tags) ? generated.tags.slice(0, 2).join(" & ") : "Optics & Quantum";
+  const bannerSvg = generateProceduralBannerSvg(generated.title, bannerTags, triggerId);
 
   return {
-    title: cleanTitle.length > 80 ? cleanTitle : `${cleanTitle}: A Rigorous Analysis of Scientific Mechanisms and Mathematical Foundations`,
-    excerpt: `A comprehensive scholarly analysis exploring the fundamental mathematical physics, theoretical formulations, and transformative implications of ${cleanTitle.slice(0, 100)}.`,
-    readingTime: "8 min read",
-    arxivLink: arxivLink || "https://arxiv.org",
-    bannerSvg,
-    content,
-    author: paperAuthors && paperAuthors !== "ArXiv Authors" ? paperAuthors : "Meridian Research",
-    tags: domainTags
+    ...generated,
+    bannerSvg
   };
 }
 
@@ -1549,6 +1391,27 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
       updatedAt: now.toISOString()
     };
 
+    // Run automated post-generation arXiv alignment and anti-boilerplate audit
+    let auditReport = auditArticleAgainstArxiv(updatedBlog, {
+      title: paperTitle,
+      summary: paperSummary,
+      authors: paperAuthors
+    });
+
+    // If the audit flags failure or critical boilerplate, auto-refine with bespoke scientific formulation
+    if (auditReport.status === "FAIL" || auditReport.detectedBoilerplatePhrases.length > 0) {
+      console.warn(`[Audit System] Audit flagged issues in regenerated article (Score: ${auditReport.fidelityScore}, Issues: ${auditReport.detectedBoilerplatePhrases.join(", ")}). Auto-refining...`);
+      const refined = generateScientificArticleFromArxiv(paperTitle, paperSummary, fullArxivUrl, paperAuthors, triggerId + 1);
+      updatedBlog.content = refined.content;
+      updatedBlog.tags = refined.tags;
+      updatedBlog.excerpt = refined.excerpt;
+      auditReport = auditArticleAgainstArxiv(updatedBlog, {
+        title: paperTitle,
+        summary: paperSummary,
+        authors: paperAuthors
+      });
+    }
+
     if (existingIndex >= 0) {
       localBlogs[existingIndex] = updatedBlog;
     } else {
@@ -1577,10 +1440,48 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
     syncAllBlogsToGitHub(localBlogs, `regenerate article for "${(updatedBlog.title || "").slice(0, 30)}"`)
       .catch((err) => console.warn("[GitHub Mirror] Article regen sync warning:", err));
 
-    res.json({ success: true, blog: updatedBlog });
+    res.json({ success: true, blog: updatedBlog, audit: auditReport });
   } catch (error: any) {
     console.error("Error regenerating article:", error);
     res.status(500).json({ error: error.message || "Failed to regenerate article" });
+  }
+});
+
+// API: Audit a specific article against arXiv reference metadata
+app.post("/api/blog/audit-article", async (req, res) => {
+  try {
+    const { blog, arxivId: inputArxivId } = req.body || {};
+    if (!blog) {
+      return res.status(400).json({ error: "Missing blog object to audit" });
+    }
+
+    let arxivMeta = null;
+    const arxivId = inputArxivId || extractArxivId(blog.arxivLink || "") || extractArxivId(blog.title || "");
+    if (arxivId) {
+      try {
+        arxivMeta = await fetchArxivMetadata(arxivId);
+      } catch (err) {
+        console.warn(`Could not fetch arXiv metadata for ID ${arxivId}:`, err);
+      }
+    }
+
+    const report = auditArticleAgainstArxiv(blog, arxivMeta);
+    res.json({ success: true, report, arxivMeta });
+  } catch (error: any) {
+    console.error("Error auditing article:", error);
+    res.status(500).json({ error: error.message || "Failed to audit article" });
+  }
+});
+
+// API: Cross-catalog audit for duplicate findings and arXiv alignment
+app.get("/api/blog/audit-catalog", async (req, res) => {
+  try {
+    const blogs = await getBlogs();
+    const catalogSummary = auditCatalogUniqueness(blogs);
+    res.json({ success: true, summary: catalogSummary });
+  } catch (error: any) {
+    console.error("Error running catalog audit:", error);
+    res.status(500).json({ error: error.message || "Failed to run catalog audit" });
   }
 });
 
