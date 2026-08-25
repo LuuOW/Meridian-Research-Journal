@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { isMathExpression as isMath } from "../lib/mathUtils";
 import { GoogleInArticleAd } from "./GoogleInArticleAd";
+import { trackInteraction } from "../lib/adsenseTracker";
 
 interface MathRendererProps {
   text: string;
@@ -580,7 +581,8 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
       parts.push(
         <div
           key={`block-placeholder-${keyCounter++}`}
-          className="my-6 w-full overflow-x-auto py-2 text-slate-800 dark:text-neutral-200"
+          onClick={() => trackInteraction("latex_inspect", { details: { mode: "block_math" } })}
+          className="my-6 w-full overflow-x-auto py-2 text-slate-800 dark:text-neutral-200 cursor-pointer hover:bg-cyan-500/5 rounded-lg transition-colors"
           dangerouslySetInnerHTML={{ __html: mathObj.html }}
         />
       );

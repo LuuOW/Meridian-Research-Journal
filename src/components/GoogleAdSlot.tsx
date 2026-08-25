@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { trackInteraction } from "../lib/adsenseTracker";
 
 interface GoogleAdSlotProps {
   slotId?: string;
@@ -25,15 +26,27 @@ export function GoogleAdSlot({
         adsWindow.adsbygoogle = adsWindow.adsbygoogle || [];
         adsWindow.adsbygoogle.push({});
         isPushed.current = true;
+        trackInteraction("ad_impression", {
+          details: { slotId, adFormat, location: "header_slot" }
+        });
       }
     } catch (err) {
       // Gracefully catch ad-blocker or script block exceptions without crashing UI
       console.debug("AdSense slot push deferred or blocked:", err);
     }
-  }, []);
+  }, [slotId, adFormat]);
+
+  const handleAdContainerClick = () => {
+    trackInteraction("ad_click", {
+      details: { slotId, adFormat, location: "header_slot" }
+    });
+  };
 
   return (
-    <div className={`my-8 w-full flex flex-col items-center justify-center ${className}`}>
+    <div
+      onClick={handleAdContainerClick}
+      className={`my-8 w-full flex flex-col items-center justify-center ${className}`}
+    >
       {/* Discrete compliance tag */}
       <span className="text-[9px] font-mono font-bold tracking-widest text-gray-400 dark:text-neutral-500 uppercase mb-2 select-none">
         {label}

@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Compass, Sun, Moon, Activity, Loader2 } from "lucide-react";
+import { Sparkles, Compass, Sun, Moon, Activity, Loader2, DollarSign } from "lucide-react";
 import { GenerationJob } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
 
@@ -12,6 +12,8 @@ interface NavbarProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   onOpenPipelineStatus?: () => void;
+  onOpenAdSenseRevenue?: () => void;
+  todayRevenueEstimate?: string;
   activeJobs?: GenerationJob[];
 }
 
@@ -24,6 +26,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   theme,
   onToggleTheme,
   onOpenPipelineStatus,
+  onOpenAdSenseRevenue,
+  todayRevenueEstimate,
   activeJobs = []
 }) => {
   const handleHomeClick = () => {
@@ -86,6 +90,24 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex justify-end items-center gap-1.5 sm:gap-3 shrink-0">
           {isEditorMode && (
             <div className="flex items-center gap-1.5 sm:gap-2 animate-fade-in">
+              {/* AdSense Revenue Tracker Pill */}
+              {onOpenAdSenseRevenue && (
+                <button
+                  id="navbar-adsense-revenue-btn"
+                  onClick={onOpenAdSenseRevenue}
+                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs font-mono font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer border bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20 shadow-sm active:scale-95 whitespace-nowrap"
+                  title="Open AdSense Revenue & Telemetry Console"
+                >
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="hidden sm:inline">AdSense</span>
+                  {todayRevenueEstimate && (
+                    <span className="text-[11px] font-extrabold text-emerald-800 dark:text-emerald-300 ml-0.5">
+                      {todayRevenueEstimate}
+                    </span>
+                  )}
+                </button>
+              )}
+
               {/* Dedicated Pipeline Status Mode Button */}
               {onOpenPipelineStatus && (
                 <button

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Play, Pause, RotateCcw, SkipBack, SkipForward, Volume2, VolumeX, X } from "lucide-react";
 import { BlogPost } from "../types";
 import { getSpeechScript, getSentences, formatAudioTime, estimateSpeechDuration } from "../lib/audioUtils";
+import { trackInteraction } from "../lib/adsenseTracker";
 
 interface AudioPlayerProps {
   blog: BlogPost;
@@ -85,6 +86,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ blog, onClose }) => {
     currentSentenceIndexRef.current = index;
     setCurrentSentenceIndex(index);
     
+    if (index === 0) {
+      trackInteraction("audio_play", {
+        postId: blog.id,
+        postTitle: blog.title,
+        details: { mode: "start" }
+      });
+    }
+
     const pct = Math.round((index / sentencesRef.current.length) * 100);
     setProgress(pct);
 

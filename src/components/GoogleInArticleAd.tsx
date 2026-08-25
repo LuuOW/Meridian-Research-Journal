@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { trackInteraction } from "../lib/adsenseTracker";
 
 interface GoogleInArticleAdProps {
   slotId?: string;
@@ -20,14 +21,26 @@ export function GoogleInArticleAd({
         adsWindow.adsbygoogle = adsWindow.adsbygoogle || [];
         adsWindow.adsbygoogle.push({});
         isPushed.current = true;
+        trackInteraction("ad_impression", {
+          details: { slotId, location: "in_article_slot" }
+        });
       }
     } catch (err) {
       console.debug("In-article AdSense slot push deferred or blocked:", err);
     }
-  }, []);
+  }, [slotId]);
+
+  const handleAdClick = () => {
+    trackInteraction("ad_click", {
+      details: { slotId, location: "in_article_slot" }
+    });
+  };
 
   return (
-    <div className={`my-8 w-full flex flex-col items-center justify-center ${className}`}>
+    <div
+      onClick={handleAdClick}
+      className={`my-8 w-full flex flex-col items-center justify-center ${className}`}
+    >
       <span className="text-[9px] font-mono font-bold tracking-widest text-gray-400 dark:text-neutral-500 uppercase mb-2 select-none">
         SPONSORED RESEARCH DIGEST
       </span>
