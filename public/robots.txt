@@ -1,0 +1,12 @@
+# robots.txt for Meridian Research Journal (https://ask-meridian.uk)
+User-agent: *
+Allow: /
+Allow: /blog/
+Allow: /ads.txt
+Allow: /sitemap.xml
+
+# Disallow internal API endpoints and administrative endpoints
+Disallow: /api/
+
+# Sitemap Location
+Sitemap: https://ask-meridian.uk/sitemap.xml
