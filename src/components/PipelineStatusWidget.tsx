@@ -138,7 +138,7 @@ export const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
     }, 550);
   };
 
-  if (activeJobs.length === 0 && !isExplodingWidget) {
+  if (!isEditorMode || (activeJobs.length === 0 && !isExplodingWidget)) {
     return null;
   }
 

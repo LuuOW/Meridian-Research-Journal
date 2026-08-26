@@ -1592,41 +1592,45 @@ export default function App() {
         />
       )}
 
-      {/* ASYNC GENERATION PIPELINE STATUS WIDGET */}
-      <PipelineStatusWidget
-        jobs={jobs}
-        onSelectBlog={(blog) => {
-          setActiveBlog(blog);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-        onDismissJob={handleDismissJob}
-        onRetryJob={handleRetryJob}
-        onOpenPipelineConsole={() => setIsPipelineModalOpen(true)}
-        isEditorMode={isEditorMode}
-      />
+      {/* ASYNC GENERATION PIPELINE STATUS WIDGET (EDITOR MODE ONLY) */}
+      {isEditorMode && (
+        <PipelineStatusWidget
+          jobs={jobs}
+          onSelectBlog={(blog) => {
+            setActiveBlog(blog);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onDismissJob={handleDismissJob}
+          onRetryJob={handleRetryJob}
+          onOpenPipelineConsole={() => setIsPipelineModalOpen(true)}
+          isEditorMode={isEditorMode}
+        />
+      )}
 
-      {/* PERSISTENT FULL-FEATURED PIPELINE STATUS CONSOLE MODAL */}
-      <PipelineStatusModal
-        isOpen={isPipelineModalOpen}
-        onClose={() => setIsPipelineModalOpen(false)}
-        jobs={jobs}
-        onSelectBlog={(blog) => {
-          setActiveBlog(blog);
-          setIsPipelineModalOpen(false);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-        onDismissJob={handleDismissJob}
-        onClearFinishedJobs={handleClearFinishedJobs}
-        onRetryJob={(arxivInput) => {
-          setIsPipelineModalOpen(false);
-          handleRetryJob(arxivInput);
-        }}
-        onOpenCreate={() => {
-          setIsPipelineModalOpen(false);
-          setIsCreateOpen(true);
-        }}
-        isEditorMode={isEditorMode}
-      />
+      {/* PERSISTENT FULL-FEATURED PIPELINE STATUS CONSOLE MODAL (EDITOR MODE ONLY) */}
+      {isEditorMode && (
+        <PipelineStatusModal
+          isOpen={isPipelineModalOpen}
+          onClose={() => setIsPipelineModalOpen(false)}
+          jobs={jobs}
+          onSelectBlog={(blog) => {
+            setActiveBlog(blog);
+            setIsPipelineModalOpen(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onDismissJob={handleDismissJob}
+          onClearFinishedJobs={handleClearFinishedJobs}
+          onRetryJob={(arxivInput) => {
+            setIsPipelineModalOpen(false);
+            handleRetryJob(arxivInput);
+          }}
+          onOpenCreate={() => {
+            setIsPipelineModalOpen(false);
+            setIsCreateOpen(true);
+          }}
+          isEditorMode={isEditorMode}
+        />
+      )}
 
       {/* LINKEDIN SHARE COMPANION OVERLAY */}
       {activeBlog && (

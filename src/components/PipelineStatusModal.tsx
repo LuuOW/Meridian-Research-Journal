@@ -76,7 +76,7 @@ export const PipelineStatusModal: React.FC<PipelineStatusModalProps> = ({
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isEditorMode) return null;
 
   const toggleLogExpand = (jobId: string) => {
     setExpandedLogJobIds((prev) => {
