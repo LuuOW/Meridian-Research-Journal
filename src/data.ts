@@ -40,7 +40,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1787571800431",
     "slug": "classical-versus-non-classical-photon-states-for-detecting-vacuum-non-linearity-a-rigorous-analysis-of-quantum-mechanisms-and-mathematical-foundations-0431",
     "date": "August 24, 2026",
-    "views": 1078
+    "views": 1077
   },
   {
     "title": "Intensity-based scattering correction enables in vivo two-photon imaging beyond 1 mm",
