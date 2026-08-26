@@ -1,5 +1,5 @@
-import React from "react";
-import { Sparkles, Compass, Sun, Moon, Activity, Loader2, DollarSign } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Sparkles, Compass, Sun, Moon, Activity, Loader2, DollarSign, ChevronDown, Wrench, ArrowUpRight } from "lucide-react";
 import { GenerationJob } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
 
@@ -30,6 +30,32 @@ export const Navbar: React.FC<NavbarProps> = ({
   todayRevenueEstimate,
   activeJobs = []
 }) => {
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) {
+        setIsToolsOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsToolsOpen(false);
+      }
+    };
+
+    if (isToolsOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isToolsOpen]);
+
   const handleHomeClick = () => {
     if (onHome) {
       onHome();
@@ -90,56 +116,148 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex justify-end items-center gap-1.5 sm:gap-3 shrink-0">
           {isEditorMode && (
             <div className="flex items-center gap-1.5 sm:gap-2 animate-fade-in">
-              {/* AdSense Revenue Tracker Pill */}
-              {onOpenAdSenseRevenue && (
-                <button
-                  id="navbar-adsense-revenue-btn"
-                  onClick={onOpenAdSenseRevenue}
-                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs font-mono font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer border bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20 shadow-sm active:scale-95 whitespace-nowrap"
-                  title="Open AdSense Revenue & Telemetry Console"
-                >
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="hidden sm:inline">AdSense</span>
-                  {todayRevenueEstimate && (
-                    <span className="text-[11px] font-extrabold text-emerald-800 dark:text-emerald-300 ml-0.5">
-                      {todayRevenueEstimate}
-                    </span>
+              {/* Grouped Editor Tools Dropdown */}
+              {(onOpenAdSenseRevenue || onOpenPipelineStatus) && (
+                <div className="relative" ref={toolsRef}>
+                  <button
+                    id="navbar-editor-tools-btn"
+                    onClick={() => setIsToolsOpen(!isToolsOpen)}
+                    className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs font-mono font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer border active:scale-95 whitespace-nowrap ${
+                      isToolsOpen
+                        ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 border-neutral-900 dark:border-white shadow-sm"
+                        : runningCount > 0
+                        ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 shadow-sm"
+                        : "bg-neutral-100 dark:bg-neutral-900/80 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-800"
+                    }`}
+                    title="Editor Tools & Telemetry"
+                    aria-expanded={isToolsOpen}
+                  >
+                    {runningCount > 0 ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500 shrink-0" />
+                    ) : (
+                      <Wrench className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />
+                    )}
+                    <span className="hidden sm:inline">Tools</span>
+
+                    {/* Quick Indicator Badge on Dropdown Button */}
+                    {runningCount > 0 ? (
+                      <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping inline-block" />
+                    ) : todayRevenueEstimate ? (
+                      <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                        {todayRevenueEstimate}
+                      </span>
+                    ) : null}
+
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isToolsOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {/* Dropdown Menu Flyout */}
+                  {isToolsOpen && (
+                    <div 
+                      className="absolute right-0 mt-2 w-72 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150"
+                      role="menu"
+                    >
+                      <div className="px-3.5 py-1.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-neutral-400 dark:text-neutral-500">
+                          Editor Controls
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                          Live Telemetry
+                        </span>
+                      </div>
+
+                      {/* AdSense Revenue Option */}
+                      {onOpenAdSenseRevenue && (
+                        <button
+                          id="dropdown-adsense-btn"
+                          onClick={() => {
+                            setIsToolsOpen(false);
+                            onOpenAdSenseRevenue();
+                          }}
+                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer"
+                          role="menuitem"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <DollarSign className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                                AdSense Monetization
+                              </div>
+                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                                Revenue, RPM &amp; Telemetry
+                              </div>
+                            </div>
+                          </div>
+                          {todayRevenueEstimate && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs font-mono font-extrabold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/50 rounded-md border border-emerald-500/20">
+                                {todayRevenueEstimate}
+                              </span>
+                              <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Pipeline Status Option */}
+                      {onOpenPipelineStatus && (
+                        <button
+                          id="dropdown-pipeline-btn"
+                          onClick={() => {
+                            setIsToolsOpen(false);
+                            onOpenPipelineStatus();
+                          }}
+                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer"
+                          role="menuitem"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              {runningCount > 0 ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
+                              ) : (
+                                <Activity className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                                Pipeline Status
+                                {runningCount > 0 && (
+                                  <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping inline-block" />
+                                )}
+                              </div>
+                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                                Queue &amp; arXiv synthesis logs
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {runningCount > 0 ? (
+                              <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-2 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded-md border border-cyan-500/20 animate-pulse">
+                                {runningCount} active
+                              </span>
+                            ) : totalActive > 0 ? (
+                              <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-md">
+                                {totalActive} jobs
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-neutral-400">
+                                Idle
+                              </span>
+                            )}
+                            <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </button>
+                      )}
+                    </div>
                   )}
-                </button>
+                </div>
               )}
 
-              {/* Dedicated Pipeline Status Mode Button */}
-              {onOpenPipelineStatus && (
-                <button
-                  id="navbar-pipeline-status-btn"
-                  onClick={onOpenPipelineStatus}
-                  className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-mono font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer border active:scale-95 whitespace-nowrap ${
-                    runningCount > 0
-                      ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 shadow-sm"
-                      : totalActive > 0
-                      ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-800"
-                      : "bg-transparent text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-900"
-                  }`}
-                  title="Open Generation Pipeline Status Console"
-                >
-                  {runningCount > 0 ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />
-                  ) : (
-                    <Activity className="w-3.5 h-3.5" />
-                  )}
-                  <span className="hidden sm:inline">Pipeline Status</span>
-                  <span className="sm:hidden text-[11px]">Pipeline</span>
-                  {runningCount > 0 ? (
-                    <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping inline-block -ml-0.5" />
-                  ) : totalActive > 0 ? (
-                    <span className="px-1.5 py-0.2 bg-neutral-200 dark:bg-neutral-800 text-[9px] rounded-full">
-                      {totalActive}
-                    </span>
-                  ) : null}
-                </button>
-              )}
-
+              {/* Primary 1-Click Action: Generate Blog */}
               <button
+                id="navbar-generate-blog-btn"
                 onClick={onOpenCreate}
                 className="px-3 sm:px-5 py-1.5 sm:py-2.5 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold shadow-sm transition-all duration-200 flex items-center gap-1.5 group active:scale-95 cursor-pointer whitespace-nowrap"
                 title="Generate Blog from arXiv"
