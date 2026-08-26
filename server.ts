@@ -63,6 +63,30 @@ app.get("/ads.txt", (req, res) => {
   res.send("google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0\n");
 });
 
+// Search Engine Optimization (robots.txt) Endpoint
+app.get("/robots.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  const robotsPath = path.join(process.cwd(), "public", "robots.txt");
+  if (fs.existsSync(robotsPath)) {
+    res.send(fs.readFileSync(robotsPath, "utf-8"));
+  } else {
+    res.send("User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: https://ask-meridian.uk/sitemap.xml\n");
+  }
+});
+
+// Dynamic XML Sitemap Endpoint
+app.get("/sitemap.xml", (req, res) => {
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  const sitemapPath = path.join(process.cwd(), "public", "sitemap.xml");
+  if (fs.existsSync(sitemapPath)) {
+    res.send(fs.readFileSync(sitemapPath, "utf-8"));
+  } else {
+    res.status(404).send("<error>Sitemap not found</error>");
+  }
+});
+
 // GitHub Pages / Jekyll bypass endpoint
 app.get("/.nojekyll", (req, res) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -2238,12 +2262,6 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
     const fallback = generateFallbackLinkedInPost({ title, excerpt, blogUrl });
     return res.json(fallback);
   }
-});
-
-// AdSense ads.txt endpoint
-app.get("/ads.txt", (req, res) => {
-  res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.send("google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0\n");
 });
 
 // Setup Vite or static serving

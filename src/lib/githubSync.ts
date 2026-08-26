@@ -76,12 +76,58 @@ export const PRELOADED_BLOGS: BlogPost[] = RAW_PRELOADED_BLOGS.map((blog, index)
 }
 
 /**
- * Updates custom_blogs.json on local disk (without touching src/data.ts during runtime to avoid triggering Vite dev server reloads)
+ * Generates sitemap.xml content for all blogs
+ */
+export function generateSitemapXml(blogs: BlogPost[], domain: string = "https://ask-meridian.uk"): string {
+  const formatDateISO = (dStr?: string) => {
+    try {
+      if (dStr) {
+        const d = new Date(dStr);
+        if (!isNaN(d.getTime())) {
+          return d.toISOString().split("T")[0];
+        }
+      }
+    } catch (_) {}
+    return new Date().toISOString().split("T")[0];
+  };
+
+  const todayIso = new Date().toISOString().split("T")[0];
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">\n`;
+  xml += `  <url>\n`;
+  xml += `    <loc>${domain}/</loc>\n`;
+  xml += `    <lastmod>${todayIso}</lastmod>\n`;
+  xml += `    <changefreq>daily</changefreq>\n`;
+  xml += `    <priority>1.0</priority>\n`;
+  xml += `  </url>\n`;
+
+  blogs.forEach((b) => {
+    const slug = b.slug || b.id;
+    const isoDate = formatDateISO(b.date);
+    xml += `  <url>\n`;
+    xml += `    <loc>${domain}/blog/${encodeURIComponent(slug)}</loc>\n`;
+    xml += `    <lastmod>${isoDate}</lastmod>\n`;
+    xml += `    <changefreq>monthly</changefreq>\n`;
+    xml += `    <priority>0.8</priority>\n`;
+    xml += `  </url>\n`;
+  });
+
+  xml += `</urlset>\n`;
+  return xml;
+}
+
+/**
+ * Updates custom_blogs.json and public/sitemap.xml on local disk
  */
 export function writeLocalBlogFiles(blogs: BlogPost[]): boolean {
   try {
     const customBlogsPath = path.join(process.cwd(), "custom_blogs.json");
     fs.writeFileSync(customBlogsPath, JSON.stringify(blogs, null, 2), "utf-8");
+
+    const sitemapContent = generateSitemapXml(blogs);
+    const publicSitemapPath = path.join(process.cwd(), "public", "sitemap.xml");
+    fs.writeFileSync(publicSitemapPath, sitemapContent, "utf-8");
     return true;
   } catch (err) {
     console.error("Failed to write local blog files:", err);
@@ -552,9 +598,23 @@ export async function syncAllBlogsToGitHub(
 
   console.log(`[GitHub Sync] Mirroring ${blogs.length} articles to GitHub (${config.repo}#${config.branch})... Reason: ${reason}`);
 
-  const commitMessage = `feat(blog): sync ${blogs.length} articles and root ads.txt / .nojekyll (${reason}) [skip ci]`;
+  const commitMessage = `feat(blog): sync ${blogs.length} articles, sitemap.xml, robots.txt, and ads.txt (${reason}) [skip ci]`;
   const adsTxtContent = "google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0\n";
   const nojekyllContent = "";
+  const sitemapXmlContent = generateSitemapXml(blogs);
+  const robotsTxtContent = `# robots.txt for Meridian Research Journal (https://ask-meridian.uk)
+User-agent: *
+Allow: /
+Allow: /blog/
+Allow: /ads.txt
+Allow: /sitemap.xml
+
+# Disallow internal API endpoints and administrative endpoints
+Disallow: /api/
+
+# Sitemap Location
+Sitemap: https://ask-meridian.uk/sitemap.xml
+`;
 
   const filesToSync = [
     { path: "custom_blogs.json", content: customBlogsJson },
@@ -562,7 +622,11 @@ export async function syncAllBlogsToGitHub(
     { path: "ads.txt", content: adsTxtContent },
     { path: "public/ads.txt", content: adsTxtContent },
     { path: ".nojekyll", content: nojekyllContent },
-    { path: "public/.nojekyll", content: nojekyllContent }
+    { path: "public/.nojekyll", content: nojekyllContent },
+    { path: "robots.txt", content: robotsTxtContent },
+    { path: "public/robots.txt", content: robotsTxtContent },
+    { path: "sitemap.xml", content: sitemapXmlContent },
+    { path: "public/sitemap.xml", content: sitemapXmlContent }
   ];
 
   const atomicResult = await commitFilesAtomicallyToGitHub({
