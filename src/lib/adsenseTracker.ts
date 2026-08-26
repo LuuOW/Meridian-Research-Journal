@@ -53,6 +53,23 @@ export const ACADEMIC_PHYSICS_BENCHMARK: AdSenseNicheBenchmark = {
   academicSmartPricingMultiplier: 1.20
 };
 
+export const ADSENSE_CONFIG = {
+  clientId: "ca-pub-7734562716191044",
+  adSlotsPerArticle: 2,
+  baselineRpm: 14.50,
+  baselineCpc: 0.42,
+  baselineCtr: 0.018,
+  adFillRate: 0.88,
+  nicheBenchmarkRpm: 12.00,
+  highEngagementMultiplierCap: 1.45
+};
+
+export type AdSenseInteractionEvent = InteractionEvent;
+export const getStoredTelemetry = getStoredTelemetryEvents;
+export const clearTelemetry = resetTelemetry;
+
+
+
 export interface TelemetrySummary {
   totalInteractions: number;
   adImpressions: number;
@@ -270,7 +287,44 @@ export function resetTelemetry(): void {
  * Higher reader dwell time, scroll completion, and formula inspection indicates
  * premium academic traffic with high advertiser bidding value.
  */
-export function computeEngagementMultiplier(summary: TelemetrySummary): number {
+export function computeEngagementMultiplier(input?: TelemetrySummary | InteractionEvent[]): number {
+  if (!input) return 1.0;
+
+  if (Array.isArray(input)) {
+    if (input.length === 0) return 1.0;
+    let multiplier = 1.0;
+    for (const evt of input) {
+      switch (evt.type) {
+        case "latex_inspect":
+          multiplier += 0.06;
+          break;
+        case "audio_play":
+          multiplier += 0.08;
+          break;
+        case "scroll_depth":
+          multiplier += 0.03;
+          break;
+        case "reading_dwell":
+          multiplier += 0.02;
+          break;
+        case "share_click":
+          multiplier += 0.05;
+          break;
+        case "citation_copy":
+          multiplier += 0.04;
+          break;
+        case "raytrace_tilt":
+          multiplier += 0.01;
+          break;
+        default:
+          multiplier += 0.01;
+          break;
+      }
+    }
+    return Math.min(ADSENSE_CONFIG.highEngagementMultiplierCap, parseFloat(multiplier.toFixed(2)));
+  }
+
+  const summary = input;
   let multiplier = 1.0;
 
   // Dwell time bonus: readers staying longer produce higher viewability
@@ -287,7 +341,7 @@ export function computeEngagementMultiplier(summary: TelemetrySummary): number {
   else if (technicalInteractions > 2) multiplier += 0.06;
 
   // Cap multiplier at realistic bounds
-  return Math.min(1.45, Math.max(0.90, parseFloat(multiplier.toFixed(2))));
+  return Math.min(ADSENSE_CONFIG.highEngagementMultiplierCap, Math.max(0.90, parseFloat(multiplier.toFixed(2))));
 }
 
 /**
@@ -295,18 +349,33 @@ export function computeEngagementMultiplier(summary: TelemetrySummary): number {
  */
 export function calculateArticleRevenue(
   views: number,
-  wordCount: number = 800,
+  wordCountOrMultiplier: number = 800,
   benchmark: AdSenseNicheBenchmark = ACADEMIC_PHYSICS_BENCHMARK,
-  engagementMultiplier: number = 1.15
+  explicitMultiplier?: number
 ): {
   estimatedRevenue: number;
   rpm: number;
   impressions: number;
   clicks: number;
+  multiplier: number;
 } {
   const safeViews = Math.max(0, views);
   if (safeViews === 0) {
-    return { estimatedRevenue: 0, rpm: 0, impressions: 0, clicks: 0 };
+    return { estimatedRevenue: 0, rpm: 0, impressions: 0, clicks: 0, multiplier: 1.0 };
+  }
+
+  // Allow flexible invocation: calculateArticleRevenue(views, 1.3) vs calculateArticleRevenue(views, 800, benchmark, 1.3)
+  let wordCount = 800;
+  let engagementMultiplier = explicitMultiplier ?? 1.15;
+
+  if (typeof wordCountOrMultiplier === "number") {
+    if (wordCountOrMultiplier <= 10 && typeof explicitMultiplier === "undefined") {
+      // It was passed as a multiplier (e.g. 1.0 or 1.3)
+      engagementMultiplier = wordCountOrMultiplier;
+      wordCount = 800;
+    } else {
+      wordCount = wordCountOrMultiplier;
+    }
   }
 
   // Articles over 1,200 words have more screen length, sustaining full dual-ad exposure
@@ -334,7 +403,8 @@ export function calculateArticleRevenue(
     estimatedRevenue: totalEstimatedRevenue,
     rpm,
     impressions,
-    clicks
+    clicks,
+    multiplier: engagementMultiplier
   };
 }
 
