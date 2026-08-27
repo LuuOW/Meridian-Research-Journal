@@ -114,6 +114,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Action Button & Theme/Editor Toggles */}
         <div className="flex justify-end items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Mobile About Button */}
+          <button
+            onClick={onOpenAbout}
+            className="md:hidden px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+            title="About Meridian Journal"
+          >
+            About
+          </button>
           {isEditorMode && (
             <div className="flex items-center gap-1.5 sm:gap-2 animate-fade-in">
               {/* Grouped Editor Tools Dropdown */}

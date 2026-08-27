@@ -59,13 +59,19 @@ export function filterBlogsByTags(
     const blogTagsNormalized = blog.tags.map(normalizeTag);
 
     if (matchMode === "all") {
-      return cleanSelected.every((tag) =>
-        blogTagsNormalized.some((bt) => bt.toLowerCase() === tag.toLowerCase())
-      );
+      return cleanSelected.every((tag) => {
+        const lowerTag = tag.toLowerCase();
+        const matchesTag = blogTagsNormalized.some((bt) => bt.toLowerCase() === lowerTag);
+        const matchesEditor = Boolean(blog.isEditorEdition && lowerTag.includes("editor"));
+        return matchesTag || matchesEditor;
+      });
     } else {
-      return cleanSelected.some((tag) =>
-        blogTagsNormalized.some((bt) => bt.toLowerCase() === tag.toLowerCase())
-      );
+      return cleanSelected.some((tag) => {
+        const lowerTag = tag.toLowerCase();
+        const matchesTag = blogTagsNormalized.some((bt) => bt.toLowerCase() === lowerTag);
+        const matchesEditor = Boolean(blog.isEditorEdition && lowerTag.includes("editor"));
+        return matchesTag || matchesEditor;
+      });
     }
   });
 }

@@ -134,7 +134,7 @@ test("Search and ranking engine accurately prioritizes titles, authors, and comp
     "Top result should match query directly"
   );
 
-  const resultsByAuthor = searchAndRankBlogs(PRELOADED_BLOGS, "Fabio", []);
+  const resultsByAuthor = searchAndRankBlogs(PRELOADED_BLOGS, "Jinzhao", []);
   assert.ok(resultsByAuthor.length > 0, "Search by author name should surface matching papers");
 
   const uniqueTags = extractUniqueTags(PRELOADED_BLOGS);

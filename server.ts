@@ -2254,12 +2254,12 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
     }
 
     // Fallback if AI call failed or key not configured
-    const fallback = generateFallbackLinkedInPost({ title, excerpt, blogUrl });
+    const fallback = generateFallbackLinkedInPost({ title, excerpt, content, tags, tone, blogUrl, blogId });
     return res.json(fallback);
 
   } catch (error: any) {
     console.error("Error generating AI LinkedIn post:", error);
-    const fallback = generateFallbackLinkedInPost({ title, excerpt, blogUrl });
+    const fallback = generateFallbackLinkedInPost({ title, excerpt, content, tags, tone, blogUrl, blogId });
     return res.json(fallback);
   }
 });

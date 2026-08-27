@@ -1,6 +1,6 @@
 /**
  * Procedural Vector Banner Generator for Meridian Quantum & Optics Articles.
- * Generates mathematically grounded, animated scientific vector SVG artwork.
+ * Generates mathematically grounded, animated scientific vector SVG artwork with rich unique variations.
  */
 
 export interface BannerTheme {
@@ -87,6 +87,56 @@ export function getProceduralCounter(): number {
   return proceduralCounter;
 }
 
+/**
+ * Derives dynamic physics formula annotations based on topic tags and title
+ */
+function getScientificFormula(title: string, tag: string, seed: number): string {
+  const combined = `${title} ${tag}`.toLowerCase();
+  
+  const quantumFormulas = [
+    "|Ψ⟩ = 1/√2 (|00⟩ + |11⟩)",
+    "Δx · Δp ≥ ℏ/2",
+    "Ĥ|Ψ⟩ = iℏ ∂_t|Ψ⟩",
+    "ρ̂ = ∑ p_i |ψ_i⟩⟨ψ_i|",
+    "F_Q ≥ 1/(Δθ)²"
+  ];
+
+  const opticsFormulas = [
+    "∇ × E = -∂_t B",
+    "Δφ = 2π/λ · n_eff · L",
+    "k_x² + k_y² + k_z² = (ω/c)²",
+    "E(r,t) = E_0 e^{i(k·r - ωt)}",
+    "NA = n · sin(θ_max)"
+  ];
+
+  const topologyFormulas = [
+    "C = 1/(2π) ∮ F_xy d²k",
+    "Q_factor > 8.4 × 10⁶",
+    "H(k) = d(k) · σ",
+    "γ = ∮ ⟨u(k)| i∇_k |u(k)⟩ · dk",
+    "Ω_n(k) = ∇_k × A_n(k)"
+  ];
+
+  const laserScatteringFormulas = [
+    "I_ball(z) = I_0 e^{-z/ℓ_scat}",
+    "z_vanish ≈ ℓ_scat · ln(N_modes)",
+    "g^(2)(0) < 0.05",
+    "T_matrix = (I - iK)/(I + iK)",
+    "P_out = η_slope · (P_pump - P_th)"
+  ];
+
+  let pool = opticsFormulas;
+  if (combined.includes("quantum") || combined.includes("qubit") || combined.includes("entangle") || combined.includes("matter")) {
+    pool = quantumFormulas;
+  } else if (combined.includes("topology") || combined.includes("chiral") || combined.includes("crystal") || combined.includes("lattice")) {
+    pool = topologyFormulas;
+  } else if (combined.includes("scatter") || combined.includes("laser") || combined.includes("cavity") || combined.includes("imaging")) {
+    pool = laserScatteringFormulas;
+  }
+
+  return pool[Math.abs(seed) % pool.length];
+}
+
 export function generateProceduralBannerSvg(title: string, tags?: string | string[], seed?: number): string {
   proceduralCounter++;
   const cleanTitle = (title || "Scientific Publication").replace(/["'<>]/g, "").slice(0, 60);
@@ -101,131 +151,142 @@ export function generateProceduralBannerSvg(title: string, tags?: string | strin
 
   const t = BANNER_THEMES[themeIndex];
   const uid = Math.abs(numSeed).toString(36).slice(-6);
+  const formula = getScientificFormula(cleanTitle, tagText, numSeed);
+
+  // Parametric offsets for dynamic variety
+  const offsetA = (numSeed % 40) - 20;
+  const offsetB = ((numSeed * 7) % 30) - 15;
+  const waveAmp = 70 + (numSeed % 50);
 
   // Geometric variants
   let geometrySvg = "";
 
   if (geomType === 0) {
     // Archetype 0: Diffraction & Wave Packet Interference
-    const yMid = 190 + (numSeed % 30);
+    const yMid = 190 + offsetA;
     geometrySvg = `
       <!-- Wave Packet Harmonics -->
-      <path class="mrd-anim-wave-1" d="M 30,${yMid} Q 160,${yMid - 110} 320,${yMid} T 600,${yMid} T 770,${yMid}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3.5" filter="url(#glow_${uid})" />
-      <path class="mrd-anim-wave-2" d="M 30,${yMid - 20} Q 200,${yMid + 100} 370,${yMid - 20} T 670,${yMid - 20} T 770,${yMid - 20}" fill="none" stroke="${t.primary}" stroke-width="1.8" stroke-opacity="0.8" stroke-dasharray="10,6" />
-      <path class="mrd-anim-wave-1" d="M 50,${yMid + 30} C 200,${yMid - 80} 450,${yMid + 120} 750,${yMid - 40}" fill="none" stroke="${t.accent2}" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="6,4" />
+      <path class="mrd-anim-wave-1" d="M 30,${yMid} Q 160,${yMid - waveAmp} 320,${yMid} T 600,${yMid} T 770,${yMid}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3.5" filter="url(#glow_${uid})" />
+      <path class="mrd-anim-wave-2" d="M 30,${yMid - 20 + offsetB} Q 200,${yMid + waveAmp - 10} 370,${yMid - 20 + offsetB} T 670,${yMid - 20 + offsetB} T 770,${yMid - 20 + offsetB}" fill="none" stroke="${t.primary}" stroke-width="1.8" stroke-opacity="0.8" stroke-dasharray="10,6" />
+      <path class="mrd-anim-wave-1" d="M 50,${yMid + 30} C 200,${yMid - waveAmp + 20} 450,${yMid + waveAmp + 10} 750,${yMid - 40}" fill="none" stroke="${t.accent2}" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="6,4" />
       
       <!-- Nodes -->
-      <circle cx="160" cy="${yMid - 55}" r="38" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
-      <circle cx="160" cy="${yMid - 55}" r="6" fill="#ffffff" filter="url(#glow_${uid})" />
-      <circle cx="460" cy="${yMid + 50}" r="48" fill="url(#nodeGlow2_${uid})" class="mrd-anim-pulse" />
-      <circle cx="460" cy="${yMid + 50}" r="8" fill="${t.accent2}" filter="url(#glow_${uid})" />
+      <circle cx="${160 + offsetB}" cy="${yMid - 55}" r="38" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
+      <circle cx="${160 + offsetB}" cy="${yMid - 55}" r="6" fill="#ffffff" filter="url(#glow_${uid})" />
+      <circle cx="${460 - offsetB}" cy="${yMid + 50}" r="48" fill="url(#nodeGlow2_${uid})" class="mrd-anim-pulse" />
+      <circle cx="${460 - offsetB}" cy="${yMid + 50}" r="8" fill="${t.accent2}" filter="url(#glow_${uid})" />
       <circle cx="640" cy="${yMid - 30}" r="32" fill="url(#nodeGlow_${uid})" />
       <circle cx="640" cy="${yMid - 30}" r="5" fill="#ffffff" />
       
-      <line x1="160" y1="${yMid - 55}" x2="460" y2="${yMid + 50}" stroke="${t.primary}" stroke-width="1.2" stroke-opacity="0.5" stroke-dasharray="4,4" />
-      <line x1="460" y1="${yMid + 50}" x2="640" y2="${yMid - 30}" stroke="${t.secondary}" stroke-width="1.2" stroke-opacity="0.5" />
+      <line x1="${160 + offsetB}" y1="${yMid - 55}" x2="${460 - offsetB}" y2="${yMid + 50}" stroke="${t.primary}" stroke-width="1.2" stroke-opacity="0.5" stroke-dasharray="4,4" />
+      <line x1="${460 - offsetB}" y1="${yMid + 50}" x2="640" y2="${yMid - 30}" stroke="${t.secondary}" stroke-width="1.2" stroke-opacity="0.5" />
     `;
   } else if (geomType === 1) {
     // Archetype 1: Optical Cavity Resonator & Laser Modes
+    const waistY = 200 + offsetA;
     geometrySvg = `
       <!-- Cavity Mirrors -->
-      <path d="M 100,80 Q 80,200 100,320" fill="none" stroke="${t.primary}" stroke-width="5" filter="url(#glow_${uid})" />
-      <path d="M 700,80 Q 720,200 700,320" fill="none" stroke="${t.secondary}" stroke-width="5" filter="url(#glow_${uid})" />
+      <path d="M 100,${80 + offsetB} Q ${80 - offsetA / 2},${waistY} 100,${320 + offsetB}" fill="none" stroke="${t.primary}" stroke-width="5" filter="url(#glow_${uid})" />
+      <path d="M 700,${80 - offsetB} Q ${720 + offsetA / 2},${waistY} 700,${320 - offsetB}" fill="none" stroke="${t.secondary}" stroke-width="5" filter="url(#glow_${uid})" />
       
       <!-- Laser Waist Beam & Phase Oscillations -->
-      <path class="mrd-anim-beam" d="M 100,200 C 280,170 360,190 400,200 C 440,210 520,230 700,200" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="4.5" filter="url(#glow_${uid})" />
-      <path class="mrd-anim-wave-1" d="M 100,160 C 260,185 360,195 400,200 C 440,205 540,215 700,160" fill="none" stroke="${t.accent}" stroke-width="1.8" stroke-opacity="0.75" />
-      <path class="mrd-anim-wave-2" d="M 100,240 C 260,215 360,205 400,200 C 440,195 540,185 700,240" fill="none" stroke="${t.accent2}" stroke-width="1.8" stroke-opacity="0.75" />
+      <path class="mrd-anim-beam" d="M 100,${waistY} C 280,${waistY - 30} 360,${waistY - 10} 400,${waistY} C 440,${waistY + 10} 520,${waistY + 30} 700,${waistY}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="4.5" filter="url(#glow_${uid})" />
+      <path class="mrd-anim-wave-1" d="M 100,${waistY - 40} C 260,${waistY - 15} 360,${waistY - 5} 400,${waistY} C 440,${waistY + 5} 540,${waistY + 15} 700,${waistY - 40}" fill="none" stroke="${t.accent}" stroke-width="1.8" stroke-opacity="0.75" />
+      <path class="mrd-anim-wave-2" d="M 100,${waistY + 40} C 260,${waistY + 15} 360,${waistY + 5} 400,${waistY} C 440,${waistY - 5} 540,${waistY - 15} 700,${waistY + 40}" fill="none" stroke="${t.accent2}" stroke-width="1.8" stroke-opacity="0.75" />
       
       <!-- Central Focus Spot -->
-      <circle cx="400" cy="200" r="55" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
-      <circle cx="400" cy="200" r="10" fill="#ffffff" filter="url(#glow_${uid})" />
-      <circle cx="400" cy="200" r="24" fill="none" stroke="${t.accent}" stroke-width="1.5" stroke-dasharray="3,3" class="mrd-anim-spin" />
+      <circle cx="400" cy="${waistY}" r="55" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
+      <circle cx="400" cy="${waistY}" r="10" fill="#ffffff" filter="url(#glow_${uid})" />
+      <circle cx="400" cy="${waistY}" r="24" fill="none" stroke="${t.accent}" stroke-width="1.5" stroke-dasharray="3,3" class="mrd-anim-spin" />
     `;
   } else if (geomType === 2) {
     // Archetype 2: Concentric Fresnel Diffraction Rings & Caustic Optics
+    const cX = 400 + offsetB;
+    const cY = 190 + offsetA;
     geometrySvg = `
       <!-- Concentric Phase Rings -->
-      <ellipse cx="400" cy="190" rx="280" ry="110" fill="none" stroke="${t.primary}" stroke-width="1.2" stroke-opacity="0.35" />
-      <ellipse cx="400" cy="190" rx="210" ry="80" fill="none" stroke="${t.secondary}" stroke-width="1.6" stroke-opacity="0.5" stroke-dasharray="8,6" class="mrd-anim-wave-1" />
-      <ellipse cx="400" cy="190" rx="140" ry="55" fill="none" stroke="${t.accent2}" stroke-width="2.2" stroke-opacity="0.75" filter="url(#glow_${uid})" />
-      <ellipse cx="400" cy="190" rx="70" ry="28" fill="none" stroke="${t.primary}" stroke-width="3" filter="url(#glow_${uid})" />
+      <ellipse cx="${cX}" cy="${cY}" rx="${280 + offsetA}" ry="${110 + offsetB}" fill="none" stroke="${t.primary}" stroke-width="1.2" stroke-opacity="0.35" />
+      <ellipse cx="${cX}" cy="${cY}" rx="${210 + offsetA}" ry="${80 + offsetB}" fill="none" stroke="${t.secondary}" stroke-width="1.6" stroke-opacity="0.5" stroke-dasharray="8,6" class="mrd-anim-wave-1" />
+      <ellipse cx="${cX}" cy="${cY}" rx="${140 + offsetB}" ry="${55 + offsetA}" fill="none" stroke="${t.accent2}" stroke-width="2.2" stroke-opacity="0.75" filter="url(#glow_${uid})" />
+      <ellipse cx="${cX}" cy="${cY}" rx="70" ry="28" fill="none" stroke="${t.primary}" stroke-width="3" filter="url(#glow_${uid})" />
       
       <!-- Radial Caustic Rays -->
-      <line x1="120" y1="80" x2="400" y2="190" stroke="${t.accent}" stroke-width="1" stroke-opacity="0.5" stroke-dasharray="4,3" />
-      <line x1="680" y1="80" x2="400" y2="190" stroke="${t.accent2}" stroke-width="1" stroke-opacity="0.5" stroke-dasharray="4,3" />
-      <line x1="400" y1="30" x2="400" y2="350" stroke="${t.primary}" stroke-width="1.5" stroke-opacity="0.6" />
+      <line x1="120" y1="80" x2="${cX}" y2="${cY}" stroke="${t.accent}" stroke-width="1" stroke-opacity="0.5" stroke-dasharray="4,3" />
+      <line x1="680" y1="80" x2="${cX}" y2="${cY}" stroke="${t.accent2}" stroke-width="1" stroke-opacity="0.5" stroke-dasharray="4,3" />
+      <line x1="${cX}" y1="30" x2="${cX}" y2="350" stroke="${t.primary}" stroke-width="1.5" stroke-opacity="0.6" />
       
-      <circle cx="400" cy="190" r="45" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
-      <circle cx="400" cy="190" r="8" fill="#ffffff" filter="url(#glow_${uid})" />
+      <circle cx="${cX}" cy="${cY}" r="45" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
+      <circle cx="${cX}" cy="${cY}" r="8" fill="#ffffff" filter="url(#glow_${uid})" />
     `;
   } else if (geomType === 3) {
     // Archetype 3: Topological Geodesics & Tensor Network Manifold
     geometrySvg = `
       <!-- Intersecting Manifold Curves -->
-      <path class="mrd-anim-wave-1" d="M 60,300 C 220,80 440,320 740,100" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3.5" filter="url(#glow_${uid})" />
-      <path class="mrd-anim-wave-2" d="M 60,100 C 240,340 480,60 740,280" fill="none" stroke="${t.secondary}" stroke-width="2.2" stroke-opacity="0.8" />
+      <path class="mrd-anim-wave-1" d="M 60,${300 + offsetA} C 220,${80 - offsetB} 440,${320 + offsetB} 740,${100 + offsetA}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3.5" filter="url(#glow_${uid})" />
+      <path class="mrd-anim-wave-2" d="M 60,${100 - offsetB} C 240,${340 + offsetA} 480,${60 + offsetB} 740,${280 - offsetA}" fill="none" stroke="${t.secondary}" stroke-width="2.2" stroke-opacity="0.8" />
       
       <!-- Tensor Contraction Points -->
-      <circle cx="210" cy="165" r="40" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
-      <circle cx="210" cy="165" r="7" fill="#ffffff" />
-      <circle cx="350" cy="205" r="48" fill="url(#nodeGlow2_${uid})" class="mrd-anim-pulse" />
-      <circle cx="350" cy="205" r="9" fill="${t.accent2}" filter="url(#glow_${uid})" />
-      <circle cx="530" cy="160" r="38" fill="url(#nodeGlow_${uid})" />
-      <circle cx="530" cy="160" r="6" fill="${t.primary}" />
+      <circle cx="${210 + offsetB}" cy="165" r="40" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
+      <circle cx="${210 + offsetB}" cy="165" r="7" fill="#ffffff" />
+      <circle cx="${350 - offsetA}" cy="205" r="48" fill="url(#nodeGlow2_${uid})" class="mrd-anim-pulse" />
+      <circle cx="${350 - offsetA}" cy="205" r="9" fill="${t.accent2}" filter="url(#glow_${uid})" />
+      <circle cx="${530 + offsetB}" cy="160" r="38" fill="url(#nodeGlow_${uid})" />
+      <circle cx="${530 + offsetB}" cy="160" r="6" fill="${t.primary}" />
       
       <!-- Interconnect Vectors -->
-      <line x1="210" y1="165" x2="350" y2="205" stroke="${t.primary}" stroke-width="1.4" stroke-opacity="0.7" stroke-dasharray="5,3" />
-      <line x1="350" y1="205" x2="530" y2="160" stroke="${t.secondary}" stroke-width="1.4" stroke-opacity="0.7" stroke-dasharray="5,3" />
-      <line x1="210" y1="165" x2="530" y2="160" stroke="${t.accent}" stroke-width="1" stroke-opacity="0.4" />
+      <line x1="${210 + offsetB}" y1="165" x2="${350 - offsetA}" y2="205" stroke="${t.primary}" stroke-width="1.4" stroke-opacity="0.7" stroke-dasharray="5,3" />
+      <line x1="${350 - offsetA}" y1="205" x2="${530 + offsetB}" y2="160" stroke="${t.secondary}" stroke-width="1.4" stroke-opacity="0.7" stroke-dasharray="5,3" />
+      <line x1="${210 + offsetB}" y1="165" x2="${530 + offsetB}" y2="160" stroke="${t.accent}" stroke-width="1" stroke-opacity="0.4" />
     `;
   } else if (geomType === 4) {
     // Archetype 4: Photonic Crystal Lattice & Waveguide Modes
+    const yCenter = 190 + offsetA;
     geometrySvg = `
       <!-- Photonic Crystal Lattice Grid Dots -->
       <g opacity="0.45">
-        <circle cx="150" cy="100" r="4" fill="${t.primary}" />
-        <circle cx="230" cy="100" r="4" fill="${t.primary}" />
-        <circle cx="310" cy="100" r="4" fill="${t.primary}" />
-        <circle cx="490" cy="100" r="4" fill="${t.primary}" />
-        <circle cx="570" cy="100" r="4" fill="${t.primary}" />
-        <circle cx="650" cy="100" r="4" fill="${t.primary}" />
+        <circle cx="150" cy="${100 + offsetB}" r="4" fill="${t.primary}" />
+        <circle cx="230" cy="${100 + offsetB}" r="4" fill="${t.primary}" />
+        <circle cx="310" cy="${100 + offsetB}" r="4" fill="${t.primary}" />
+        <circle cx="490" cy="${100 + offsetB}" r="4" fill="${t.primary}" />
+        <circle cx="570" cy="${100 + offsetB}" r="4" fill="${t.primary}" />
+        <circle cx="650" cy="${100 + offsetB}" r="4" fill="${t.primary}" />
 
-        <circle cx="150" cy="280" r="4" fill="${t.secondary}" />
-        <circle cx="230" cy="280" r="4" fill="${t.secondary}" />
-        <circle cx="310" cy="280" r="4" fill="${t.secondary}" />
-        <circle cx="490" cy="280" r="4" fill="${t.secondary}" />
-        <circle cx="570" cy="280" r="4" fill="${t.secondary}" />
-        <circle cx="650" cy="280" r="4" fill="${t.secondary}" />
+        <circle cx="150" cy="${280 - offsetB}" r="4" fill="${t.secondary}" />
+        <circle cx="230" cy="${280 - offsetB}" r="4" fill="${t.secondary}" />
+        <circle cx="310" cy="${280 - offsetB}" r="4" fill="${t.secondary}" />
+        <circle cx="490" cy="${280 - offsetB}" r="4" fill="${t.secondary}" />
+        <circle cx="570" cy="${280 - offsetB}" r="4" fill="${t.secondary}" />
+        <circle cx="650" cy="${280 - offsetB}" r="4" fill="${t.secondary}" />
       </g>
       
       <!-- Central Guided Wave Path -->
-      <path class="mrd-anim-wave-1" d="M 40,190 L 320,190 L 400,120 L 480,260 L 560,190 L 760,190" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="4" filter="url(#glow_${uid})" />
-      <path class="mrd-anim-wave-2" d="M 40,190 L 320,190 L 400,120 L 480,260 L 560,190 L 760,190" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="8,6" />
+      <path class="mrd-anim-wave-1" d="M 40,${yCenter} L 320,${yCenter} L 400,${yCenter - 70} L 480,${yCenter + 70} L 560,${yCenter} L 760,${yCenter}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="4" filter="url(#glow_${uid})" />
+      <path class="mrd-anim-wave-2" d="M 40,${yCenter} L 320,${yCenter} L 400,${yCenter - 70} L 480,${yCenter + 70} L 560,${yCenter} L 760,${yCenter}" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="8,6" />
       
       <!-- Dispersive Resonator Nodes -->
-      <circle cx="400" cy="120" r="42" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
-      <circle cx="400" cy="120" r="7" fill="#ffffff" />
-      <circle cx="480" cy="260" r="46" fill="url(#nodeGlow2_${uid})" class="mrd-anim-pulse" />
-      <circle cx="480" cy="260" r="8" fill="${t.accent2}" filter="url(#glow_${uid})" />
+      <circle cx="400" cy="${yCenter - 70}" r="42" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
+      <circle cx="400" cy="${yCenter - 70}" r="7" fill="#ffffff" />
+      <circle cx="480" cy="${yCenter + 70}" r="46" fill="url(#nodeGlow2_${uid})" class="mrd-anim-pulse" />
+      <circle cx="480" cy="${yCenter + 70}" r="8" fill="${t.accent2}" filter="url(#glow_${uid})" />
     `;
   } else {
     // Archetype 5: Mach-Zehnder Quantum Interferometer
+    const yCenter = 200 + offsetA;
     geometrySvg = `
       <!-- Dual Optical Paths -->
-      <path class="mrd-anim-wave-1" d="M 60,200 L 220,200 L 220,110 L 580,110 L 580,200 L 740,200" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3" filter="url(#glow_${uid})" />
-      <path class="mrd-anim-wave-2" d="M 220,200 L 220,290 L 580,290 L 580,200" fill="none" stroke="${t.secondary}" stroke-width="3" stroke-dasharray="10,6" filter="url(#glow_${uid})" />
+      <path class="mrd-anim-wave-1" d="M 60,${yCenter} L 220,${yCenter} L 220,${yCenter - 90} L 580,${yCenter - 90} L 580,${yCenter} L 740,${yCenter}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3" filter="url(#glow_${uid})" />
+      <path class="mrd-anim-wave-2" d="M 220,${yCenter} L 220,${yCenter + 90} L 580,${yCenter + 90} L 580,${yCenter}" fill="none" stroke="${t.secondary}" stroke-width="3" stroke-dasharray="10,6" filter="url(#glow_${uid})" />
       
       <!-- Beam Splitters & Phase Mirrors -->
-      <rect x="210" y="190" width="20" height="20" transform="rotate(45 220 200)" fill="${t.accent}" fill-opacity="0.4" stroke="#ffffff" stroke-width="1.5" />
-      <rect x="570" y="190" width="20" height="20" transform="rotate(45 580 200)" fill="${t.accent2}" fill-opacity="0.4" stroke="#ffffff" stroke-width="1.5" />
-      <circle cx="400" cy="110" r="28" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
-      <circle cx="400" cy="110" r="5" fill="#ffffff" />
-      <circle cx="400" cy="290" r="35" fill="url(#nodeGlow2_${uid})" class="mrd-anim-pulse" />
-      <circle cx="400" cy="290" r="6" fill="${t.accent2}" />
+      <rect x="210" y="${yCenter - 10}" width="20" height="20" transform="rotate(45 220 ${yCenter})" fill="${t.accent}" fill-opacity="0.4" stroke="#ffffff" stroke-width="1.5" />
+      <rect x="570" y="${yCenter - 10}" width="20" height="20" transform="rotate(45 580 ${yCenter})" fill="${t.accent2}" fill-opacity="0.4" stroke="#ffffff" stroke-width="1.5" />
+      <circle cx="400" cy="${yCenter - 90}" r="28" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
+      <circle cx="400" cy="${yCenter - 90}" r="5" fill="#ffffff" />
+      <circle cx="400" cy="${yCenter + 90}" r="35" fill="url(#nodeGlow2_${uid})" class="mrd-anim-pulse" />
+      <circle cx="400" cy="${yCenter + 90}" r="6" fill="${t.accent2}" />
       
       <!-- Phase Shift Indicator -->
-      <text x="400" y="145" text-anchor="middle" fill="${t.accent}" font-family="monospace" font-size="10" font-weight="bold">Δφ = π/2</text>
+      <text x="400" y="${yCenter - 55}" text-anchor="middle" fill="${t.accent}" font-family="monospace" font-size="10" font-weight="bold">Δφ = π/2</text>
     `;
   }
 
@@ -276,8 +337,12 @@ export function generateProceduralBannerSvg(title: string, tags?: string | strin
   <rect x="50" y="38" width="190" height="26" rx="13" fill="${t.primary}" fill-opacity="0.18" stroke="${t.primary}" stroke-opacity="0.5" />
   <text x="145" y="55" text-anchor="middle" fill="${t.accent}" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1.5">${tagText.toUpperCase()}</text>
 
+  <!-- Mathematical Formula Overlay -->
+  <text x="750" y="56" text-anchor="end" fill="${t.accent}" font-family="monospace" font-size="11" font-weight="600" opacity="0.85" letter-spacing="0.5">${formula}</text>
+
   <!-- Title Watermark & Unique Run Branding -->
   <text x="50" y="340" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" letter-spacing="-0.5">${cleanTitle}</text>
   <text x="50" y="366" fill="#94a3b8" font-family="monospace" font-size="10" letter-spacing="1.2">MERIDIAN RESEARCH // ${t.label} // #${uid.toUpperCase()}</text>
 </svg>`;
 }
+

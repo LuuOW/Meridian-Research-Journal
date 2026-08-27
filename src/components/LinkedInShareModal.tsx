@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Copy, Check, ExternalLink, MessageSquare, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { X, Copy, Check, ExternalLink, MessageSquare, Sparkles, Loader2, RefreshCw, Zap, Compass, Cpu, Briefcase } from "lucide-react";
 import { generateLinkedInDraft } from "../lib/shareUtils";
 import { calculateNormalizedCursor, computeRayTracedLightState, getDefaultLightState } from "../lib/rayTracingUtils";
-import { getLinkedInPostCache, saveLinkedInPostCache, buildLinkedInArticleUrl } from "../lib/linkedinUtils";
+import { getLinkedInPostCache, saveLinkedInPostCache, buildLinkedInArticleUrl, countSentences } from "../lib/linkedinUtils";
 
 interface LinkedInShareModalProps {
   isOpen: boolean;
@@ -16,6 +16,15 @@ interface LinkedInShareModalProps {
   blogId?: string;
   onDownloadPng?: () => void;
 }
+
+type LinkedInTone = "future" | "technical" | "punchy" | "executive";
+
+const TONE_OPTIONS: { id: LinkedInTone; label: string; icon: React.FC<{ className?: string }>; description: string }[] = [
+  { id: "future", label: "Future Vision", icon: Compass, description: "Visionary paradigm shifts" },
+  { id: "technical", label: "Technical", icon: Cpu, description: "Equations & physical mechanics" },
+  { id: "punchy", label: "Punchy", icon: Zap, description: "High-impact scroll-stopping hook" },
+  { id: "executive", label: "Executive", icon: Briefcase, description: "High-level strategic impact" },
+];
 
 export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
   isOpen,
@@ -31,6 +40,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiHeadline, setAiHeadline] = useState<string | null>(null);
+  const [selectedTone, setSelectedTone] = useState<LinkedInTone>("future");
 
   const modalRef = useRef<HTMLDivElement>(null);
   const [lightState, setLightState] = useState(getDefaultLightState());
@@ -51,16 +61,16 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [isOpen]);
 
-  // Function to generate post with persistent caching
-  const generateAiPost = async (forceRefresh: boolean = false) => {
+  // Function to generate post with persistent caching per tone
+  const generateAiPost = async (forceRefresh: boolean = false, toneToUse: LinkedInTone = selectedTone) => {
     const cacheKey = blogId || title;
 
     // Check persistent cache first (survives reloads & browser close)
     if (!forceRefresh && cacheKey) {
-      const cached = getLinkedInPostCache(cacheKey);
+      const cached = getLinkedInPostCache(cacheKey, toneToUse);
       if (cached) {
         setDraftText(cached.draftText);
-        setAiHeadline(cached.headline || "Future Vision Synthesis");
+        setAiHeadline(cached.headline || `${toneToUse.toUpperCase()} Synthesis`);
         return;
       }
     }
@@ -70,7 +80,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
       const articleUrl = buildLinkedInArticleUrl(blogId);
       const response = await fetch("/api/linkedin/generate-post", {
         method: "POST",
-        signal: AbortSignal.timeout(9000),
+        signal: AbortSignal.timeout(18000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
@@ -80,7 +90,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
           arxivLink,
           blogId,
           articleUrl,
-          tone: "future",
+          tone: toneToUse,
         })
       });
 
@@ -90,7 +100,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
 
       const data = await response.json();
       let finalDraft = "";
-      let finalHeadline = "Future Vision Synthesis";
+      let finalHeadline = `${toneToUse.charAt(0).toUpperCase() + toneToUse.slice(1)} Perspective`;
 
       if (data && data.postText) {
         finalDraft = data.postText;
@@ -105,24 +115,26 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
       setDraftText(finalDraft);
       setAiHeadline(finalHeadline);
 
-      // Save to persistent storage cache
+      // Save to persistent storage cache scoped to this tone
       if (cacheKey) {
         saveLinkedInPostCache(cacheKey, {
           draftText: finalDraft,
           headline: finalHeadline,
-        });
+          tone: toneToUse,
+        }, toneToUse);
       }
     } catch (err) {
-      console.warn("AI post generation timed out or failed, applying high-fidelity companion synthesis:", err);
+      console.warn("AI post generation timed out or fallback engaged:", err);
       const fallbackText = generateLinkedInDraft(title, excerpt, blogId);
       setDraftText(fallbackText);
-      setAiHeadline("Future Vision Synthesis");
+      setAiHeadline("Research Highlight Synthesis");
 
       if (cacheKey) {
         saveLinkedInPostCache(cacheKey, {
           draftText: fallbackText,
-          headline: "Future Vision Synthesis",
-        });
+          headline: "Research Highlight Synthesis",
+          tone: toneToUse,
+        }, toneToUse);
       }
     } finally {
       setIsGenerating(false);
@@ -133,9 +145,15 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
   useEffect(() => {
     if (isOpen && title) {
       setCopied(false);
-      generateAiPost(false);
+      generateAiPost(false, selectedTone);
     }
   }, [isOpen, title, excerpt, blogId]);
+
+  const handleToneChange = (newTone: LinkedInTone) => {
+    if (newTone === selectedTone && !isGenerating) return;
+    setSelectedTone(newTone);
+    generateAiPost(false, newTone);
+  };
 
   const handleCopy = async () => {
     try {
@@ -147,6 +165,8 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
     }
   };
 
+  const currentSentenceCount = countSentences(draftText);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -157,7 +177,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
           />
 
           {/* Modal Container with Pitch, Yaw, Roll 3D Chasing Optics */}
@@ -166,7 +186,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className="relative w-full max-w-md group p-[2px] rounded-2xl overflow-hidden shadow-2xl z-10 font-sans transition-transform duration-150 ease-out"
+            className="relative w-full max-w-lg group p-[2px] rounded-2xl overflow-hidden shadow-2xl z-10 font-sans transition-transform duration-150 ease-out"
             style={{
               transform: `perspective(1000px) rotateX(${lightState.pitch}deg) rotateY(${lightState.yaw}deg) rotateZ(${lightState.roll}deg)`,
               boxShadow: isGenerating
@@ -211,7 +231,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
               {/* Header & Badges */}
               <div className="flex items-center justify-between pb-2 border-b border-neutral-800/80 relative z-10">
                 <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-lg bg-[#0077b5]/20 text-[#0077b5] border border-[#0077b5]/30">
+                  <div className="p-1.5 rounded-lg bg-[#0077b5]/20 text-[#0077b5] border border-[#0077b5]/30">
                     <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                     </svg>
@@ -223,12 +243,17 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                         <Sparkles className="w-2.5 h-2.5" /> Gemini
                       </span>
                     </h3>
+                    {aiHeadline && (
+                      <p className="text-[10px] text-cyan-400 font-mono font-medium truncate max-w-[260px] mt-0.5">
+                        {aiHeadline}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[9px] font-mono font-bold rounded-full border border-indigo-500/30 flex items-center gap-1">
-                    🚀 Future Vision
+                  <span className="px-2 py-0.5 bg-cyan-500/15 text-cyan-300 text-[9px] font-mono font-bold rounded-full border border-cyan-500/30 flex items-center gap-1">
+                    {currentSentenceCount} sentences
                   </span>
                   <button
                     onClick={onClose}
@@ -236,6 +261,36 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                   >
                     <X className="w-4 h-4" />
                   </button>
+                </div>
+              </div>
+
+              {/* Tone Selection Pills */}
+              <div className="relative z-10 space-y-1">
+                <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider font-mono">
+                  Perspective & Tone
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {TONE_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    const isActive = selectedTone === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleToneChange(opt.id)}
+                        disabled={isGenerating}
+                        className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-gradient-to-b from-blue-600/30 to-cyan-600/30 border-cyan-400/60 text-cyan-200 shadow-sm"
+                            : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60"
+                        }`}
+                        title={opt.description}
+                      >
+                        <Icon className={`w-3.5 h-3.5 mb-0.5 ${isActive ? "text-cyan-300" : "text-neutral-400"}`} />
+                        <span className="text-[10px] font-medium leading-tight">{opt.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -248,13 +303,13 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => generateAiPost(true)}
+                    onClick={() => generateAiPost(true, selectedTone)}
                     disabled={isGenerating}
-                    className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-mono cursor-pointer transition-colors"
-                    title="Re-synthesize post"
+                    className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-mono cursor-pointer transition-colors px-1.5 py-0.5 rounded bg-cyan-950/40 border border-cyan-800/40"
+                    title="Generate a completely new perspective"
                   >
                     <RefreshCw className={`w-2.5 h-2.5 ${isGenerating ? "animate-spin" : ""}`} />
-                    <span>Refresh</span>
+                    <span>Re-synthesize</span>
                   </button>
                 </div>
 
@@ -262,15 +317,15 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                   <textarea
                     value={draftText}
                     onChange={(e) => setDraftText(e.target.value)}
-                    rows={5}
+                    rows={6}
                     disabled={isGenerating}
                     className="w-full bg-neutral-900/90 hover:bg-neutral-900 focus:bg-neutral-950 text-xs border border-neutral-800 focus:border-cyan-500 rounded-xl p-3.5 outline-none transition-all resize-none font-sans leading-relaxed text-neutral-100 disabled:opacity-60 focus:ring-1 focus:ring-cyan-500/30 shadow-inner"
-                    placeholder="Generating 3-sentence Future Vision LinkedIn post..."
+                    placeholder="Generating unique 3-sentence LinkedIn companion post..."
                   />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-neutral-950/85 backdrop-blur-[2px] flex items-center justify-center rounded-xl gap-2 text-xs font-medium text-cyan-300">
                       <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
-                      <span>Synthesizing 3-sentence post...</span>
+                      <span>Synthesizing unique 3-sentence post...</span>
                     </div>
                   )}
                 </div>
@@ -285,7 +340,7 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
                   {copied ? (
                     <>
                       <Check className="w-4 h-4 text-emerald-600" />
-                      <span>Copied!</span>
+                      <span>Copied to Clipboard!</span>
                     </>
                   ) : (
                     <>
@@ -312,5 +367,6 @@ export const LinkedInShareModal: React.FC<LinkedInShareModalProps> = ({
     </AnimatePresence>
   );
 };
+
 
 
