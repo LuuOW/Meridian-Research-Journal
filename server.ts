@@ -256,9 +256,43 @@ if (firebaseConfig && firebaseConfig.projectId) {
   }
 }
 
+// Resolves a high-precision numeric timestamp for any blog post
+const getBlogTimestamp = (blog: any): number => {
+  if (blog?.createdAt && typeof blog.createdAt === "number" && !isNaN(blog.createdAt)) {
+    return blog.createdAt;
+  }
+  if (blog?.timestamp && typeof blog.timestamp === "number" && !isNaN(blog.timestamp)) {
+    return blog.timestamp;
+  }
+  if (blog?.id && typeof blog.id === "string") {
+    const match = blog.id.match(/(?:generated|draft|blog)-(\d+)/);
+    if (match && match[1]) {
+      const val = Number(match[1]);
+      if (!isNaN(val) && val > 1000000000) return val;
+    }
+  }
+  if (blog?.date && typeof blog.date === "string") {
+    const parsed = Date.parse(blog.date);
+    if (!isNaN(parsed)) return parsed;
+  }
+  return 0;
+};
+
+// Chronologically sort blogs so newest articles appear first deterministically
+const sortBlogsChronologically = (blogs: any[]): any[] => {
+  return [...blogs].sort((a: any, b: any) => {
+    const timeA = getBlogTimestamp(a);
+    const timeB = getBlogTimestamp(b);
+    if (timeA !== timeB) {
+      return timeB - timeA;
+    }
+    return (a?.title || "").localeCompare(b?.title || "");
+  });
+};
+
 // Get all blogs, with fallback to local JSON file
 const getBlogs = async (): Promise<any[]> => {
-  const localBlogs = readCustomBlogs();
+  const localBlogs = sortBlogsChronologically(readCustomBlogs());
   if (!db) {
     return localBlogs;
   }
@@ -280,14 +314,7 @@ const getBlogs = async (): Promise<any[]> => {
       return localBlogs;
     }
 
-    // Sort newer first based on the generation timestamp in ID (e.g. generated-1234567890)
-    firestoreBlogs.sort((a: any, b: any) => {
-      const timeA = parseInt(a.id?.replace("generated-", "")) || 0;
-      const timeB = parseInt(b.id?.replace("generated-", "")) || 0;
-      return timeB - timeA;
-    });
-
-    return firestoreBlogs;
+    return sortBlogsChronologically(firestoreBlogs);
   } catch (error) {
     console.error("Error reading from Firestore, falling back to local file:", error);
     return localBlogs;
@@ -299,14 +326,15 @@ let lastGitHubSyncStatus: any = null;
 
 // Save a single blog to local files (custom_blogs.json + src/data.ts), Firestore, and GitHub mirror
 const saveBlog = async (blog: any, reason: string = "save blog") => {
-  // 1. Save locally & keep both custom_blogs.json and src/data.ts fully updated
-  const localBlogs = readCustomBlogs();
-  const existingIdx = localBlogs.findIndex((b: any) => b.id === blog.id);
+  // 1. Save locally & keep both custom_blogs.json and src/data.ts fully updated and sorted
+  const rawLocalBlogs = readCustomBlogs();
+  const existingIdx = rawLocalBlogs.findIndex((b: any) => b.id === blog.id);
   if (existingIdx !== -1) {
-    localBlogs[existingIdx] = { ...localBlogs[existingIdx], ...blog };
+    rawLocalBlogs[existingIdx] = { ...rawLocalBlogs[existingIdx], ...blog };
   } else {
-    localBlogs.unshift(blog); // Newer at the top
+    rawLocalBlogs.unshift(blog);
   }
+  const localBlogs = sortBlogsChronologically(rawLocalBlogs);
   writeLocalBlogFiles(localBlogs);
 
   // 2. Save to Firestore
@@ -335,15 +363,17 @@ const saveBlog = async (blog: any, reason: string = "save blog") => {
 
 // Save multiple blogs to local files, Firestore, and GitHub mirror
 const saveBlogs = async (blogs: any[], reason: string = "batch sync") => {
+  const sortedBlogs = sortBlogsChronologically(blogs);
+
   // 1. Save locally
-  writeLocalBlogFiles(blogs);
+  writeLocalBlogFiles(sortedBlogs);
 
   // 2. Save to Firestore
   if (db) {
     try {
-      console.log(`Syncing ${blogs.length} blogs to Firestore...`);
+      console.log(`Syncing ${sortedBlogs.length} blogs to Firestore...`);
       await Promise.all(
-        blogs.map(async (blog) => {
+        sortedBlogs.map(async (blog) => {
           if (blog && blog.id) {
             await setDoc(doc(db, "blogs", blog.id), blog);
           }
@@ -356,7 +386,7 @@ const saveBlogs = async (blogs: any[], reason: string = "batch sync") => {
   }
 
   // 3. Mirror directly to GitHub repository
-  syncAllBlogsToGitHub(blogs, reason)
+  syncAllBlogsToGitHub(sortedBlogs, reason)
     .then((result) => {
       lastGitHubSyncTimestamp = Date.now();
       lastGitHubSyncStatus = result;
@@ -567,6 +597,44 @@ app.get("/api/export/repo-bundle", async (req, res) => {
   }
 });
 
+// API: Pull all published articles directly from production (https://ask-meridian.uk/api/blogs)
+app.post("/api/blogs/pull-prod", async (req, res) => {
+  const { password } = req.body || {};
+  const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+
+  if (password && password !== expectedPassword) {
+    return res.status(403).json({ error: "Unauthorized: Incorrect password." });
+  }
+
+  try {
+    const prodRes = await fetch("https://ask-meridian.uk/api/blogs", {
+      headers: { "User-Agent": "Meridian-AIStudio-Sync" },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!prodRes.ok) {
+      throw new Error(`Production server returned HTTP ${prodRes.status}`);
+    }
+    const data: any = await prodRes.json();
+    const prodBlogs = data.blogs || [];
+
+    if (!Array.isArray(prodBlogs) || prodBlogs.length === 0) {
+      throw new Error("No blogs returned from production");
+    }
+
+    await saveBlogs(prodBlogs, "pull and sync from production");
+
+    res.json({
+      success: true,
+      message: `Successfully pulled and synchronized ${prodBlogs.length} articles from production.`,
+      totalArticles: prodBlogs.length,
+      blogs: prodBlogs
+    });
+  } catch (err: any) {
+    console.error("Error pulling from production:", err);
+    res.status(500).json({ success: false, error: err.message || "Failed to pull articles from production" });
+  }
+});
+
 // Get registered passkeys, syncing with Firestore if available
 const getPasskeys = async (): Promise<any[]> => {
   const localPasskeys = readPasskeys();
@@ -744,14 +812,7 @@ app.post("/api/blogs/sync", async (req, res) => {
     }
   });
   
-  const mergedBlogs = Array.from(mergedMap.values());
-  
-  // Sort them so newer generated blogs are first
-  mergedBlogs.sort((a: any, b: any) => {
-    const timeA = parseInt(a.id.replace("generated-", "")) || 0;
-    const timeB = parseInt(b.id.replace("generated-", "")) || 0;
-    return timeB - timeA; // Newer first
-  });
+  const mergedBlogs = sortBlogsChronologically(Array.from(mergedMap.values()));
   
   await saveBlogs(mergedBlogs);
   res.json({ blogs: mergedBlogs });
@@ -1024,11 +1085,13 @@ Requirements:
       ...parsedBlog,
       id: `generated-${timestamp}`,
       slug: `${slug}-${timestamp.toString().slice(-4)}`,
-      date: parsedBlog.date || new Date().toLocaleDateString("en-US", {
+      date: new Date().toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
         year: "numeric"
-      })
+      }),
+      createdAt: timestamp,
+      timestamp: timestamp
     };
 
     // Always save generated blog so every trigger persists on server & survives page refresh
@@ -1449,12 +1512,14 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
       localBlogs.unshift(updatedBlog);
     }
 
-    // Save to custom_blogs.json
+    const sortedLocalBlogs = sortBlogsChronologically(localBlogs);
+
+    // Save to custom_blogs.json and src/data.ts
     try {
-      fs.writeFileSync(CUSTOM_BLOGS_FILE, JSON.stringify(localBlogs, null, 2), "utf-8");
-      console.log(`Successfully saved regenerated article "${updatedBlog.id}" to custom_blogs.json`);
+      writeLocalBlogFiles(sortedLocalBlogs);
+      console.log(`Successfully saved regenerated article "${updatedBlog.id}" to custom_blogs.json and src/data.ts`);
     } catch (writeErr) {
-      console.error("Error writing custom_blogs.json:", writeErr);
+      console.error("Error writing local blog files:", writeErr);
     }
 
     // Save to Firestore if available
@@ -1468,7 +1533,7 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
     }
 
     // Background GitHub sync
-    syncAllBlogsToGitHub(localBlogs, `regenerate article for "${(updatedBlog.title || "").slice(0, 30)}"`)
+    syncAllBlogsToGitHub(sortedLocalBlogs, `regenerate article for "${(updatedBlog.title || "").slice(0, 30)}"`)
       .catch((err) => console.warn("[GitHub Mirror] Article regen sync warning:", err));
 
     res.json({ success: true, blog: updatedBlog, audit: auditReport });

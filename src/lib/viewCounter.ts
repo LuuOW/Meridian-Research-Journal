@@ -134,16 +134,50 @@ export function calculateViewVelocity(
 }
 
 /**
- * Chronologically sorts blog posts by publication date.
+ * Resolves a high-precision numeric timestamp for any blog post.
+ * Checks explicit createdAt/timestamp fields, timestamped IDs (e.g. generated-178...), and date strings.
+ */
+export function getBlogTimestamp(blog: {
+  id?: string;
+  date?: string | null;
+  createdAt?: number;
+  timestamp?: number;
+}): number {
+  if (blog.createdAt && typeof blog.createdAt === "number" && !isNaN(blog.createdAt)) {
+    return blog.createdAt;
+  }
+  if (blog.timestamp && typeof blog.timestamp === "number" && !isNaN(blog.timestamp)) {
+    return blog.timestamp;
+  }
+  if (blog.id && typeof blog.id === "string") {
+    const match = blog.id.match(/(?:generated|draft|blog)-(\d+)/);
+    if (match && match[1]) {
+      const val = Number(match[1]);
+      if (!isNaN(val) && val > 1000000000) return val;
+    }
+  }
+  if (blog.date) {
+    const parsed = parsePublicationDate(blog.date);
+    if (parsed) return parsed.getTime();
+  }
+  return 0;
+}
+
+/**
+ * Chronologically sorts blog posts by exact generation/publication date.
+ * Guarantees newest articles appear first deterministically.
  */
 export function sortBlogsByPublicationDate(
   blogs: BlogPost[],
   direction: "desc" | "asc" = "desc"
 ): BlogPost[] {
   return [...blogs].sort((a, b) => {
-    const timeA = parsePublicationDate(a.date)?.getTime() || 0;
-    const timeB = parsePublicationDate(b.date)?.getTime() || 0;
-    return direction === "desc" ? timeB - timeA : timeA - timeB;
+    const timeA = getBlogTimestamp(a);
+    const timeB = getBlogTimestamp(b);
+    if (timeA !== timeB) {
+      return direction === "desc" ? timeB - timeA : timeA - timeB;
+    }
+    return (a.title || "").localeCompare(b.title || "");
   });
 }
 

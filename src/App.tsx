@@ -26,6 +26,7 @@ import {
 import { ensureAnimatedSvg, prepareSvgForPngExport } from "./lib/svgUtils";
 
 import { ViewCounter } from "./components/ViewCounter";
+import { sortBlogsByPublicationDate } from "./lib/viewCounter";
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
@@ -629,7 +630,7 @@ export default function App() {
       deduplicateBlogs(list).map((b) => (bannerOverrides[b.id] ? { ...b, bannerSvg: bannerOverrides[b.id] } : b));
 
     // Immediately render local cache + preloaded blogs so the user sees blogs instantly
-    const initialBlogs = applyOverrides([...localCustomBlogs, ...PRELOADED_BLOGS]);
+    const initialBlogs = sortBlogsByPublicationDate(applyOverrides([...localCustomBlogs, ...PRELOADED_BLOGS]));
     setBlogs(initialBlogs);
 
     // Handle deep linking via path /blog/:id or query parameter on load (initial pass)
@@ -681,14 +682,7 @@ export default function App() {
       mergedMap.set(blog.id, blog);
     });
 
-    const mergedCustomBlogs = Array.from(mergedMap.values());
-
-    // Sort them by id descending (newer timestamped generated IDs first)
-    mergedCustomBlogs.sort((a, b) => {
-      const timeA = parseInt(a.id.replace("generated-", "")) || 0;
-      const timeB = parseInt(b.id.replace("generated-", "")) || 0;
-      return timeB - timeA;
-    });
+    const mergedCustomBlogs = sortBlogsByPublicationDate(Array.from(mergedMap.values()));
 
     // 4. Proactively call the server sync endpoint to sync Firestore and server-side cache with any local-only cache blogs
     if (!fetchError) {
@@ -703,7 +697,7 @@ export default function App() {
           const syncedBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
           
           // Update state and local storage with the fully synced server list
-          const allBlogs = applyOverrides([...syncedBlogs, ...PRELOADED_BLOGS]);
+          const allBlogs = sortBlogsByPublicationDate(applyOverrides([...syncedBlogs, ...PRELOADED_BLOGS]));
           setBlogs(allBlogs);
           localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedBlogs));
 
@@ -723,7 +717,7 @@ export default function App() {
     }
 
     // Fallback: update state and local storage with the merged local/offline list
-    const allBlogs = applyOverrides([...mergedCustomBlogs, ...PRELOADED_BLOGS]);
+    const allBlogs = sortBlogsByPublicationDate(applyOverrides([...mergedCustomBlogs, ...PRELOADED_BLOGS]));
     setBlogs(allBlogs);
     localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
 
@@ -881,7 +875,7 @@ export default function App() {
 
   const handleBlogGenerated = async (newBlog: BlogPost) => {
     setBlogs((prev) => {
-      const updatedBlogs = [newBlog, ...prev.filter(b => b.id !== newBlog.id)];
+      const updatedBlogs = sortBlogsByPublicationDate([newBlog, ...prev.filter(b => b.id !== newBlog.id)]);
       const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
       try {
         localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
@@ -891,11 +885,20 @@ export default function App() {
     
     // Proactively trigger sync to the server API and Firestore securely in the background
     try {
-      await fetch("/api/blogs/sync", {
+      const res = await fetch("/api/blogs/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blogs: [newBlog] })
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.blogs && Array.isArray(data.blogs)) {
+          const syncedCustom = data.blogs.filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+          try {
+            localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedCustom));
+          } catch (_) {}
+        }
+      }
       console.log("Successfully synced generated blog to the server/Firestore");
     } catch (err) {
       console.error("Failed to sync generated blog to server/Firestore:", err);

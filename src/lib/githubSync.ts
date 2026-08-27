@@ -118,12 +118,16 @@ export function generateSitemapXml(blogs: BlogPost[], domain: string = "https://
 }
 
 /**
- * Updates custom_blogs.json and public/sitemap.xml on local disk
+ * Updates custom_blogs.json, src/data.ts, and public/sitemap.xml on local disk
  */
 export function writeLocalBlogFiles(blogs: BlogPost[]): boolean {
   try {
     const customBlogsPath = path.join(process.cwd(), "custom_blogs.json");
     fs.writeFileSync(customBlogsPath, JSON.stringify(blogs, null, 2), "utf-8");
+
+    const dataTsPath = path.join(process.cwd(), "src", "data.ts");
+    const dataTsContent = generateDataTsContent(blogs);
+    fs.writeFileSync(dataTsPath, dataTsContent, "utf-8");
 
     const sitemapContent = generateSitemapXml(blogs);
     const publicSitemapPath = path.join(process.cwd(), "public", "sitemap.xml");
