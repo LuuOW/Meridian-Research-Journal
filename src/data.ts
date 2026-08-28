@@ -63,7 +63,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "August 24, 2026",
     "createdAt": 1787570419854,
     "timestamp": 1787570419854,
-    "views": 811
+    "views": 1542
   },
   {
     "title": "Frontier Photonic Engines: From Quantum Readouts to Deep-Tissue Imaging",
