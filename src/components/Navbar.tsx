@@ -100,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <p className="text-[8px] sm:text-[9px] text-gray-500 dark:text-neutral-400 font-bold tracking-widest uppercase font-mono transition-colors truncate hidden sm:block">
-                Symmetry &amp; Quantum Informatics
+                Quantum Optics · Computing · AI
               </p>
             </div>
           </div>

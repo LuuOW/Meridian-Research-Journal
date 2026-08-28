@@ -1,0 +1,62 @@
+[
+  {
+    "jobId": "test-job-9999",
+    "triggerId": 1787918810105,
+    "arxivInput": "2402.09854",
+    "paperTitle": "Towards Optimal Quantum Estimators",
+    "authors": "Author A, Author B",
+    "status": "completed",
+    "startTime": 1787918810105,
+    "tokenUsage": {
+      "promptTokens": 19,
+      "candidateTokens": 19,
+      "totalTokens": 38,
+      "estimatedCostUsd": 0.000007
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1787918810105,
+        "details": "Parsing input: 2402.09854",
+        "endTime": 1787918810105,
+        "durationMs": 0
+      },
+      {
+        "stepId": 2,
+        "stepName": "Angle Synthesis & Token Budgeting",
+        "category": "prompt_prep",
+        "status": "completed",
+        "startTime": 1787918810105,
+        "details": "Angle: Theoretical physics",
+        "endTime": 1787918810105,
+        "durationMs": 0
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": true,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    },
+    "endTime": 1787918810105,
+    "totalDurationMs": 0,
+    "modelUsed": "gemini-2.5-flash",
+    "provider": "gemini",
+    "resultingBlog": {
+      "id": "generated-1740685200000",
+      "slug": "towards-optimal-quantum-estimators-for-state-frame-potential-9854",
+      "title": "Towards Optimal Quantum Estimators for State Frame Potential",
+      "contentLength": 100,
+      "latexFormulaCount": 1,
+      "tags": [
+        "Quantum",
+        "Physics"
+      ]
+    }
+  }
+]

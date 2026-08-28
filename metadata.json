@@ -1,6 +1,6 @@
 {
   "name": "Meridian Blog",
-  "description": "A scholarly publication blog that lets users paste an arXiv paper and automatically render beautiful, technical blog posts with mathematical equations, custom vector diagrams, and synthesised speech players.",
+  "description": "A scholarly publication journal turning cutting-edge arXiv quantum optics, computing, and artificial intelligence preprints into comprehensive mathematical derivations, interactive simulations, and audio syntheses.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

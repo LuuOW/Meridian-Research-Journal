@@ -1,4 +1,4 @@
-import { GenerationJob, BlogPost, JobStepLog } from "../types";
+import { GenerationJob, BlogPost, JobStepLog, PipelineExecutionRecord } from "../types";
 
 export const PIPELINE_STEPS = [
   "Contacting arXiv open archives export server...",
@@ -23,6 +23,7 @@ export const ARTICLE_REGEN_PIPELINE_STEPS = [
 ];
 
 const STORAGE_KEY = "meridian_generation_pipeline_jobs";
+const METRICS_STORAGE_KEY = "meridian_pipeline_execution_metrics";
 
 export function loadStoredJobs(): GenerationJob[] {
   if (typeof window === "undefined" || !window.localStorage) return [];
@@ -82,7 +83,7 @@ export function createGenerationJob(arxivInput: string): GenerationJob {
     dismissed: false,
     stepLogs: [
       { timestamp: now, message: `Pipeline initiated for ${cleanInput}` },
-      { timestamp: now, message: PIPELINE_STEPS[0] }
+      { timestamp: now, message: `[Step 1/5] ${PIPELINE_STEPS[0]}` }
     ]
   };
 }
@@ -103,7 +104,7 @@ export function createBannerGenerationJob(blog: BlogPost): GenerationJob {
     dismissed: false,
     stepLogs: [
       { timestamp: now, message: `Banner regeneration initiated for "${blog.title}"` },
-      { timestamp: now, message: BANNER_PIPELINE_STEPS[0] }
+      { timestamp: now, message: `[Step 1/4] ${BANNER_PIPELINE_STEPS[0]}` }
     ]
   };
 }
@@ -124,7 +125,7 @@ export function createArticleRegenerationJob(blog: BlogPost): GenerationJob {
     dismissed: false,
     stepLogs: [
       { timestamp: now, message: `Article regeneration initiated for "${blog.title}"` },
-      { timestamp: now, message: ARTICLE_REGEN_PIPELINE_STEPS[0] }
+      { timestamp: now, message: `[Step 1/4] ${ARTICLE_REGEN_PIPELINE_STEPS[0]}` }
     ]
   };
 }
@@ -148,25 +149,35 @@ export function advanceJobStep(job: GenerationJob): GenerationJob {
   const now = Date.now();
 
   const prevLogs = job.stepLogs || [];
-  const updatedLogs = [...prevLogs, { timestamp: now, message: nextMsg }];
+  const logPrefix = `[Step ${nextStepIdx + 1}/${steps.length}]`;
+  const updatedLogs = [...prevLogs, { timestamp: now, message: `${logPrefix} ${nextMsg}` }];
 
   return {
     ...job,
     currentStepIndex: nextStepIdx,
     currentStepMessage: nextMsg,
     progressPercent: calculateJobProgressPercentage(nextStepIdx, steps.length),
-    stepLogs: updatedLogs.slice(-15) // Keep last 15 log steps
+    stepLogs: updatedLogs.slice(-20) // Keep last 20 log steps
   };
 }
 
-export function completeJob(job: GenerationJob, blog: BlogPost): GenerationJob {
+export function completeJob(
+  job: GenerationJob,
+  blog: BlogPost,
+  executionRecord?: PipelineExecutionRecord
+): GenerationJob {
   const now = Date.now();
   const prevLogs = job.stepLogs || [];
+  const durationSec = ((now - job.startTime) / 1000).toFixed(1);
+  const tokenMsg = executionRecord?.tokenUsage?.totalTokens
+    ? ` (${executionRecord.tokenUsage.totalTokens.toLocaleString()} tokens, ${durationSec}s)`
+    : ` (${durationSec}s)`;
+
   const finishMsg = job.jobType === "banner_regen"
-    ? `Banner SVG synthesized and applied to "${blog.title}"`
+    ? `Banner SVG synthesized and applied to "${blog.title}"${tokenMsg}`
     : job.jobType === "article_regen"
-    ? `Article "${blog.title}" regenerated & published!`
-    : `Article "${blog.title}" generated & published!`;
+    ? `Article "${blog.title}" regenerated & published!${tokenMsg}`
+    : `Article "${blog.title}" generated & published!${tokenMsg}`;
 
   return {
     ...job,
@@ -176,7 +187,8 @@ export function completeJob(job: GenerationJob, blog: BlogPost): GenerationJob {
     completedTime: now,
     resultBlog: blog,
     targetTitle: blog.title || job.targetTitle,
-    stepLogs: [...prevLogs, { timestamp: now, message: finishMsg }].slice(-15)
+    metrics: executionRecord,
+    stepLogs: [...prevLogs, { timestamp: now, message: finishMsg }].slice(-25)
   };
 }
 
@@ -191,7 +203,7 @@ export function failJob(job: GenerationJob, errorMsg: string): GenerationJob {
     currentStepMessage: "Pipeline error encountered",
     error: msg,
     completedTime: now,
-    stepLogs: [...prevLogs, { timestamp: now, message: `Error: ${msg}` }].slice(-15)
+    stepLogs: [...prevLogs, { timestamp: now, message: `Error: ${msg}` }].slice(-25)
   };
 }
 
@@ -210,3 +222,4 @@ export function filterActiveJobs(jobs: GenerationJob[]): GenerationJob[] {
 export function countRunningJobs(jobs: GenerationJob[]): number {
   return jobs.filter((j) => !j.dismissed && j.status === "generating").length;
 }
+

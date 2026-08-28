@@ -23,6 +23,7 @@ import {
   loadStoredJobs,
   saveStoredJobs
 } from "./lib/pipelineUtils";
+import { resolveBlogSlugOrId } from "./lib/slugResolver";
 import { ensureAnimatedSvg, prepareSvgForPngExport } from "./lib/svgUtils";
 
 import { ViewCounter } from "./components/ViewCounter";
@@ -645,7 +646,7 @@ export default function App() {
 
     const blogId = getBlogIdFromUrl();
     if (blogId) {
-      const found = initialBlogs.find(b => b.id === blogId || b.slug === blogId);
+      const found = resolveBlogSlugOrId(blogId, initialBlogs);
       if (found) {
         setActiveBlog(found);
       }
@@ -701,12 +702,23 @@ export default function App() {
           setBlogs(allBlogs);
           localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedBlogs));
 
-          // Handle deep linking again in case new blogs were fetched from Firestore
+          // Handle deep linking with resilient slug/ID matching
           const refreshedBlogId = getBlogIdFromUrl();
           if (refreshedBlogId) {
-            const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
+            const found = resolveBlogSlugOrId(refreshedBlogId, allBlogs);
             if (found) {
               setActiveBlog(found);
+            } else {
+              // Direct server-side single-article lookup fallback
+              fetch(`/api/blogs/${encodeURIComponent(refreshedBlogId)}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(resData => {
+                  if (resData && resData.blog) {
+                    setActiveBlog(resData.blog);
+                    setBlogs(prev => deduplicateBlogs([resData.blog, ...prev]));
+                  }
+                })
+                .catch(() => {});
             }
           }
           return;
@@ -724,9 +736,19 @@ export default function App() {
     // Handle deep linking again
     const refreshedBlogId = getBlogIdFromUrl();
     if (refreshedBlogId) {
-      const found = allBlogs.find(b => b.id === refreshedBlogId || b.slug === refreshedBlogId);
+      const found = resolveBlogSlugOrId(refreshedBlogId, allBlogs);
       if (found) {
         setActiveBlog(found);
+      } else {
+        fetch(`/api/blogs/${encodeURIComponent(refreshedBlogId)}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(resData => {
+            if (resData && resData.blog) {
+              setActiveBlog(resData.blog);
+              setBlogs(prev => deduplicateBlogs([resData.blog, ...prev]));
+            }
+          })
+          .catch(() => {});
       }
     }
   };
@@ -840,7 +862,7 @@ export default function App() {
       }
 
       if (targetBlogId) {
-        const found = blogs.find(b => b.id === targetBlogId || b.slug === targetBlogId);
+        const found = resolveBlogSlugOrId(targetBlogId, blogs);
         if (found) {
           setActiveBlog(found);
           return;
@@ -912,7 +934,39 @@ export default function App() {
     const newJob = createGenerationJob(arxivInput);
     setJobs((prev) => [newJob, ...prev]);
 
-    // Setup timer interval to simulate pipeline step progress
+    // Connect to real-time Server-Sent Events (SSE) stream for exact server-side pipeline telemetry
+    let eventSource: EventSource | null = null;
+    try {
+      if (typeof window !== "undefined" && window.EventSource) {
+        eventSource = new EventSource(`/api/pipeline/stream/${encodeURIComponent(newJob.id)}`);
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data && data.currentStepMessage) {
+              setJobs((prevJobs) =>
+                prevJobs.map((j) => {
+                  if (j.id !== newJob.id) return j;
+                  const stepLogs = data.steps?.map((s: any) => ({
+                    timestamp: s.startTime || Date.now(),
+                    message: `${s.stepName}: ${s.detail || s.status}${s.durationMs ? ` (${s.durationMs}ms)` : ""}`
+                  })) || j.stepLogs;
+
+                  return {
+                    ...j,
+                    targetTitle: data.paperTitle || j.targetTitle,
+                    currentStepMessage: data.currentStepMessage,
+                    progressPercent: data.status === "completed" ? 100 : Math.max(j.progressPercent, (data.currentStep / 6) * 100),
+                    stepLogs
+                  };
+                })
+              );
+            }
+          } catch (_) {}
+        };
+      }
+    } catch (_) {}
+
+    // Fallback timer interval in case SSE is blocked by proxies
     const intervalId = setInterval(() => {
       setJobs((prevJobs) =>
         prevJobs.map((j) => (j.id === newJob.id ? advanceJobStep(j) : j))
@@ -926,6 +980,7 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          jobId: newJob.id,
           arxivInput,
           rawText: "",
           password: activePassword
@@ -933,6 +988,9 @@ export default function App() {
       });
 
       clearInterval(intervalId);
+      if (eventSource) {
+        eventSource.close();
+      }
 
       if (!response.ok) {
         let errMessage = "Failed to generate blog.";
@@ -954,6 +1012,9 @@ export default function App() {
       }
     } catch (err: any) {
       clearInterval(intervalId);
+      if (eventSource) {
+        eventSource.close();
+      }
       setJobs((prevJobs) =>
         prevJobs.map((j) => (j.id === newJob.id ? failJob(j, err.message) : j))
       );
@@ -1100,7 +1161,7 @@ export default function App() {
                 </div>
                 
                 <p className="text-gray-500 dark:text-neutral-400 text-sm sm:text-base md:text-lg leading-relaxed font-light max-w-2xl mx-auto mt-2">
-                  Bridging complex physics, deep learning, and advanced quantum optimization papers into highly visual, technical editorial publications.
+                  Bridging complex quantum optics, quantum computing, and artificial intelligence papers into highly visual, technical editorial publications.
                 </p>
 
                 {/* Elegant academic dual rule separator */}

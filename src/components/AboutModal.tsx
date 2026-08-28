@@ -344,7 +344,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
                     Ray-Traced
                   </span>
                 </h3>
-                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium uppercase tracking-widest font-mono">Symmetry &amp; Quantum Informatics</p>
+                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium uppercase tracking-widest font-mono">Quantum Optics · Computing · AI</p>
               </div>
             </div>
             <button 
@@ -364,7 +364,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
                 <BookOpen className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" /> Our Editorial Mission
               </h4>
               <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans">
-                Welcome to <strong>Meridian Journal</strong>, an advanced translations companion that bridges the gap between intricate, mathematical, and cutting-edge quantum informatics, deep learning, and chemical physics papers (e.g., from arXiv) and highly legible, beautifully written editorial briefs.
+                Welcome to <strong>Meridian Journal</strong>, an advanced translations companion that bridges the gap between intricate, mathematical, and cutting-edge quantum optics, quantum computing, and artificial intelligence papers (e.g., from arXiv) and highly legible, beautifully written editorial briefs.
               </p>
               <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans">
                 Our core design paradigm values <strong>precision, transparency, and architectural elegance</strong>, preserving complex LaTeX-formatted scientific formulations while highlighting practical engineering constraints and physical insights.
