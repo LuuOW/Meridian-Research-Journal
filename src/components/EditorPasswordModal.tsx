@@ -204,12 +204,28 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
           return;
         }
       }
+      // Session has expired, but passkeys are STILL enrolled!
       setRestorableSession(null);
       try {
         sessionStorage.removeItem("meridian_passkey_session_id");
         localStorage.removeItem("meridian_passkey_session_id");
       } catch {}
-      setErrorMsg("Stored session has expired. Please authenticate with your passkey.");
+
+      // Re-evaluate passkey status so user can immediately 1-click authenticate
+      const isInIframe = typeof window !== "undefined" && window.self !== window.top;
+      if (registeredCount > 0) {
+        if (isInIframe) {
+          setPasskeyStatus("iframe_restricted");
+          setPortalType("auth");
+        } else {
+          setPasskeyStatus("ready");
+        }
+        setErrorMsg("Your temporary session expired. Tap below to authenticate with your biometric passkey.");
+      } else {
+        // Fallback: check passkeys again
+        await checkPasskeys();
+        setErrorMsg("Session expired. Please authenticate with your passkey.");
+      }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to restore session.");
     } finally {
@@ -250,6 +266,21 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
     setPasskeyStatus("checking");
     setErrorMsg(null);
     try {
+      // 1. Read local storage enrolled passkeys
+      let localPasskeys: any[] = [];
+      try {
+        const rawLocal = localStorage.getItem("meridian_enrolled_passkeys");
+        if (rawLocal) {
+          localPasskeys = JSON.parse(rawLocal);
+        }
+        const legacyId = localStorage.getItem("meridian_editor_passkey_id");
+        if (legacyId && (!Array.isArray(localPasskeys) || localPasskeys.length === 0)) {
+          const legacyName = localStorage.getItem("meridian_editor_passkey_name") || "Registered Biometric Device";
+          localPasskeys = [{ id: legacyId, deviceName: legacyName, createdAt: Date.now() }];
+        }
+      } catch {}
+
+      // 2. Check for restorable active session
       const storedSessId = sessionStorage.getItem("meridian_passkey_session_id") || localStorage.getItem("meridian_passkey_session_id");
       if (storedSessId) {
         try {
@@ -265,37 +296,94 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
                 sessionId: storedSessId,
                 deviceName: sData.session.deviceName || "Registered Biometric Device"
               });
+            } else {
+              setRestorableSession(null);
+              sessionStorage.removeItem("meridian_passkey_session_id");
+              localStorage.removeItem("meridian_passkey_session_id");
             }
+          } else {
+            setRestorableSession(null);
           }
         } catch (_) {}
       }
 
-      const res = await fetch("/api/passkeys/list");
-      if (res.ok) {
-        const data = await res.json();
-        const count = data.passkeys?.length || 0;
-        setRegisteredCount(count);
+      // 3. Fetch server passkeys list
+      let serverPasskeys: any[] = [];
+      try {
+        const res = await fetch("/api/passkeys/list");
+        if (res.ok) {
+          const data = await res.json();
+          serverPasskeys = data.passkeys || [];
+        }
+      } catch (err) {
+        console.warn("Could not fetch server passkeys directly:", err);
+      }
 
-        if (count === 0) {
-          // No passkeys registered yet
-          setPasskeyStatus("register_needed");
-        } else {
-          // Detect whether we are actually running inside a sandboxed iframe
-          const isInIframe = typeof window !== "undefined" && window.self !== window.top;
-          if (isInIframe) {
-            // Preview iframe requires portal link to prevent browser security exception
-            setPasskeyStatus("iframe_restricted");
-            setPortalType("auth");
-          } else {
-            // Top-level website: ready for user-initiated biometric click
-            setPasskeyStatus("ready");
+      // 4. Two-way reconciliation: if local has passkeys not on server, sync them
+      let effectivePasskeys = serverPasskeys;
+      if (localPasskeys.length > 0) {
+        const serverHasAll = localPasskeys.every(lp => serverPasskeys.some(sp => sp.id === lp.id));
+        if (!serverHasAll || serverPasskeys.length === 0) {
+          try {
+            const syncRes = await fetch("/api/passkeys/sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ passkeys: localPasskeys })
+            });
+            if (syncRes.ok) {
+              const syncData = await syncRes.json();
+              if (syncData.passkeys) {
+                effectivePasskeys = syncData.passkeys;
+              }
+            }
+          } catch (syncErr) {
+            console.warn("Sync failed, falling back to merged client set:", syncErr);
+            effectivePasskeys = [...localPasskeys, ...serverPasskeys.filter(sp => !localPasskeys.some(lp => lp.id === sp.id))];
           }
         }
-      } else {
+      }
+
+      // 5. Update local storage with full synced set
+      if (effectivePasskeys.length > 0) {
+        try {
+          localStorage.setItem("meridian_enrolled_passkeys", JSON.stringify(effectivePasskeys));
+        } catch {}
+      }
+
+      const count = effectivePasskeys.length;
+      setRegisteredCount(count);
+
+      if (count === 0) {
+        // No passkeys registered anywhere
         setPasskeyStatus("register_needed");
+      } else {
+        // Passkeys ARE enrolled!
+        const isInIframe = typeof window !== "undefined" && window.self !== window.top;
+        if (isInIframe) {
+          // Preview iframe requires portal link
+          setPasskeyStatus("iframe_restricted");
+          setPortalType("auth");
+        } else {
+          // Top-level window: ready for 1-click Touch ID / Face ID
+          setPasskeyStatus("ready");
+        }
       }
     } catch (err) {
       console.error("Error checking passkey list:", err);
+      // Even if network failed, check local storage fallback
+      try {
+        const rawLocal = localStorage.getItem("meridian_enrolled_passkeys");
+        if (rawLocal) {
+          const list = JSON.parse(rawLocal);
+          if (Array.isArray(list) && list.length > 0) {
+            setRegisteredCount(list.length);
+            const isInIframe = typeof window !== "undefined" && window.self !== window.top;
+            setPasskeyStatus(isInIframe ? "iframe_restricted" : "ready");
+            setPortalType("auth");
+            return;
+          }
+        }
+      } catch {}
       setPasskeyStatus("register_needed");
     }
   };

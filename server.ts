@@ -58,6 +58,7 @@ import {
   verifyRegistrationPassword,
   authenticatePasskeyCredential,
   registerNewPasskey,
+  syncPasskeyCollections,
   createAuthSession,
   validateAndRestoreSession,
   touchSessionActivity,
@@ -897,18 +898,75 @@ app.get("/api/passkeys/list", async (req, res) => {
   res.json({ passkeys });
 });
 
-// API: Register a passkey across multi-tier storage with biometric & fingerprint awareness
-app.post("/api/passkeys/register", async (req, res) => {
-  const { credential, deviceName, token, fingerprint } = req.body;
+// API: Bidirectional synchronization of passkeys between client localStorage and server storage tiers
+app.post("/api/passkeys/sync", async (req, res) => {
+  try {
+    const { passkeys: clientPasskeys, fingerprint } = req.body;
+    const currentPasskeys = await getPasskeys();
+    const syncResult = syncPasskeyCollections(currentPasskeys, clientPasskeys);
 
-  const validation = validateRegistrationToken(token, portalTokens);
-  if (!validation.valid) {
-    logPasskeyAudit("passkey_registered", "failure", {
-      token,
-      details: { error: validation.error },
+    // Persist merged set across all server tiers
+    writePasskeys(syncResult.merged, true);
+
+    // Sync to Firestore if db is available
+    if (db && syncResult.addedCount > 0) {
+      for (const pk of syncResult.merged) {
+        try {
+          await setDoc(doc(db, "passkeys", pk.id), pk);
+        } catch (err) {
+          console.error(`[PasskeySync] Firestore write failed for ${pk.id}:`, err);
+        }
+      }
+    }
+
+    logPasskeyAudit("passkey_synced", "success", {
+      details: {
+        totalCount: syncResult.merged.length,
+        addedCount: syncResult.addedCount,
+        updatedCount: syncResult.updatedCount
+      },
       req
     });
-    return res.status(403).json({ error: validation.error });
+
+    res.json({
+      success: true,
+      passkeys: syncResult.merged,
+      count: syncResult.merged.length,
+      added: syncResult.addedCount
+    });
+  } catch (err: any) {
+    console.error("[PasskeySync] Synchronization error:", err);
+    res.status(500).json({ error: "Failed to synchronize passkeys" });
+  }
+});
+
+// API: Register a passkey across multi-tier storage with biometric & fingerprint awareness
+app.post("/api/passkeys/register", async (req, res) => {
+  const { credential, deviceName, token, password, fingerprint } = req.body;
+  const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+
+  // Validate either with portal token OR direct editor password
+  if (token) {
+    const validation = validateRegistrationToken(token, portalTokens);
+    if (!validation.valid) {
+      logPasskeyAudit("passkey_registered", "failure", {
+        token,
+        details: { error: validation.error },
+        req
+      });
+      return res.status(403).json({ error: validation.error });
+    }
+  } else if (password) {
+    const verification = verifyRegistrationPassword(password, expectedPassword);
+    if (!verification.authorized) {
+      logPasskeyAudit("passkey_registered", "failure", {
+        details: { error: verification.error },
+        req
+      });
+      return res.status(403).json({ error: verification.error });
+    }
+  } else {
+    return res.status(400).json({ error: "Authorization token or editor password is required to register a passkey." });
   }
 
   if (!validatePasskeyCredential(credential)) {
@@ -921,7 +979,7 @@ app.post("/api/passkeys/register", async (req, res) => {
   }
 
   try {
-    const passkeys = readPasskeys();
+    const passkeys = await getPasskeys();
     const clientFp = fingerprint || extractClientFingerprint(req);
     
     // Multi-tier registration
@@ -946,6 +1004,14 @@ app.post("/api/passkeys/register", async (req, res) => {
       }
     }
 
+    // Automatically issue authenticated session
+    const session = createAuthSession(result.record.id, result.record.deviceName, {
+      fingerprintHash: clientFp?.fingerprintHash,
+      editorPassword: expectedPassword
+    });
+    authSessions.set(session.sessionId, session);
+    savePersistedSessions();
+
     logPasskeyAudit("passkey_registered", "success", {
       credentialId: result.record.id,
       deviceName: result.record.deviceName,
@@ -953,6 +1019,7 @@ app.post("/api/passkeys/register", async (req, res) => {
       details: {
         isNew: result.added,
         biometricVerified: true,
+        sessionId: session.sessionId,
         fingerprintHash: clientFp?.fingerprintHash
       },
       req
@@ -961,7 +1028,13 @@ app.post("/api/passkeys/register", async (req, res) => {
     res.json({
       success: true,
       registered: true,
-      passkey: result.record
+      passkey: result.record,
+      password: expectedPassword,
+      session: {
+        sessionId: session.sessionId,
+        deviceName: session.deviceName,
+        expiresAt: session.expiresAt
+      }
     });
   } catch (err: any) {
     console.error("Error in passkey registration pipeline:", err);
@@ -1005,7 +1078,7 @@ app.post("/api/passkeys/generate-portal", (req, res) => {
 
 // API: Verify and Authorize a Portal Token
 app.post("/api/passkeys/verify-portal", (req, res) => {
-  const { token, success, deviceName, fingerprint } = req.body;
+  const { token, success, deviceName, credentialId, fingerprint } = req.body;
   const editorPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
   const clientFp = fingerprint || extractClientFingerprint(req);
   const result = verifyPortalToken(token, success, portalTokens, editorPassword, {
@@ -1014,13 +1087,29 @@ app.post("/api/passkeys/verify-portal", (req, res) => {
   });
   
   if (result.success) {
+    // Issue persistent auth session
+    const session = createAuthSession(credentialId || "cred_portal_auth", deviceName || "Biometric Device", {
+      fingerprintHash: clientFp?.fingerprintHash,
+      editorPassword
+    });
+    authSessions.set(session.sessionId, session);
+    savePersistedSessions();
+
     logPasskeyAudit("portal_token_verified", "success", {
       token,
       deviceName,
-      details: { fingerprintHash: clientFp?.fingerprintHash },
+      details: { sessionId: session.sessionId, fingerprintHash: clientFp?.fingerprintHash },
       req
     });
-    return res.json({ success: true, password: editorPassword });
+    return res.json({
+      success: true,
+      password: editorPassword,
+      session: {
+        sessionId: session.sessionId,
+        deviceName: session.deviceName,
+        expiresAt: session.expiresAt
+      }
+    });
   }
   
   logPasskeyAudit("portal_token_verified", "failure", {
@@ -1049,13 +1138,30 @@ app.get("/api/passkeys/poll-auth", (req, res) => {
   }
 
   if (result.authorized) {
+    // Generate active session for polling tab
+    const editorPassword = result.password || process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+    const session = createAuthSession("cred_portal_authorized", result.deviceName || "Biometric Device", {
+      editorPassword
+    });
+    authSessions.set(session.sessionId, session);
+    savePersistedSessions();
+
     logPasskeyAudit("portal_token_polled", "success", {
       token,
       deviceName: result.deviceName,
-      details: { consumed: true },
+      details: { consumed: true, sessionId: session.sessionId },
       req
     });
-    return res.json({ authorized: true, password: result.password, deviceName: result.deviceName });
+    return res.json({
+      authorized: true,
+      password: editorPassword,
+      deviceName: result.deviceName,
+      session: {
+        sessionId: session.sessionId,
+        deviceName: session.deviceName,
+        expiresAt: session.expiresAt
+      }
+    });
   }
 
   res.json({ authorized: false });

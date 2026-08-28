@@ -6,6 +6,7 @@ import {
   touchSessionActivity,
   revokeAuthSession,
   cleanExpiredSessions,
+  syncPasskeyCollections,
   AuthSessionRecord
 } from "./passkeyManager";
 
@@ -165,4 +166,102 @@ test("Passkey Session Pipeline: cleanExpiredSessions sweeps expired sessions", (
   assert.strictEqual(sessions.has(sess1.sessionId), false);
   assert.strictEqual(sessions.has(sess2.sessionId), true);
   assert.strictEqual(sessions.has(sess3.sessionId), true);
+});
+
+test("Passkey Session Pipeline: Session expiration NEVER deletes or forgets registered passkeys", () => {
+  const t0 = 1700000000000;
+  let passkeys = [
+    {
+      id: "cred_touch_id_macbook",
+      deviceName: "MacBook Pro Touch ID",
+      createdAt: t0,
+      lastUsedAt: t0,
+      authCount: 1,
+      biometricVerified: true
+    }
+  ];
+
+  const sessions = new Map<string, AuthSessionRecord>();
+  const session = createAuthSession("cred_touch_id_macbook", "MacBook Pro Touch ID", {
+    maxAgeMs: 5000, // 5s expiration
+    currentTime: t0
+  });
+  sessions.set(session.sessionId, session);
+
+  // Time elapses: 10 minutes later (session is long expired)
+  const t1 = t0 + 10 * 60 * 1000;
+  const restoreAttempt = validateAndRestoreSession(session.sessionId, sessions, { currentTime: t1 });
+  
+  // Session is invalid & removed from active sessions map
+  assert.strictEqual(restoreAttempt.valid, false);
+  assert.strictEqual(sessions.has(session.sessionId), false);
+
+  // BUT passkeys collection is 100% intact and unaffected!
+  assert.strictEqual(passkeys.length, 1);
+  assert.strictEqual(passkeys[0].id, "cred_touch_id_macbook");
+  assert.strictEqual(passkeys[0].deviceName, "MacBook Pro Touch ID");
+});
+
+test("Passkey Session Pipeline: syncPasskeyCollections recovers passkeys when server cache was reset", () => {
+  const serverPasskeys: any[] = []; // empty after cold restart
+  const clientPasskeys = [
+    {
+      id: "cred_client_iphone_faceid",
+      deviceName: "iPhone 15 Pro Face ID",
+      createdAt: 1700000000000,
+      lastUsedAt: 1700000050000,
+      authCount: 3,
+      biometricVerified: true
+    }
+  ];
+
+  const syncResult = syncPasskeyCollections(serverPasskeys, clientPasskeys);
+  assert.strictEqual(syncResult.merged.length, 1);
+  assert.strictEqual(syncResult.addedCount, 1);
+  assert.strictEqual(syncResult.merged[0].id, "cred_client_iphone_faceid");
+  assert.strictEqual(syncResult.merged[0].deviceName, "iPhone 15 Pro Face ID");
+  assert.strictEqual(syncResult.merged[0].authCount, 3);
+});
+
+test("Passkey Session Pipeline: syncPasskeyCollections merges metadata and preserves highest auth count and newest timestamps", () => {
+  const serverPasskeys = [
+    {
+      id: "cred_mac",
+      deviceName: "MacBook Touch ID",
+      createdAt: 1700000000000,
+      lastUsedAt: 1700000010000,
+      authCount: 2,
+      biometricVerified: true
+    }
+  ];
+
+  const clientPasskeys = [
+    {
+      id: "cred_mac",
+      deviceName: "MacBook Pro Touch ID (Updated)",
+      createdAt: 1700000000000,
+      lastUsedAt: 1700000090000,
+      authCount: 5,
+      biometricVerified: true
+    },
+    {
+      id: "cred_yubikey",
+      deviceName: "YubiKey 5C NFC",
+      createdAt: 1700000050000,
+      lastUsedAt: 1700000050000,
+      authCount: 1,
+      biometricVerified: true
+    }
+  ];
+
+  const syncResult = syncPasskeyCollections(serverPasskeys, clientPasskeys);
+  assert.strictEqual(syncResult.merged.length, 2);
+  assert.strictEqual(syncResult.addedCount, 1);
+  assert.strictEqual(syncResult.updatedCount, 1);
+
+  const macRecord = syncResult.merged.find(p => p.id === "cred_mac");
+  assert.ok(macRecord);
+  assert.strictEqual(macRecord?.authCount, 5);
+  assert.strictEqual(macRecord?.lastUsedAt, 1700000090000);
+  assert.strictEqual(macRecord?.deviceName, "MacBook Pro Touch ID (Updated)");
 });

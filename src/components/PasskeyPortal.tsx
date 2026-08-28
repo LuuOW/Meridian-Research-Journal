@@ -127,10 +127,27 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
         throw new Error("Failed to authorize portal token.");
       }
 
-      // Save locally to localStorage so this tab's origin retains the passkey ID
+      // Save locally to localStorage so this tab's origin retains the passkey ID and enrolled passkeys list
       try {
         localStorage.setItem("meridian_editor_passkey_id", credentialData.id);
         localStorage.setItem("meridian_editor_passkey_name", deviceName);
+
+        const rawList = localStorage.getItem("meridian_enrolled_passkeys");
+        let existingList: any[] = [];
+        if (rawList) {
+          try { existingList = JSON.parse(rawList); } catch {}
+        }
+        const updatedList = [
+          {
+            id: credentialData.id,
+            deviceName: deviceName.trim() || "Registered Biometric Device",
+            createdAt: Date.now(),
+            lastUsedAt: Date.now(),
+            biometricVerified: true
+          },
+          ...existingList.filter((p: any) => p.id !== credentialData.id)
+        ];
+        localStorage.setItem("meridian_enrolled_passkeys", JSON.stringify(updatedList));
       } catch {
         // Safe fallback if localStorage is restricted
       }

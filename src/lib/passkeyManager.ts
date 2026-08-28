@@ -573,6 +573,81 @@ export function prunePasskeys(passkeys: PasskeyRecord[], maxCount: number = 50):
     .slice(0, maxCount);
 }
 
+/**
+ * Intelligently merges client-enrolled and server-registered passkey collections.
+ * Ensures that passkeys are never lost due to container restarts, session expirations, or cache clearances.
+ */
+export function syncPasskeyCollections(
+  serverPasskeys: PasskeyRecord[] | null | undefined,
+  clientPasskeys: PasskeyRecord[] | null | undefined
+): { merged: PasskeyRecord[]; addedCount: number; updatedCount: number } {
+  const mergedMap = new Map<string, PasskeyRecord>();
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  // 1. Seed with server passkeys
+  if (Array.isArray(serverPasskeys)) {
+    serverPasskeys.forEach((p) => {
+      const cleanId = sanitizeCredentialId(p?.id);
+      if (cleanId) {
+        mergedMap.set(cleanId, {
+          ...p,
+          id: cleanId,
+          deviceName: formatPasskeyLabel(p.deviceName, cleanId),
+          createdAt: p.createdAt || Date.now(),
+          authCount: p.authCount || 1,
+          biometricVerified: p.biometricVerified ?? true
+        });
+      }
+    });
+  }
+
+  // 2. Reconcile with client passkeys
+  if (Array.isArray(clientPasskeys)) {
+    clientPasskeys.forEach((cp) => {
+      const cleanId = sanitizeCredentialId(cp?.id);
+      if (!cleanId) return;
+
+      const existing = mergedMap.get(cleanId);
+      if (!existing) {
+        // New client passkey restored to server
+        mergedMap.set(cleanId, {
+          ...cp,
+          id: cleanId,
+          deviceName: formatPasskeyLabel(cp.deviceName, cleanId),
+          createdAt: cp.createdAt || Date.now(),
+          lastUsedAt: cp.lastUsedAt || cp.createdAt || Date.now(),
+          authCount: cp.authCount || 1,
+          biometricVerified: cp.biometricVerified ?? true
+        });
+        addedCount++;
+      } else {
+        // Merge latest metadata
+        const latestLastUsed = Math.max(existing.lastUsedAt || 0, cp.lastUsedAt || 0);
+        const maxAuthCount = Math.max(existing.authCount || 1, cp.authCount || 1);
+        const mergedRecord: PasskeyRecord = {
+          ...existing,
+          deviceName: cp.deviceName && cp.deviceName !== "Registered Biometric Device" ? cp.deviceName : existing.deviceName,
+          publicKey: cp.publicKey || existing.publicKey,
+          fingerprint: cp.fingerprint || existing.fingerprint,
+          lastUsedAt: latestLastUsed > 0 ? latestLastUsed : existing.lastUsedAt,
+          authCount: maxAuthCount,
+          biometricVerified: existing.biometricVerified || cp.biometricVerified || true,
+          aaguid: cp.aaguid || existing.aaguid
+        };
+        mergedMap.set(cleanId, mergedRecord);
+        updatedCount++;
+      }
+    });
+  }
+
+  const merged = Array.from(mergedMap.values()).sort(
+    (a, b) => (b.lastUsedAt || b.createdAt) - (a.lastUsedAt || a.createdAt)
+  );
+
+  return { merged, addedCount, updatedCount };
+}
+
 // ------------------------------------------------------------------------------------------------
 // SESSION MANAGEMENT (WINDOW CLOSURES, PAGE RELOADS & INACTIVITY HANDLING)
 // ------------------------------------------------------------------------------------------------
