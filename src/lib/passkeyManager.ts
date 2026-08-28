@@ -1,9 +1,31 @@
+/**
+ * MERIDIAN PASSKEY ARCHITECTURE & AUDIT PIPELINE
+ * 
+ * End-to-end passkey lifecycle management, hardware biometric awareness,
+ * multi-tier persistence resilience, window reload recovery, session management,
+ * and immutable audit journaling.
+ */
+
+export interface DeviceFingerprint {
+  userAgent: string;
+  platform?: string;
+  language?: string;
+  timezoneOffset?: number;
+  screenResolution?: string;
+  hardwareConcurrency?: number;
+  fingerprintHash: string;
+  capturedAt: number;
+}
+
 export interface PortalTokenData {
   type: "register" | "auth";
   createdAt: number;
   authorized?: boolean;
   password?: string;
   deviceName?: string;
+  fingerprint?: DeviceFingerprint;
+  challenge?: string;
+  expiresAt?: number;
 }
 
 export interface PasskeyCredentialInput {
@@ -11,6 +33,9 @@ export interface PasskeyCredentialInput {
   type?: string;
   publicKey?: string;
   deviceName?: string;
+  fingerprint?: Partial<DeviceFingerprint>;
+  biometricVerified?: boolean;
+  aaguid?: string;
 }
 
 export interface PasskeyRecord {
@@ -19,6 +44,54 @@ export interface PasskeyRecord {
   deviceName: string;
   createdAt: number;
   lastUsedAt?: number;
+  authCount?: number;
+  fingerprint?: DeviceFingerprint;
+  biometricVerified?: boolean;
+  aaguid?: string;
+}
+
+export interface AuthSessionRecord {
+  sessionId: string;
+  credentialId: string;
+  deviceName: string;
+  issuedAt: number;
+  expiresAt: number;
+  lastActiveAt: number;
+  fingerprintHash?: string;
+  authorized: boolean;
+  windowReloadCount?: number;
+  editorPassword?: string;
+}
+
+export type PasskeyAuditEventType =
+  | "challenge_generated"
+  | "fingerprint_detected"
+  | "biometric_asserted"
+  | "passkey_registered"
+  | "passkey_authenticated"
+  | "passkey_revoked"
+  | "portal_token_generated"
+  | "portal_token_verified"
+  | "portal_token_polled"
+  | "session_issued"
+  | "session_restored_reload"
+  | "session_expired"
+  | "session_revoked"
+  | "persistence_sync"
+  | "tamper_detected"
+  | "error_logged";
+
+export interface PasskeyAuditEvent {
+  eventId: string;
+  eventType: PasskeyAuditEventType;
+  timestamp: number;
+  credentialId?: string;
+  deviceName?: string;
+  token?: string;
+  status: "success" | "failure" | "pending" | "info";
+  details?: Record<string, any>;
+  ip?: string;
+  userAgent?: string;
 }
 
 /**
@@ -50,6 +123,67 @@ export function formatPasskeyLabel(deviceName?: string, fallbackId?: string): st
     return `Device (${cleanId.slice(0, 8)})`;
   }
   return "Registered Biometric Device";
+}
+
+/**
+ * Computes a deterministic SHA-like fingerprint hash from device characteristics
+ */
+export function computeFingerprintHash(data: Partial<DeviceFingerprint>): string {
+  const payload = [
+    data.userAgent || "",
+    data.platform || "",
+    data.language || "",
+    String(data.timezoneOffset ?? ""),
+    data.screenResolution || "",
+    String(data.hardwareConcurrency ?? "")
+  ].join("|");
+
+  let hash = 0;
+  for (let i = 0; i < payload.length; i++) {
+    const char = payload.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return "fp_" + Math.abs(hash).toString(16).padStart(8, "0");
+}
+
+/**
+ * Extracts a client device fingerprint from window/navigator or request headers
+ */
+export function extractClientFingerprint(source?: any): DeviceFingerprint {
+  if (typeof window !== "undefined") {
+    const nav = window.navigator || {} as any;
+    const scr = window.screen || {} as any;
+    const partial: Partial<DeviceFingerprint> = {
+      userAgent: nav.userAgent || "Unknown Browser",
+      platform: nav.platform || "Unknown Platform",
+      language: nav.language || "en",
+      timezoneOffset: new Date().getTimezoneOffset(),
+      screenResolution: scr.width ? `${scr.width}x${scr.height}` : "Unknown",
+      hardwareConcurrency: nav.hardwareConcurrency || 4
+    };
+    return {
+      ...partial,
+      userAgent: partial.userAgent!,
+      capturedAt: Date.now(),
+      fingerprintHash: computeFingerprintHash(partial)
+    };
+  }
+
+  // Server-side fallback or request object parsing
+  const ua = source?.headers?.["user-agent"] || source?.userAgent || "Server Node Environment";
+  const partial: Partial<DeviceFingerprint> = {
+    userAgent: ua,
+    platform: source?.headers?.["sec-ch-ua-platform"] || "Node Server",
+    language: source?.headers?.["accept-language"] || "en",
+    timezoneOffset: 0
+  };
+  return {
+    ...partial,
+    userAgent: partial.userAgent!,
+    capturedAt: Date.now(),
+    fingerprintHash: computeFingerprintHash(partial)
+  };
 }
 
 /**
@@ -141,13 +275,24 @@ export function generateSecureChallenge(): string {
  */
 export function generatePortalToken(
   type: "register" | "auth" | undefined,
-  portalTokens: Map<string, PortalTokenData>
+  portalTokens: Map<string, PortalTokenData>,
+  options?: {
+    fingerprint?: DeviceFingerprint;
+    ttlMs?: number;
+    currentTime?: number;
+  }
 ): string {
   const token = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  const now = options?.currentTime !== undefined ? options.currentTime : Date.now();
+  const ttl = options?.ttlMs || 15 * 60 * 1000;
+
   portalTokens.set(token, {
     type: type || "register",
-    createdAt: Date.now(),
-    authorized: false
+    createdAt: now,
+    expiresAt: now + ttl,
+    authorized: false,
+    fingerprint: options?.fingerprint,
+    challenge: generateSecureChallenge()
   });
   return token;
 }
@@ -164,7 +309,8 @@ export function cleanExpiredTokens(
   const now = currentTimeOverride !== undefined ? currentTimeOverride : Date.now();
   let count = 0;
   for (const [t, data] of portalTokens.entries()) {
-    if (now - data.createdAt > maxAgeMs) {
+    const isExpired = (now - data.createdAt > maxAgeMs) || (data.expiresAt ? now > data.expiresAt : false);
+    if (isExpired) {
       portalTokens.delete(t);
       count++;
     }
@@ -179,7 +325,8 @@ export function verifyPortalToken(
   token: string,
   success: boolean,
   portalTokens: Map<string, PortalTokenData>,
-  editorPassword?: string
+  editorPassword?: string,
+  metadata?: { deviceName?: string; fingerprint?: DeviceFingerprint }
 ): { success: boolean; error?: string } {
   if (!token) {
     return { success: false, error: "Token is required" };
@@ -193,6 +340,8 @@ export function verifyPortalToken(
   if (success) {
     tokenData.authorized = true;
     tokenData.password = editorPassword || "meridian";
+    if (metadata?.deviceName) tokenData.deviceName = metadata.deviceName;
+    if (metadata?.fingerprint) tokenData.fingerprint = metadata.fingerprint;
     portalTokens.set(token, tokenData);
     return { success: true };
   }
@@ -206,7 +355,7 @@ export function verifyPortalToken(
 export function pollAuthToken(
   token: string,
   portalTokens: Map<string, PortalTokenData>
-): { authorized: boolean; password?: string; error?: string } {
+): { authorized: boolean; password?: string; deviceName?: string; error?: string } {
   if (!token) {
     return { authorized: false, error: "Token is required" };
   }
@@ -218,9 +367,10 @@ export function pollAuthToken(
 
   if (tokenData.authorized) {
     const password = tokenData.password || "meridian";
+    const deviceName = tokenData.deviceName;
     // Consume token on successful poll to prevent replay attacks
     portalTokens.delete(token);
-    return { authorized: true, password };
+    return { authorized: true, password, deviceName };
   }
 
   return { authorized: false };
@@ -263,31 +413,49 @@ export function verifyRegistrationPassword(
 }
 
 /**
- * Registers a new passkey or updates an existing one in a passkey collection
+ * Registers a new passkey or updates an existing one in a passkey collection with biometric & fingerprint awareness
  */
 export function registerNewPasskey(
   existingPasskeys: PasskeyRecord[],
-  newCredential: { id: string; deviceName?: string; publicKey?: string },
+  newCredential: {
+    id: string;
+    deviceName?: string;
+    publicKey?: string;
+    fingerprint?: DeviceFingerprint;
+    biometricVerified?: boolean;
+    aaguid?: string;
+  },
   currentTime?: number
-): { updatedPasskeys: PasskeyRecord[]; added: boolean } {
+): { updatedPasskeys: PasskeyRecord[]; added: boolean; record: PasskeyRecord } {
   const cleanId = sanitizeCredentialId(newCredential.id);
+  const now = currentTime !== undefined ? currentTime : Date.now();
+
   if (!cleanId) {
-    return { updatedPasskeys: existingPasskeys, added: false };
+    const dummyRecord: PasskeyRecord = {
+      id: "",
+      deviceName: "Invalid",
+      createdAt: now
+    };
+    return { updatedPasskeys: existingPasskeys, added: false, record: dummyRecord };
   }
 
-  const now = currentTime !== undefined ? currentTime : Date.now();
   const index = existingPasskeys.findIndex(p => p.id === cleanId);
 
   if (index >= 0) {
     // Update existing record
     const updated = [...existingPasskeys];
-    updated[index] = {
+    const updatedRecord: PasskeyRecord = {
       ...updated[index],
       deviceName: newCredential.deviceName?.trim() || updated[index].deviceName,
       publicKey: newCredential.publicKey || updated[index].publicKey,
-      lastUsedAt: now
+      lastUsedAt: now,
+      authCount: (updated[index].authCount || 1) + 1,
+      fingerprint: newCredential.fingerprint || updated[index].fingerprint,
+      biometricVerified: newCredential.biometricVerified ?? true,
+      aaguid: newCredential.aaguid || updated[index].aaguid
     };
-    return { updatedPasskeys: updated, added: false };
+    updated[index] = updatedRecord;
+    return { updatedPasskeys: updated, added: false, record: updatedRecord };
   }
 
   // Insert new record
@@ -296,12 +464,17 @@ export function registerNewPasskey(
     deviceName: formatPasskeyLabel(newCredential.deviceName, cleanId),
     publicKey: newCredential.publicKey || "",
     createdAt: now,
-    lastUsedAt: now
+    lastUsedAt: now,
+    authCount: 1,
+    fingerprint: newCredential.fingerprint,
+    biometricVerified: newCredential.biometricVerified ?? true,
+    aaguid: newCredential.aaguid
   };
 
   return {
     updatedPasskeys: [newRecord, ...existingPasskeys],
-    added: true
+    added: true,
+    record: newRecord
   };
 }
 
@@ -330,7 +503,11 @@ export function updatePasskeyUsage(
   const now = timestamp !== undefined ? timestamp : Date.now();
   return existingPasskeys.map(p => {
     if (p.id === cleanId) {
-      return { ...p, lastUsedAt: now };
+      return {
+        ...p,
+        lastUsedAt: now,
+        authCount: (p.authCount || 0) + 1
+      };
     }
     return p;
   });
@@ -353,7 +530,13 @@ export function authenticatePasskeyCredential(
   passkeys: PasskeyRecord[],
   expectedPassword: string,
   currentTime?: number
-): { authorized: boolean; error?: string; password?: string; updatedPasskeys?: PasskeyRecord[]; matched?: PasskeyRecord } {
+): {
+  authorized: boolean;
+  error?: string;
+  password?: string;
+  updatedPasskeys?: PasskeyRecord[];
+  matched?: PasskeyRecord;
+} {
   const cleanId = sanitizeCredentialId(credentialId);
   if (!cleanId) {
     return { authorized: false, error: "Credential ID is required." };
@@ -366,7 +549,11 @@ export function authenticatePasskeyCredential(
 
   const now = currentTime !== undefined ? currentTime : Date.now();
   const updatedPasskeys = updatePasskeyUsage(passkeys, cleanId, now);
-  const updatedMatched = { ...matched, lastUsedAt: now };
+  const updatedMatched: PasskeyRecord = {
+    ...matched,
+    lastUsedAt: now,
+    authCount: (matched.authCount || 0) + 1
+  };
 
   return {
     authorized: true,
@@ -379,9 +566,283 @@ export function authenticatePasskeyCredential(
 /**
  * Prunes the passkey list to a maximum number of devices, keeping the most recently used/created
  */
-export function prunePasskeys(passkeys: PasskeyRecord[], maxCount: number = 20): PasskeyRecord[] {
+export function prunePasskeys(passkeys: PasskeyRecord[], maxCount: number = 50): PasskeyRecord[] {
   if (passkeys.length <= maxCount) return passkeys;
   return [...passkeys]
     .sort((a, b) => (b.lastUsedAt || b.createdAt) - (a.lastUsedAt || a.createdAt))
     .slice(0, maxCount);
+}
+
+// ------------------------------------------------------------------------------------------------
+// SESSION MANAGEMENT (WINDOW CLOSURES, PAGE RELOADS & INACTIVITY HANDLING)
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * Creates a persistent authenticated session record bound to a passkey credential
+ */
+export function createAuthSession(
+  credentialId: string,
+  deviceName: string,
+  options?: {
+    maxAgeMs?: number;
+    fingerprintHash?: string;
+    currentTime?: number;
+    editorPassword?: string;
+  }
+): AuthSessionRecord {
+  const now = options?.currentTime !== undefined ? options.currentTime : Date.now();
+  const maxAge = options?.maxAgeMs || 24 * 60 * 60 * 1000; // 24 hours default
+  const sessionId = "sess_" + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+
+  return {
+    sessionId,
+    credentialId: sanitizeCredentialId(credentialId),
+    deviceName: deviceName.trim() || "Authenticated Device",
+    issuedAt: now,
+    expiresAt: now + maxAge,
+    lastActiveAt: now,
+    fingerprintHash: options?.fingerprintHash,
+    authorized: true,
+    windowReloadCount: 0,
+    editorPassword: options?.editorPassword || "meridian"
+  };
+}
+
+/**
+ * Validates and restores an active session after page reload or window reopen
+ */
+export function validateAndRestoreSession(
+  sessionId: string | null | undefined,
+  sessions: Map<string, AuthSessionRecord>,
+  options?: {
+    fingerprintHash?: string;
+    currentTime?: number;
+    maxIdleMs?: number;
+  }
+): {
+  valid: boolean;
+  session?: AuthSessionRecord;
+  error?: string;
+  password?: string;
+} {
+  if (!sessionId || typeof sessionId !== "string") {
+    return { valid: false, error: "Session ID is required." };
+  }
+
+  const session = sessions.get(sessionId);
+  if (!session) {
+    return { valid: false, error: "Session expired or not found." };
+  }
+
+  const now = options?.currentTime !== undefined ? options.currentTime : Date.now();
+
+  // Check absolute expiration
+  if (now > session.expiresAt) {
+    sessions.delete(sessionId);
+    return { valid: false, error: "Session has expired due to time-to-live threshold." };
+  }
+
+  // Check idle timeout (e.g. 4 hours idle limit if specified)
+  if (options?.maxIdleMs && now - session.lastActiveAt > options.maxIdleMs) {
+    sessions.delete(sessionId);
+    return { valid: false, error: "Session expired due to inactivity." };
+  }
+
+  // Touch session and increment reload count
+  session.lastActiveAt = now;
+  session.windowReloadCount = (session.windowReloadCount || 0) + 1;
+  sessions.set(sessionId, session);
+
+  return {
+    valid: true,
+    session,
+    password: session.editorPassword || "meridian"
+  };
+}
+
+/**
+ * Touches session activity timestamp to prevent idle timeout
+ */
+export function touchSessionActivity(
+  sessionId: string,
+  sessions: Map<string, AuthSessionRecord>,
+  currentTime?: number
+): boolean {
+  const session = sessions.get(sessionId);
+  if (!session) return false;
+  session.lastActiveAt = currentTime !== undefined ? currentTime : Date.now();
+  sessions.set(sessionId, session);
+  return true;
+}
+
+/**
+ * Explicitly revokes a session
+ */
+export function revokeAuthSession(
+  sessionId: string,
+  sessions: Map<string, AuthSessionRecord>
+): boolean {
+  return sessions.delete(sessionId);
+}
+
+/**
+ * Cleans expired sessions from the registry
+ */
+export function cleanExpiredSessions(
+  sessions: Map<string, AuthSessionRecord>,
+  currentTimeOverride?: number
+): number {
+  const now = currentTimeOverride !== undefined ? currentTimeOverride : Date.now();
+  let count = 0;
+  for (const [id, sess] of sessions.entries()) {
+    if (now > sess.expiresAt) {
+      sessions.delete(id);
+      count++;
+    }
+  }
+  return count;
+}
+
+// ------------------------------------------------------------------------------------------------
+// IMMUTABLE AUDIT JOURNAL & EVENT LOGGING ("log everything and keep a record of it")
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * Creates a structured passkey audit event
+ */
+export function createPasskeyAuditEvent(
+  eventType: PasskeyAuditEventType,
+  status: "success" | "failure" | "pending" | "info",
+  options?: {
+    credentialId?: string;
+    deviceName?: string;
+    token?: string;
+    details?: Record<string, any>;
+    ip?: string;
+    userAgent?: string;
+    timestamp?: number;
+  }
+): PasskeyAuditEvent {
+  const now = options?.timestamp !== undefined ? options.timestamp : Date.now();
+  const eventId = `audit_${now}_${Math.random().toString(36).substring(2, 9)}`;
+
+  return {
+    eventId,
+    eventType,
+    timestamp: now,
+    status,
+    credentialId: options?.credentialId ? sanitizeCredentialId(options.credentialId) : undefined,
+    deviceName: options?.deviceName,
+    token: options?.token,
+    details: options?.details,
+    ip: options?.ip,
+    userAgent: options?.userAgent
+  };
+}
+
+function joinPath(dir: string, file: string): string {
+  const separator = dir.includes("\\") ? "\\" : "/";
+  if (dir.endsWith("/") || dir.endsWith("\\")) {
+    return dir + file;
+  }
+  return `${dir}${separator}${file}`;
+}
+
+/**
+ * Synchronously appends an audit event to the persistent journal file and records list
+ */
+export function appendPasskeyAuditRecord(
+  event: PasskeyAuditEvent,
+  fsImpl?: any,
+  dataDirOverride?: string
+): boolean {
+  try {
+    let fsMod = fsImpl;
+    if (!fsMod) {
+      try {
+        if (typeof require === "function") {
+          fsMod = require("fs");
+        }
+      } catch {}
+    }
+    
+    if (!fsMod) {
+      // In pure browser environment, log to console
+      return true;
+    }
+
+    const dataDir = dataDirOverride || (typeof process !== "undefined" && process.cwd ? joinPath(process.cwd(), "data") : "data");
+    if (typeof fsMod.existsSync === "function" && !fsMod.existsSync(dataDir)) {
+      if (typeof fsMod.mkdirSync === "function") {
+        fsMod.mkdirSync(dataDir, { recursive: true });
+      }
+    }
+
+    const journalFile = joinPath(dataDir, "passkey_audit_journal.jsonl");
+    const recordsFile = joinPath(dataDir, "passkey_audit_records.json");
+
+    // Append JSONL line
+    if (typeof fsMod.appendFileSync === "function") {
+      fsMod.appendFileSync(journalFile, JSON.stringify(event) + "\n", "utf-8");
+    }
+
+    // Update rolling buffer JSON (last 200 records)
+    let records: PasskeyAuditEvent[] = [];
+    if (typeof fsMod.existsSync === "function" && fsMod.existsSync(recordsFile)) {
+      try {
+        records = JSON.parse(fsMod.readFileSync(recordsFile, "utf-8"));
+      } catch {
+        records = [];
+      }
+    }
+
+    records = [event, ...records.filter(r => r.eventId !== event.eventId)].slice(0, 200);
+    if (typeof fsMod.writeFileSync === "function") {
+      fsMod.writeFileSync(recordsFile, JSON.stringify(records, null, 2), "utf-8");
+    }
+    return true;
+  } catch (err) {
+    console.error("[PasskeyAudit] Failed to append audit record:", err);
+    return false;
+  }
+}
+
+/**
+ * Reads passkey audit records from persistent storage
+ */
+export function readPasskeyAuditRecords(
+  fsImpl?: any,
+  dataDirOverride?: string,
+  limit: number = 100
+): PasskeyAuditEvent[] {
+  try {
+    let fsMod = fsImpl;
+    if (!fsMod) {
+      try {
+        if (typeof require === "function") {
+          fsMod = require("fs");
+        }
+      } catch {}
+    }
+
+    if (!fsMod) return [];
+
+    const dataDir = dataDirOverride || (typeof process !== "undefined" && process.cwd ? joinPath(process.cwd(), "data") : "data");
+    const recordsFile = joinPath(dataDir, "passkey_audit_records.json");
+    const journalFile = joinPath(dataDir, "passkey_audit_journal.jsonl");
+
+    if (typeof fsMod.existsSync === "function" && fsMod.existsSync(recordsFile)) {
+      const data = fsMod.readFileSync(recordsFile, "utf-8");
+      const list = JSON.parse(data);
+      return Array.isArray(list) ? list.slice(0, limit) : [];
+    }
+
+    if (typeof fsMod.existsSync === "function" && fsMod.existsSync(journalFile)) {
+      const lines = fsMod.readFileSync(journalFile, "utf-8").split("\n").filter(Boolean);
+      return lines.map((l: string) => JSON.parse(l)).reverse().slice(0, limit);
+    }
+  } catch (err) {
+    console.error("[PasskeyAudit] Failed to read audit records:", err);
+  }
+  return [];
 }

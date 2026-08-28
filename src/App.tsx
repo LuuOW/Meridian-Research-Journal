@@ -757,6 +757,45 @@ export default function App() {
     loadBlogs();
   }, []);
 
+  // Window closure & page reload resilience: check and restore active passkey biometric session
+  useEffect(() => {
+    const tryRestorePasskeySession = async () => {
+      try {
+        const sessionId = sessionStorage.getItem("meridian_passkey_session_id") || localStorage.getItem("meridian_passkey_session_id");
+        if (!sessionId) return;
+
+        const res = await fetch("/api/passkeys/session-restore", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.valid && data.authorized && data.password) {
+            setEditorPassword(data.password);
+            try {
+              sessionStorage.setItem("meridian_editor_pwd", data.password);
+              sessionStorage.setItem("meridian_passkey_session_id", data.session?.sessionId);
+            } catch {}
+            setIsEditorMode(true);
+            console.log(`[Passkey] Biometric session restored seamlessly across window reload. Device: ${data.session?.deviceName}, reload count: ${data.session?.reloadCount}`);
+          }
+        } else {
+          // Session expired or revoked
+          try {
+            sessionStorage.removeItem("meridian_passkey_session_id");
+            localStorage.removeItem("meridian_passkey_session_id");
+          } catch {}
+        }
+      } catch (err) {
+        console.error("[Passkey] Session restore check failed:", err);
+      }
+    };
+
+    tryRestorePasskeySession();
+  }, []);
+
   // Check if there is a publish_draft URL parameter and publish it on load
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);

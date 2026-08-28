@@ -45,6 +45,10 @@ import {
 import { PipelineExecutionRecord } from "./src/types";
 import {
   PortalTokenData,
+  PasskeyRecord,
+  AuthSessionRecord,
+  DeviceFingerprint,
+  PasskeyAuditEvent,
   validatePasskeyCredential,
   generatePortalToken,
   cleanExpiredTokens,
@@ -52,7 +56,18 @@ import {
   pollAuthToken,
   validateRegistrationToken,
   verifyRegistrationPassword,
-  authenticatePasskeyCredential
+  authenticatePasskeyCredential,
+  registerNewPasskey,
+  createAuthSession,
+  validateAndRestoreSession,
+  touchSessionActivity,
+  revokeAuthSession,
+  cleanExpiredSessions,
+  createPasskeyAuditEvent,
+  appendPasskeyAuditRecord,
+  readPasskeyAuditRecords,
+  extractClientFingerprint,
+  generateSecureChallenge
 } from "./src/lib/passkeyManager";
 
 
@@ -195,26 +210,140 @@ const writeDispatchedEmails = (emails: any[]) => {
 };
 
 const PASSKEYS_FILE = path.join(process.cwd(), "passkeys.json");
+const PASSKEYS_BACKUP_FILE = path.join(process.cwd(), "data", "passkeys_backup.json");
+const ACTIVE_SESSIONS_FILE = path.join(process.cwd(), "data", "active_sessions.json");
 
-const readPasskeys = (): any[] => {
+const logPasskeyAudit = (
+  eventType: any,
+  status: "success" | "failure" | "pending" | "info",
+  options?: {
+    credentialId?: string;
+    deviceName?: string;
+    token?: string;
+    details?: Record<string, any>;
+    req?: express.Request;
+  }
+) => {
+  try {
+    const ip = (options?.req?.headers["x-forwarded-for"] as string) || options?.req?.socket?.remoteAddress;
+    const userAgent = (options?.req?.headers["user-agent"] as string);
+    const event = createPasskeyAuditEvent(eventType, status, {
+      credentialId: options?.credentialId,
+      deviceName: options?.deviceName,
+      token: options?.token,
+      details: options?.details,
+      ip,
+      userAgent
+    });
+    appendPasskeyAuditRecord(event, fs);
+  } catch (err) {
+    console.error("[PasskeyAudit] Failed to log audit event:", err);
+  }
+};
+
+const readPasskeys = (): PasskeyRecord[] => {
+  // 1. Try primary passkeys.json
   try {
     if (fs.existsSync(PASSKEYS_FILE)) {
       const data = fs.readFileSync(PASSKEYS_FILE, "utf-8");
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
     }
   } catch (error) {
-    console.error("Error reading passkeys.json:", error);
+    console.error("Error reading primary passkeys.json, trying backup:", error);
   }
+
+  // 2. Fallback to backup mirror data/passkeys_backup.json
+  try {
+    if (fs.existsSync(PASSKEYS_BACKUP_FILE)) {
+      const data = fs.readFileSync(PASSKEYS_BACKUP_FILE, "utf-8");
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log("[PasskeyPersistence] Recovered passkeys from backup mirror.");
+        writePasskeys(parsed, false); // Restore primary
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.error("Error reading passkeys_backup.json:", error);
+  }
+
   return [];
 };
 
-const writePasskeys = (passkeys: any[]) => {
+const writePasskeys = (passkeys: PasskeyRecord[], syncBackup: boolean = true) => {
   try {
+    // 1. Write primary passkeys.json
     fs.writeFileSync(PASSKEYS_FILE, JSON.stringify(passkeys, null, 2), "utf-8");
+
+    // 2. Write redundant backup mirror
+    if (syncBackup) {
+      const dataDir = path.join(process.cwd(), "data");
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      fs.writeFileSync(PASSKEYS_BACKUP_FILE, JSON.stringify(passkeys, null, 2), "utf-8");
+
+      // 3. Create timestamped snapshot in snapshots dir
+      const snapshotsDir = path.join(dataDir, "snapshots");
+      if (!fs.existsSync(snapshotsDir)) {
+        fs.mkdirSync(snapshotsDir, { recursive: true });
+      }
+      const snapFile = path.join(snapshotsDir, `passkeys_snapshot_${Date.now()}.json`);
+      fs.writeFileSync(snapFile, JSON.stringify(passkeys, null, 2), "utf-8");
+
+      // Prune old snapshots (keep last 15)
+      const existing = fs.readdirSync(snapshotsDir).filter(f => f.startsWith("passkeys_snapshot_")).sort().reverse();
+      if (existing.length > 15) {
+        existing.slice(15).forEach(f => {
+          try { fs.unlinkSync(path.join(snapshotsDir, f)); } catch {}
+        });
+      }
+    }
   } catch (error) {
-    console.error("Error writing passkeys.json:", error);
+    console.error("Error writing passkeys across multi-tier storage:", error);
   }
 };
+
+// Persistent Active Sessions Map (survives window closures, tab reloads, and container restarts)
+const authSessions = new Map<string, AuthSessionRecord>();
+
+const loadPersistedSessions = () => {
+  try {
+    if (fs.existsSync(ACTIVE_SESSIONS_FILE)) {
+      const data = fs.readFileSync(ACTIVE_SESSIONS_FILE, "utf-8");
+      const list: AuthSessionRecord[] = JSON.parse(data);
+      const now = Date.now();
+      if (Array.isArray(list)) {
+        list.forEach(sess => {
+          if (sess.expiresAt > now) {
+            authSessions.set(sess.sessionId, sess);
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[PasskeySessions] Error loading persisted active sessions:", err);
+  }
+};
+
+const savePersistedSessions = () => {
+  try {
+    const dataDir = path.join(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const list = Array.from(authSessions.values());
+    fs.writeFileSync(ACTIVE_SESSIONS_FILE, JSON.stringify(list, null, 2), "utf-8");
+  } catch (err) {
+    console.error("[PasskeySessions] Error saving active sessions to disk:", err);
+  }
+};
+
+// Initial session load
+loadPersistedSessions();
 
 // Store temporary portal tokens for passkey device registration/authentication
 const portalTokens = new Map<string, PortalTokenData>();
@@ -736,79 +865,169 @@ const getPasskeys = async (): Promise<any[]> => {
   }
 };
 
+// API: Generate WebAuthn Challenge & Detect Device Fingerprint
+app.post("/api/passkeys/challenge", (req, res) => {
+  try {
+    const fingerprint = extractClientFingerprint(req);
+    const challenge = generateSecureChallenge();
+    
+    logPasskeyAudit("challenge_generated", "success", {
+      details: {
+        fingerprintHash: fingerprint.fingerprintHash,
+        platform: fingerprint.platform,
+        language: fingerprint.language
+      },
+      req
+    });
+
+    res.json({
+      challenge,
+      fingerprint,
+      rpId: req.hostname
+    });
+  } catch (err: any) {
+    logPasskeyAudit("challenge_generated", "failure", { details: { error: err.message }, req });
+    res.status(500).json({ error: "Failed to generate security challenge" });
+  }
+});
+
 // API: Get registered passkeys
 app.get("/api/passkeys/list", async (req, res) => {
   const passkeys = await getPasskeys();
   res.json({ passkeys });
 });
 
-// API: Register a passkey
+// API: Register a passkey across multi-tier storage with biometric & fingerprint awareness
 app.post("/api/passkeys/register", async (req, res) => {
-  const { credential, deviceName, token } = req.body;
+  const { credential, deviceName, token, fingerprint } = req.body;
 
   const validation = validateRegistrationToken(token, portalTokens);
   if (!validation.valid) {
+    logPasskeyAudit("passkey_registered", "failure", {
+      token,
+      details: { error: validation.error },
+      req
+    });
     return res.status(403).json({ error: validation.error });
   }
 
   if (!validatePasskeyCredential(credential)) {
+    logPasskeyAudit("passkey_registered", "failure", {
+      token,
+      details: { error: "Invalid credential payload structure" },
+      req
+    });
     return res.status(400).json({ error: "Invalid credential data" });
   }
 
-  const passkeys = readPasskeys();
-  const exists = passkeys.some((p: any) => p.id === credential.id);
-  
-  if (!exists) {
-    const newPasskey = {
+  try {
+    const passkeys = readPasskeys();
+    const clientFp = fingerprint || extractClientFingerprint(req);
+    
+    // Multi-tier registration
+    const result = registerNewPasskey(passkeys, {
       id: credential.id,
-      publicKey: credential.publicKey || "",
       deviceName: deviceName || "My Registered Device",
-      createdAt: Date.now()
-    };
-    passkeys.push(newPasskey);
-    writePasskeys(passkeys);
+      publicKey: credential.publicKey || "",
+      fingerprint: clientFp,
+      biometricVerified: true,
+      aaguid: credential.aaguid
+    });
+
+    writePasskeys(result.updatedPasskeys, true);
 
     // Sync to Firestore if db is available
     if (db) {
       try {
-        await setDoc(doc(db, "passkeys", credential.id), newPasskey);
-        console.log(`Passkey ${credential.id} successfully written to Firestore.`);
+        await setDoc(doc(db, "passkeys", result.record.id), result.record);
+        console.log(`[PasskeyPersistence] Passkey ${result.record.id} written to Firestore.`);
       } catch (err) {
         console.error("Error saving passkey to Firestore:", err);
       }
     }
-  }
 
-  res.json({ success: true });
+    logPasskeyAudit("passkey_registered", "success", {
+      credentialId: result.record.id,
+      deviceName: result.record.deviceName,
+      token,
+      details: {
+        isNew: result.added,
+        biometricVerified: true,
+        fingerprintHash: clientFp?.fingerprintHash
+      },
+      req
+    });
+
+    res.json({
+      success: true,
+      registered: true,
+      passkey: result.record
+    });
+  } catch (err: any) {
+    console.error("Error in passkey registration pipeline:", err);
+    logPasskeyAudit("passkey_registered", "failure", {
+      credentialId: credential?.id,
+      details: { error: err.message },
+      req
+    });
+    res.status(500).json({ error: "Registration pipeline execution failed." });
+  }
 });
 
 // API: Generate a portal token
 app.post("/api/passkeys/generate-portal", (req, res) => {
-  const { type, password } = req.body; // "register" | "auth"
+  const { type, password, fingerprint } = req.body; // "register" | "auth"
 
   if (type === "register") {
     const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
     const verification = verifyRegistrationPassword(password, expectedPassword);
     if (!verification.authorized) {
+      logPasskeyAudit("portal_token_generated", "failure", {
+        details: { type, error: verification.error },
+        req
+      });
       return res.status(403).json({ error: verification.error });
     }
   }
 
-  const token = generatePortalToken(type, portalTokens);
+  const clientFp = fingerprint || extractClientFingerprint(req);
+  const token = generatePortalToken(type, portalTokens, { fingerprint: clientFp });
   cleanExpiredTokens(portalTokens);
+
+  logPasskeyAudit("portal_token_generated", "success", {
+    token,
+    details: { type: type || "register", fingerprintHash: clientFp?.fingerprintHash },
+    req
+  });
+
   res.json({ token });
 });
 
 // API: Verify and Authorize a Portal Token
 app.post("/api/passkeys/verify-portal", (req, res) => {
-  const { token, success } = req.body;
+  const { token, success, deviceName, fingerprint } = req.body;
   const editorPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
-  const result = verifyPortalToken(token, success, portalTokens, editorPassword);
+  const clientFp = fingerprint || extractClientFingerprint(req);
+  const result = verifyPortalToken(token, success, portalTokens, editorPassword, {
+    deviceName,
+    fingerprint: clientFp
+  });
   
   if (result.success) {
+    logPasskeyAudit("portal_token_verified", "success", {
+      token,
+      deviceName,
+      details: { fingerprintHash: clientFp?.fingerprintHash },
+      req
+    });
     return res.json({ success: true, password: editorPassword });
   }
   
+  logPasskeyAudit("portal_token_verified", "failure", {
+    token,
+    details: { error: result.error },
+    req
+  });
   res.status(result.error === "Token not found or expired" ? 404 : 400).json({ error: result.error });
 });
 
@@ -821,11 +1040,22 @@ app.get("/api/passkeys/poll-auth", (req, res) => {
 
   const result = pollAuthToken(token, portalTokens);
   if (result.error) {
+    logPasskeyAudit("portal_token_polled", "failure", {
+      token,
+      details: { error: result.error },
+      req
+    });
     return res.status(result.error === "Token not found or expired" ? 404 : 400).json({ error: result.error });
   }
 
   if (result.authorized) {
-    return res.json({ authorized: true, password: result.password });
+    logPasskeyAudit("portal_token_polled", "success", {
+      token,
+      deviceName: result.deviceName,
+      details: { consumed: true },
+      req
+    });
+    return res.json({ authorized: true, password: result.password, deviceName: result.deviceName });
   }
 
   res.json({ authorized: false });
@@ -833,33 +1063,198 @@ app.get("/api/passkeys/poll-auth", (req, res) => {
 
 // API: Direct Passkey Biometric Authentication (Native WebAuthn Assertion)
 app.post("/api/passkeys/authenticate", async (req, res) => {
-  const { credentialId } = req.body;
+  const { credentialId, fingerprint } = req.body;
   const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
 
   const passkeys = await getPasskeys();
   const authResult = authenticatePasskeyCredential(credentialId, passkeys, expectedPassword);
 
   if (!authResult.authorized) {
+    logPasskeyAudit("passkey_authenticated", "failure", {
+      credentialId,
+      details: { error: authResult.error },
+      req
+    });
     return res.status(403).json({ error: authResult.error || "Passkey verification failed." });
   }
 
-  // Update lastUsedAt in local storage and Firestore if available
+  // Update lastUsedAt in multi-tier storage and Firestore if available
   if (authResult.updatedPasskeys) {
-    writePasskeys(authResult.updatedPasskeys);
+    writePasskeys(authResult.updatedPasskeys, true);
     if (db && authResult.matched) {
       try {
         await setDoc(doc(db, "passkeys", authResult.matched.id), authResult.matched);
       } catch (err) {
-        console.error("Error updating passkey lastUsedAt in Firestore:", err);
+        console.error("Error updating passkey in Firestore:", err);
       }
     }
   }
 
+  // Issue persistent session for window reload & tab closure resilience
+  const clientFp = fingerprint || extractClientFingerprint(req);
+  const session = createAuthSession(credentialId, authResult.matched?.deviceName || "Biometric Device", {
+    fingerprintHash: clientFp.fingerprintHash,
+    editorPassword: authResult.password
+  });
+
+  authSessions.set(session.sessionId, session);
+  savePersistedSessions();
+
+  logPasskeyAudit("passkey_authenticated", "success", {
+    credentialId: authResult.matched?.id,
+    deviceName: authResult.matched?.deviceName,
+    details: {
+      sessionId: session.sessionId,
+      authCount: authResult.matched?.authCount,
+      fingerprintHash: clientFp.fingerprintHash
+    },
+    req
+  });
+
+  logPasskeyAudit("session_issued", "success", {
+    credentialId: authResult.matched?.id,
+    deviceName: authResult.matched?.deviceName,
+    details: {
+      sessionId: session.sessionId,
+      expiresAt: session.expiresAt
+    },
+    req
+  });
+
   res.json({
     success: true,
     authorized: true,
-    password: authResult.password
+    password: authResult.password,
+    session: {
+      sessionId: session.sessionId,
+      deviceName: session.deviceName,
+      expiresAt: session.expiresAt
+    }
   });
+});
+
+// API: Restore Session across Window Closures and Page Reloads
+app.post("/api/passkeys/session-restore", (req, res) => {
+  const { sessionId, fingerprint } = req.body;
+  const clientFp = fingerprint || extractClientFingerprint(req);
+
+  cleanExpiredSessions(authSessions);
+  const result = validateAndRestoreSession(sessionId, authSessions, {
+    fingerprintHash: clientFp.fingerprintHash
+  });
+
+  if (!result.valid) {
+    logPasskeyAudit("session_restored_reload", "failure", {
+      details: { sessionId, error: result.error },
+      req
+    });
+    return res.status(401).json({ valid: false, error: result.error });
+  }
+
+  savePersistedSessions();
+
+  logPasskeyAudit("session_restored_reload", "success", {
+    credentialId: result.session?.credentialId,
+    deviceName: result.session?.deviceName,
+    details: {
+      sessionId,
+      reloadCount: result.session?.windowReloadCount,
+      expiresAt: result.session?.expiresAt
+    },
+    req
+  });
+
+  res.json({
+    valid: true,
+    authorized: true,
+    password: result.password,
+    session: {
+      sessionId: result.session?.sessionId,
+      deviceName: result.session?.deviceName,
+      expiresAt: result.session?.expiresAt,
+      reloadCount: result.session?.windowReloadCount
+    }
+  });
+});
+
+// API: Check Session Validity
+app.get("/api/passkeys/session-check", (req, res) => {
+  const { sessionId } = req.query;
+  if (!sessionId || typeof sessionId !== "string") {
+    return res.json({ valid: false });
+  }
+
+  const session = authSessions.get(sessionId);
+  if (!session || Date.now() > session.expiresAt) {
+    return res.json({ valid: false });
+  }
+
+  res.json({
+    valid: true,
+    deviceName: session.deviceName,
+    expiresAt: session.expiresAt
+  });
+});
+
+// API: Explicit Session Revocation (Logout)
+app.post("/api/passkeys/session-revoke", (req, res) => {
+  const { sessionId } = req.body;
+  if (sessionId && typeof sessionId === "string") {
+    const session = authSessions.get(sessionId);
+    revokeAuthSession(sessionId, authSessions);
+    savePersistedSessions();
+    
+    logPasskeyAudit("session_revoked", "success", {
+      credentialId: session?.credentialId,
+      deviceName: session?.deviceName,
+      details: { sessionId },
+      req
+    });
+  }
+  res.json({ success: true });
+});
+
+// API: Query Immutable Passkey Audit Journal
+app.get("/api/passkeys/audit-logs", (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 100;
+  const eventType = req.query.eventType as string;
+  const status = req.query.status as string;
+
+  let records = readPasskeyAuditRecords(fs, undefined, limit * 2);
+
+  if (eventType) {
+    records = records.filter(r => r.eventType === eventType);
+  }
+  if (status) {
+    records = records.filter(r => r.status === status);
+  }
+
+  res.json({
+    records: records.slice(0, limit),
+    totalCount: records.length
+  });
+});
+
+// API: Passkey Pipeline Audit Summary & Diagnostics
+app.get("/api/passkeys/audit-summary", async (req, res) => {
+  const passkeys = await getPasskeys();
+  const auditRecords = readPasskeyAuditRecords(fs, undefined, 200);
+  const activeSessionCount = authSessions.size;
+
+  const summary = {
+    totalPasskeys: passkeys.length,
+    activeSessions: activeSessionCount,
+    totalAuditEvents: auditRecords.length,
+    lastAuditEvent: auditRecords[0] || null,
+    eventCounts: {
+      registered: auditRecords.filter(r => r.eventType === "passkey_registered").length,
+      authenticated: auditRecords.filter(r => r.eventType === "passkey_authenticated").length,
+      sessionRestored: auditRecords.filter(r => r.eventType === "session_restored_reload").length,
+      challenges: auditRecords.filter(r => r.eventType === "challenge_generated").length
+    }
+  };
+
+  res.json(summary);
 });
 
 // API: Sync custom blogs from client and server

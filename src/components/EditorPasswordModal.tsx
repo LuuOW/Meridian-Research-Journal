@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Lock, Eye, EyeOff, AlertCircle, Sparkles, Loader2, Fingerprint, ExternalLink, Key, Shield, Laptop } from "lucide-react";
+import { X, Lock, Eye, EyeOff, AlertCircle, Sparkles, Loader2, Fingerprint, ExternalLink, Key, Shield, Laptop, RefreshCw, Activity, CheckCircle, Clock } from "lucide-react";
 import {
   calculateNormalizedCursor,
   computeRayTracedLightState,
   getDefaultLightState
 } from "../lib/rayTracingUtils";
-import { getEffectiveRpId, base64UrlToUint8Array } from "../lib/passkeyManager";
+import { getEffectiveRpId, base64UrlToUint8Array, extractClientFingerprint, PasskeyAuditEvent } from "../lib/passkeyManager";
 
 const STAR_PARTICLES = Array.from({ length: 16 }).map((_, i) => {
   const angle = (i * 360) / 16;
@@ -93,13 +93,19 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
   onConfirm,
   titleText,
 }) => {
-  const [activeTab, setActiveTab] = useState<"passkey" | "password">("passkey");
+  const [activeTab, setActiveTab] = useState<"passkey" | "password" | "audit">("passkey");
   
   // Passkey workflow state
   const [passkeyStatus, setPasskeyStatus] = useState<"checking" | "ready" | "verifying" | "register_needed" | "iframe_restricted" | "polling" | "success" | "error">("checking");
   const [portalToken, setPortalToken] = useState<string | null>(null);
   const [portalType, setPortalType] = useState<"register" | "auth">("register");
   const [registeredCount, setRegisteredCount] = useState(0);
+  const [restorableSession, setRestorableSession] = useState<{ sessionId: string; deviceName: string } | null>(null);
+
+  // Audit Logs state
+  const [auditLogs, setAuditLogs] = useState<PasskeyAuditEvent[]>([]);
+  const [auditSummary, setAuditSummary] = useState<any>(null);
+  const [isLoadingAudit, setIsLoadingAudit] = useState(false);
 
   // Password fallback state
   const [password, setPassword] = useState("");
@@ -152,6 +158,65 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
     }
   };
 
+  const loadAuditLogs = async () => {
+    setIsLoadingAudit(true);
+    try {
+      const [logsRes, sumRes] = await Promise.all([
+        fetch("/api/passkeys/audit-logs?limit=50"),
+        fetch("/api/passkeys/audit-summary")
+      ]);
+      if (logsRes.ok) {
+        const data = await logsRes.json();
+        setAuditLogs(data.logs || []);
+      }
+      if (sumRes.ok) {
+        const sData = await sumRes.json();
+        setAuditSummary(sData);
+      }
+    } catch (e) {
+      console.error("Failed to load audit logs:", e);
+    } finally {
+      setIsLoadingAudit(false);
+    }
+  };
+
+  const handleRestoreSession = async (sessionId: string) => {
+    setIsVerifying(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/passkeys/session-restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.valid && data.password) {
+          try {
+            sessionStorage.setItem("meridian_editor_pwd", data.password);
+            sessionStorage.setItem("meridian_passkey_session_id", sessionId);
+          } catch {}
+          setPasskeyStatus("success");
+          setShowSuccessExplosion(true);
+          setTimeout(() => {
+            onConfirm(data.password);
+          }, 600);
+          return;
+        }
+      }
+      setRestorableSession(null);
+      try {
+        sessionStorage.removeItem("meridian_passkey_session_id");
+        localStorage.removeItem("meridian_passkey_session_id");
+      } catch {}
+      setErrorMsg("Stored session has expired. Please authenticate with your passkey.");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to restore session.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const startPolling = (token: string) => {
     stopPolling();
     pollingIntervalRef.current = setInterval(async () => {
@@ -163,6 +228,10 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
             stopPolling();
             try {
               sessionStorage.setItem("meridian_editor_pwd", data.password);
+              if (data.session?.sessionId) {
+                sessionStorage.setItem("meridian_passkey_session_id", data.session.sessionId);
+                localStorage.setItem("meridian_passkey_session_id", data.session.sessionId);
+              }
             } catch {}
             setPasskeyStatus("success");
             setShowSuccessExplosion(true);
@@ -181,6 +250,26 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
     setPasskeyStatus("checking");
     setErrorMsg(null);
     try {
+      const storedSessId = sessionStorage.getItem("meridian_passkey_session_id") || localStorage.getItem("meridian_passkey_session_id");
+      if (storedSessId) {
+        try {
+          const sRes = await fetch("/api/passkeys/session-restore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: storedSessId })
+          });
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            if (sData.valid && sData.session) {
+              setRestorableSession({
+                sessionId: storedSessId,
+                deviceName: sData.session.deviceName || "Registered Biometric Device"
+              });
+            }
+          }
+        } catch (_) {}
+      }
+
       const res = await fetch("/api/passkeys/list");
       if (res.ok) {
         const data = await res.json();
@@ -253,11 +342,15 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
       });
 
       if (assertion) {
+        const clientFp = extractClientFingerprint();
         // Authenticate assertion against server to verify credential and get the authorized session password
         const authRes = await fetch("/api/passkeys/authenticate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ credentialId: assertion.id })
+          body: JSON.stringify({
+            credentialId: assertion.id,
+            fingerprint: clientFp
+          })
         });
 
         if (!authRes.ok) {
@@ -269,6 +362,10 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         if (authData.authorized && authData.password) {
           try {
             sessionStorage.setItem("meridian_editor_pwd", authData.password);
+            if (authData.session?.sessionId) {
+              sessionStorage.setItem("meridian_passkey_session_id", authData.session.sessionId);
+              localStorage.setItem("meridian_passkey_session_id", authData.session.sessionId);
+            }
           } catch {}
           setPasskeyStatus("success");
           setShowSuccessExplosion(true);
@@ -463,7 +560,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
               setActiveTab("passkey");
               checkPasskeys();
             }}
-            className={`pb-3 pt-2 text-xs font-bold transition-all border-b-2 px-4 cursor-pointer flex items-center gap-2 ${
+            className={`pb-3 pt-2 text-xs font-bold transition-all border-b-2 px-3.5 cursor-pointer flex items-center gap-2 ${
               activeTab === "passkey"
                 ? "border-cyan-500 text-cyan-600 dark:text-cyan-400"
                 : "border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
@@ -477,14 +574,29 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
               stopPolling();
               setActiveTab("password");
             }}
-            className={`pb-3 pt-2 text-xs font-bold transition-all border-b-2 px-4 cursor-pointer flex items-center gap-2 ${
+            className={`pb-3 pt-2 text-xs font-bold transition-all border-b-2 px-3.5 cursor-pointer flex items-center gap-2 ${
               activeTab === "password"
                 ? "border-cyan-500 text-cyan-600 dark:text-cyan-400"
                 : "border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
             }`}
           >
             <Lock className="w-4 h-4" />
-            <span>Password Fallback</span>
+            <span>Password</span>
+          </button>
+          <button
+            onClick={() => {
+              stopPolling();
+              setActiveTab("audit");
+              loadAuditLogs();
+            }}
+            className={`pb-3 pt-2 text-xs font-bold transition-all border-b-2 px-3.5 cursor-pointer flex items-center gap-2 ${
+              activeTab === "audit"
+                ? "border-cyan-500 text-cyan-600 dark:text-cyan-400"
+                : "border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span>Audit Journal</span>
           </button>
         </div>
 
@@ -492,6 +604,33 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         <div className="relative z-20 p-6">
           {activeTab === "passkey" ? (
             <div className="space-y-5">
+              {/* Active Session Restoration Banner */}
+              {restorableSession && (
+                <div className="p-3 bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200/80 dark:border-cyan-800/50 rounded-2xl flex items-center justify-between gap-3 text-left">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-500 shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-cyan-900 dark:text-cyan-200 truncate">
+                        Active Biometric Session Found
+                      </p>
+                      <p className="text-[9px] text-cyan-600 dark:text-cyan-400 font-mono truncate">
+                        Bound to: {restorableSession.deviceName}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRestoreSession(restorableSession.sessionId)}
+                    disabled={isVerifying}
+                    className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[10px] font-bold shrink-0 shadow-sm transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isVerifying ? "animate-spin" : ""}`} />
+                    <span>Restore</span>
+                  </button>
+                </div>
+              )}
+
               {passkeyStatus === "checking" && (
                 <div className="py-8 flex flex-col items-center justify-center space-y-3">
                   <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
@@ -688,7 +827,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === "password" ? (
             /* Traditional Password Form Fallback */
             <form onSubmit={handleSubmitPassword} className="space-y-4 animate-fade-in">
               <div className="flex flex-col gap-1.5">
@@ -755,6 +894,108 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
                 </button>
               </div>
             </form>
+          ) : (
+            /* Audit Journal & Pipeline Diagnostics Tab */
+            <div className="space-y-4 text-left animate-fade-in">
+              {/* Diagnostic Top Metrics */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2.5 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-xl">
+                  <div className="text-[9px] font-mono uppercase text-neutral-400">Total Events</div>
+                  <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                    {auditSummary?.totalAuditRecords ?? auditLogs.length}
+                  </div>
+                </div>
+                <div className="p-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                  <div className="text-[9px] font-mono uppercase text-emerald-600 dark:text-emerald-400">Auth Passes</div>
+                  <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    {auditSummary?.successfulAuthentications ?? 0}
+                  </div>
+                </div>
+                <div className="p-2.5 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
+                  <div className="text-[9px] font-mono uppercase text-cyan-600 dark:text-cyan-400">Active Sessions</div>
+                  <div className="text-sm font-bold text-cyan-600 dark:text-cyan-400">
+                    {auditSummary?.activeSessionsCount ?? 0}
+                  </div>
+                </div>
+              </div>
+
+              {/* Header and Refresh Button */}
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 font-bold text-xs">
+                  <Activity className="w-3.5 h-3.5 text-cyan-500" />
+                  <span>Immutable Pipeline Events</span>
+                </div>
+                <button
+                  onClick={loadAuditLogs}
+                  disabled={isLoadingAudit}
+                  className="px-2.5 py-1 bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-[10px] font-bold text-neutral-600 dark:text-neutral-400 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isLoadingAudit ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              {/* Log Event Stream */}
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {isLoadingAudit && auditLogs.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-neutral-400 font-mono flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
+                    <span>Loading audit records...</span>
+                  </div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-neutral-400 font-mono">
+                    No passkey audit events recorded yet.
+                  </div>
+                ) : (
+                  auditLogs.map((log) => {
+                    const isSuccess = log.status === "success";
+                    const isError = log.status === "error" || log.status === "failure";
+                    const isWarn = log.status === "warning";
+                    return (
+                      <div
+                        key={log.eventId}
+                        className="p-2.5 bg-neutral-50/80 dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-neutral-800/70 rounded-xl text-xs space-y-1 transition-all hover:border-neutral-300 dark:hover:border-neutral-700"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isSuccess
+                                  ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]"
+                                  : isError
+                                  ? "bg-red-500"
+                                  : isWarn
+                                  ? "bg-amber-500"
+                                  : "bg-cyan-500"
+                              }`}
+                            />
+                            <span className="font-mono text-[10px] font-bold text-neutral-800 dark:text-neutral-200 truncate">
+                              {log.eventType}
+                            </span>
+                          </div>
+                          <span className="text-[9px] font-mono text-neutral-400 shrink-0">
+                            {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                        </div>
+
+                        {log.deviceName && (
+                          <div className="text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
+                            <Laptop className="w-3 h-3 text-neutral-400 shrink-0" />
+                            <span className="truncate">{log.deviceName}</span>
+                          </div>
+                        )}
+
+                        {log.details && Object.keys(log.details).length > 0 && (
+                          <div className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-950/60 p-1.5 rounded-lg overflow-x-auto truncate">
+                            {JSON.stringify(log.details)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
