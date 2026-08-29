@@ -31,6 +31,7 @@ import { sortBlogsByPublicationDate } from "./lib/viewCounter";
 import { LinkedInShareModal } from "./components/LinkedInShareModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
+import { ResumeViewModal } from "./components/ResumeViewModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
@@ -63,6 +64,7 @@ export default function App() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [initialArxivId, setInitialArxivId] = useState<string>("");
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isResumeOpen, setIsResumeOpen] = useState(false);
   const [isEditorMode, setIsEditorMode] = useState<boolean>(false);
   const [hiddenBlogIds, setHiddenBlogIds] = useState<string[]>([]);
   const [activeAudioBlog, setActiveAudioBlog] = useState<BlogPost | null>(null);
@@ -1139,6 +1141,7 @@ export default function App() {
       <Navbar 
         onOpenCreate={() => setIsCreateOpen(true)} 
         onOpenAbout={() => setIsAboutOpen(true)} 
+        onOpenResume={() => setIsResumeOpen(true)}
         isEditorMode={isEditorMode}
         onToggleEditorMode={handleToggleEditorMode}
         onHome={() => setActiveBlog(null)}
@@ -1765,6 +1768,13 @@ export default function App() {
         isOpen={isAboutOpen}
         onClose={() => setIsAboutOpen(false)}
         isEditorMode={isEditorMode}
+        onOpenResume={() => setIsResumeOpen(true)}
+      />
+
+      {/* CURRICULUM VITAE / RESUME MODAL & EXPORTER */}
+      <ResumeViewModal
+        isOpen={isResumeOpen}
+        onClose={() => setIsResumeOpen(false)}
       />
 
       {/* ADSENSE REVENUE TRACKER & TELEMETRY MODAL */}

@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, Compass, Sun, Moon, Activity, Loader2, DollarSign, ChevronDown, Wrench, ArrowUpRight } from "lucide-react";
+import { Sparkles, Compass, Sun, Moon, Activity, Loader2, DollarSign, ChevronDown, Wrench, ArrowUpRight, FileText } from "lucide-react";
 import { GenerationJob } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
 
 interface NavbarProps {
   onOpenCreate: () => void;
   onOpenAbout: () => void;
+  onOpenResume?: () => void;
   isEditorMode: boolean;
   onToggleEditorMode: () => void;
   onHome?: () => void;
@@ -20,6 +21,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ 
   onOpenCreate, 
   onOpenAbout, 
+  onOpenResume,
   isEditorMode, 
   onToggleEditorMode,
   onHome,
@@ -110,10 +112,28 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="hidden md:flex gap-8 text-xs font-bold tracking-widest uppercase text-gray-400 dark:text-neutral-500 justify-center shrink-0">
           <span className="text-black dark:text-white border-b-2 border-black dark:border-white pb-1 cursor-pointer transition-colors" onClick={handleHomeClick}>Blog</span>
           <span className="hover:text-black dark:hover:text-white cursor-pointer transition-colors pb-1 text-neutral-500 dark:text-neutral-400 hover:border-b-2 hover:border-black dark:hover:border-white" onClick={onOpenAbout}>About</span>
+          {onOpenResume && (
+            <span className="hover:text-cyan-600 dark:hover:text-cyan-400 cursor-pointer transition-colors pb-1 text-neutral-500 dark:text-neutral-400 hover:border-b-2 hover:border-cyan-500 flex items-center gap-1" onClick={onOpenResume}>
+              <span>Resume</span>
+              <span className="px-1 py-0.2 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[8px] font-mono rounded">CV</span>
+            </span>
+          )}
         </div>
 
         {/* Action Button & Theme/Editor Toggles */}
         <div className="flex justify-end items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Mobile Resume Button */}
+          {onOpenResume && (
+            <button
+              onClick={onOpenResume}
+              className="md:hidden px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 rounded-md hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition-colors flex items-center gap-1"
+              title="Curriculum Vitae / Resume"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>CV</span>
+            </button>
+          )}
+
           {/* Mobile About Button */}
           <button
             onClick={onOpenAbout}
@@ -254,6 +274,39 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 Idle
                               </span>
                             )}
+                            <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </button>
+                      )}
+
+                      {/* Resume / CV Export Option in Tools */}
+                      {onOpenResume && (
+                        <button
+                          id="dropdown-resume-btn"
+                          onClick={() => {
+                            setIsToolsOpen(false);
+                            onOpenResume();
+                          }}
+                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer border-t border-neutral-100 dark:border-neutral-800/60"
+                          role="menuitem"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                                Curriculum Vitae
+                              </div>
+                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                                Downloadable PDF &amp; Markdown
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-mono font-bold text-purple-600 dark:text-purple-400 px-2 py-0.5 bg-purple-50 dark:bg-purple-950/50 rounded-md border border-purple-500/20">
+                              Export
+                            </span>
                             <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         </button>

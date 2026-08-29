@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Linkedin, PhoneCall, Compass, Shield, BookOpen, User, Camera, UploadCloud, Trash2, Loader2, Sparkles, CheckCircle2, Zap } from "lucide-react";
+import { X, Linkedin, PhoneCall, Compass, Shield, BookOpen, User, Camera, UploadCloud, Trash2, Loader2, Sparkles, CheckCircle2, Zap, FileText, Download } from "lucide-react";
 // @ts-ignore
 import lucasProfileImg from "../assets/images/profile.jpg";
 import { db } from "../lib/googleAuth";
@@ -122,9 +122,10 @@ interface AboutModalProps {
   isOpen: boolean;
   onClose: () => void;
   isEditorMode: boolean;
+  onOpenResume?: () => void;
 }
 
-export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEditorMode }) => {
+export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEditorMode, onOpenResume }) => {
   const [profileImg, setProfileImg] = useState<string>(lucasProfileImg);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -513,49 +514,85 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
                 Meridian is spearheaded by Lucas Kempe. Lucas's work centers on creating performant on-device compiler pipelines, deploying high-throughput local AI models, and optimizing neural engines to process complex multi-modal physics and structural chemistry streams cleanly.
               </p>
 
-              {/* Social Action Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                {/* LinkedIn */}
-                <a 
-                  href="https://www.linkedin.com/in/lucaskempe/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#0077b5] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
-                      <Linkedin className="w-6 h-6 fill-current" />
+              {/* Social & Resume Action Grid */}
+              <div className="space-y-3 pt-2">
+                {/* Resume Download / View Card */}
+                {onOpenResume && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenResume();
+                    }}
+                    className="w-full flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 hover:from-cyan-500/20 hover:via-purple-500/20 hover:to-blue-500/20 border border-cyan-500/30 hover:border-cyan-500/60 rounded-2xl group transition-all cursor-pointer shadow-sm text-left"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105">
+                        <FileText className="w-6 h-6 stroke-[2]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm sm:text-base font-extrabold text-neutral-900 dark:text-white block group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                            Curriculum Vitae / Resume
+                          </span>
+                          <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 text-[9px] font-mono font-bold uppercase rounded-full border border-cyan-500/30">
+                            Downloadable PDF &amp; MD
+                          </span>
+                        </div>
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono block mt-0.5">
+                          Synthesized across all articles, AST formulations &amp; systems
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">LinkedIn Profile</span>
-                      <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">@lucaskempe</span>
+                    <div className="text-cyan-600 dark:text-cyan-400 group-hover:text-cyan-700 dark:group-hover:text-cyan-300 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1 flex items-center gap-1">
+                      <span>View &amp; Export</span>
+                      <span>&rarr;</span>
                     </div>
-                  </div>
-                  <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
-                    Connect &rarr;
-                  </div>
-                </a>
+                  </button>
+                )}
 
-                {/* WhatsApp */}
-                <a 
-                  href="https://wa.me/541171323723"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#25D366] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
-                      <PhoneCall className="w-5 h-5 text-white fill-current" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* LinkedIn */}
+                  <a 
+                    href="https://www.linkedin.com/in/lucaskempe/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#0077b5] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
+                        <Linkedin className="w-6 h-6 fill-current" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">LinkedIn Profile</span>
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">@lucaskempe</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">Direct WhatsApp</span>
-                      <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">+54 11 7132-3723</span>
+                    <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
+                      Connect &rarr;
                     </div>
-                  </div>
-                  <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
-                    Chat &rarr;
-                  </div>
-                </a>
+                  </a>
+
+                  {/* WhatsApp */}
+                  <a 
+                    href="https://wa.me/541171323723"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#25D366] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
+                        <PhoneCall className="w-5 h-5 text-white fill-current" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">Direct WhatsApp</span>
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">+54 11 7132-3723</span>
+                      </div>
+                    </div>
+                    <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
+                      Chat &rarr;
+                    </div>
+                  </a>
+                </div>
               </div>
             </div>
 
