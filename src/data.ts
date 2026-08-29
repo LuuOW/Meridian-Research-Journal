@@ -22,7 +22,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "August 29, 2026",
     "createdAt": 1788006573779,
     "timestamp": 1788006573779,
-    "views": 398
+    "views": 399
   },
   {
     "title": "Artificial Anisotropy Induced Bound States in the Continuum for Integrated Photonic Waveguide",
