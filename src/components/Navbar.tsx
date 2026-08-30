@@ -112,28 +112,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="hidden md:flex gap-8 text-xs font-bold tracking-widest uppercase text-gray-400 dark:text-neutral-500 justify-center shrink-0">
           <span className="text-black dark:text-white border-b-2 border-black dark:border-white pb-1 cursor-pointer transition-colors" onClick={handleHomeClick}>Blog</span>
           <span className="hover:text-black dark:hover:text-white cursor-pointer transition-colors pb-1 text-neutral-500 dark:text-neutral-400 hover:border-b-2 hover:border-black dark:hover:border-white" onClick={onOpenAbout}>About</span>
-          {onOpenResume && (
-            <span className="hover:text-cyan-600 dark:hover:text-cyan-400 cursor-pointer transition-colors pb-1 text-neutral-500 dark:text-neutral-400 hover:border-b-2 hover:border-cyan-500 flex items-center gap-1" onClick={onOpenResume}>
-              <span>Resume</span>
-              <span className="px-1 py-0.2 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[8px] font-mono rounded">CV</span>
-            </span>
-          )}
         </div>
 
         {/* Action Button & Theme/Editor Toggles */}
         <div className="flex justify-end items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Mobile Resume Button */}
-          {onOpenResume && (
-            <button
-              onClick={onOpenResume}
-              className="md:hidden px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 rounded-md hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition-colors flex items-center gap-1"
-              title="Curriculum Vitae / Resume"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>CV</span>
-            </button>
-          )}
-
           {/* Mobile About Button */}
           <button
             onClick={onOpenAbout}

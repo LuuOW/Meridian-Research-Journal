@@ -1,6 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Linkedin, PhoneCall, Compass, Shield, BookOpen, User, Camera, UploadCloud, Trash2, Loader2, Sparkles, CheckCircle2, Zap, FileText, Download } from "lucide-react";
+import { 
+  X, 
+  Linkedin, 
+  PhoneCall, 
+  Compass, 
+  Shield, 
+  BookOpen, 
+  User, 
+  Camera, 
+  UploadCloud, 
+  Trash2, 
+  Loader2, 
+  Sparkles, 
+  CheckCircle2, 
+  Zap, 
+  FileText, 
+  Download,
+  Printer,
+  Copy,
+  Check,
+  Briefcase,
+  Layers,
+  ExternalLink,
+  Tag,
+  GraduationCap,
+  ArrowLeft
+} from "lucide-react";
 // @ts-ignore
 import lucasProfileImg from "../assets/images/profile.jpg";
 import { db } from "../lib/googleAuth";
@@ -10,6 +36,13 @@ import {
   computeRayTracedLightState,
   getDefaultLightState
 } from "../lib/rayTracingUtils";
+import { RESUME_DATA } from "../lib/resumeData";
+import {
+  generateMarkdownResume,
+  generatePrintableHtmlResume,
+  downloadFile,
+  printResumeDocument
+} from "../lib/resumeExporter";
 
 const STAR_PARTICLES = Array.from({ length: 16 }).map((_, i) => {
   const angle = (i * 360) / 16;
@@ -123,9 +156,18 @@ interface AboutModalProps {
   onClose: () => void;
   isEditorMode: boolean;
   onOpenResume?: () => void;
+  initialTab?: "overview" | "cv";
 }
 
-export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEditorMode, onOpenResume }) => {
+export const AboutModal: React.FC<AboutModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  isEditorMode, 
+  onOpenResume,
+  initialTab = "overview"
+}) => {
+  const [activeTab, setActiveTab] = useState<"overview" | "cv">(initialTab);
+  const [copiedMd, setCopiedMd] = useState(false);
   const [profileImg, setProfileImg] = useState<string>(lucasProfileImg);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -135,6 +177,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
   const [isHovered, setIsHovered] = useState(false);
   const [lightState, setLightState] = useState(getDefaultLightState());
   const [showExplosion, setShowExplosion] = useState(false);
+
+  const resume = RESUME_DATA;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
@@ -157,6 +201,34 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
       onClose();
     }, 550);
   };
+
+  const handleCopyMarkdown = () => {
+    const md = generateMarkdownResume();
+    navigator.clipboard.writeText(md);
+    setCopiedMd(true);
+    setTimeout(() => setCopiedMd(false), 2000);
+  };
+
+  const handleDownloadMarkdown = () => {
+    const md = generateMarkdownResume();
+    downloadFile("Lucas_Kempe_Resume_Meridian.md", md, "text/markdown;charset=utf-8");
+  };
+
+  const handleDownloadHtml = () => {
+    const html = generatePrintableHtmlResume();
+    downloadFile("Lucas_Kempe_Resume_Meridian.html", html, "text/html;charset=utf-8");
+  };
+
+  const handlePrint = () => {
+    printResumeDocument();
+  };
+
+  // Reset tab when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // Load from LocalStorage and Firestore
   useEffect(() => {
@@ -332,292 +404,556 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, isEdito
           {/* Top Shimmer Accent Line */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 bg-[length:200%_200%] animate-[shimmer_3s_linear_infinite] z-20" />
 
-          {/* Header */}
-          <div className="relative z-20 p-6 border-b border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/40 shrink-0">
+          {/* Header with Discrete Tab Switcher */}
+          <div className="relative z-20 p-4 sm:p-5 border-b border-neutral-100 dark:border-neutral-800/80 flex flex-wrap items-center justify-between gap-3 bg-neutral-50/50 dark:bg-neutral-950/40 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400 border border-cyan-100 dark:border-cyan-900/30 shadow-sm">
+              <div className="w-10 h-10 rounded-2xl bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400 border border-cyan-100 dark:border-cyan-900/30 shadow-sm shrink-0">
                 <Compass className="w-5 h-5 text-cyan-500 dark:text-cyan-400 animate-spin-slow" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 font-sans tracking-tight flex items-center gap-2">
-                  About Meridian Journal
+                  <span>Meridian Journal</span>
                   <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-[9px] font-mono font-bold uppercase rounded-full border border-cyan-500/30">
                     Ray-Traced
                   </span>
                 </h3>
-                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium uppercase tracking-widest font-mono">Quantum Optics · Computing · AI</p>
-              </div>
-            </div>
-            <button 
-              onClick={handleCloseWithExplosion}
-              className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-950 dark:hover:text-neutral-100 rounded-xl transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Content (Scrollable if viewport is small) */}
-          <div className="relative z-20 p-6 overflow-y-auto flex flex-col gap-6 no-scrollbar">
-            
-            {/* Mission Section */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-extrabold text-cyan-600 dark:text-cyan-400 uppercase tracking-widest font-mono flex items-center gap-2">
-                <BookOpen className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" /> Our Editorial Mission
-              </h4>
-              <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans">
-                Welcome to <strong>Meridian Journal</strong>, an advanced translations companion that bridges the gap between intricate, mathematical, and cutting-edge quantum optics, quantum computing, and artificial intelligence papers (e.g., from arXiv) and highly legible, beautifully written editorial briefs.
-              </p>
-              <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans">
-                Our core design paradigm values <strong>precision, transparency, and architectural elegance</strong>, preserving complex LaTeX-formatted scientific formulations while highlighting practical engineering constraints and physical insights.
-              </p>
-            </div>
-
-            {/* Founder Section */}
-            <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6 space-y-6">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-neutral-50/50 dark:bg-neutral-900/40 p-5 rounded-3xl border border-neutral-100 dark:border-neutral-800">
-                
-                {/* Ray-Traced Neon Avatar Frame */}
-                <div 
-                  className={`relative shrink-0 group p-[3px] rounded-3xl overflow-hidden shadow-xl cursor-pointer transition-all duration-300 ${
-                    isEditorMode && isDragging ? "scale-105 shadow-2xl" : ""
-                  }`}
-                  onClick={() => {
-                    if (isEditorMode) {
-                      fileInputRef.current?.click();
-                    }
-                  }}
-                  onDragOver={(e) => {
-                    if (isEditorMode) {
-                      handleDragOver(e);
-                    } else {
-                      e.preventDefault();
-                    }
-                  }}
-                  onDragLeave={() => {
-                    if (isEditorMode) {
-                      handleDragLeave();
-                    }
-                  }}
-                  onDrop={(e) => {
-                    if (isEditorMode) {
-                      handleDrop(e);
-                    } else {
-                      e.preventDefault();
-                    }
-                  }}
-                >
-                  {/* Spinning Conic Neon Light Ring Around Avatar */}
-                  <div 
-                    className="absolute -inset-[100%] animate-[spin_6s_linear_infinite] opacity-85 group-hover:opacity-100 blur-sm transition-opacity"
-                    style={{
-                      background: `conic-gradient(from ${lightState.angle}deg, #06b6d4, #3b82f6, #a855f7, #ec4899, #06b6d4)`
-                    }}
-                  />
-
-                  {/* Crisp Refraction Edge */}
-                  <div 
-                    className="absolute -inset-[100%] animate-[spin_6s_linear_infinite] opacity-100"
-                    style={{
-                      background: `conic-gradient(from ${lightState.angle}deg, #06b6d4, #6366f1, #a855f7, #ec4899, #06b6d4)`
-                    }}
-                  />
-
-                  {/* Avatar Container Inner Dark Body */}
-                  <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-[22px] bg-neutral-950 overflow-hidden border border-neutral-800">
-                    <img 
-                      src={profileImg} 
-                      alt="Lucas Kempe" 
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
-                    />
-
-                    {/* Specular Raytraced Highlight Spot on Avatar */}
-                    <div 
-                      className="absolute inset-0 pointer-events-none opacity-40 group-hover:opacity-80 transition-opacity"
-                      style={{
-                        background: `radial-gradient(circle at ${lightState.lightX}% ${lightState.lightY}%, rgba(255,255,255,0.5), transparent 60%)`
-                      }}
-                    />
-
-                    {/* Hover / Drag Overlay for Editor Mode */}
-                    {isEditorMode && (
-                      <div className={`absolute inset-0 bg-neutral-950/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1.5 text-white transition-opacity duration-200 ${
-                        isDragging || isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                      }`}>
-                        {isUploading ? (
-                          <>
-                            <Loader2 className="w-6 h-6 animate-spin text-cyan-300" />
-                            <span className="text-[10px] font-mono tracking-wider">COMPRESSING...</span>
-                          </>
-                        ) : isDragging ? (
-                          <>
-                            <UploadCloud className="w-7 h-7 text-cyan-300 animate-bounce" />
-                            <span className="text-[10px] font-mono font-bold tracking-wider">DROP TO UPLOAD</span>
-                          </>
-                        ) : (
-                          <>
-                            <Camera className="w-6 h-6 text-cyan-200" />
-                            <span className="text-[10px] font-mono tracking-wider font-semibold">TAP TO EDIT</span>
-                            <span className="text-[8px] font-mono text-neutral-300">OR DRAG IMAGE HERE</span>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Verified Checkmark Badge */}
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-tr from-cyan-500 to-emerald-400 rounded-full border-2 border-white dark:border-neutral-950 flex items-center justify-center shadow-lg z-20">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-black font-bold stroke-[3]" />
-                  </div>
-                </div>
-
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
-
-                <div className="text-center sm:text-left space-y-2.5 py-1 flex-1 flex flex-col justify-between h-full">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                      <span className="inline-block px-3 py-1 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/40 text-cyan-600 dark:text-cyan-300 rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono">
-                        Journal Founder
-                      </span>
-                      {isEditorMode && profileImg !== lucasProfileImg && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReset();
-                          }}
-                          className="inline-flex items-center gap-1 px-2 py-1 border border-red-200 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono transition-colors cursor-pointer"
-                          title="Reset to default original image"
-                        >
-                          <Trash2 className="w-2.5 h-2.5" /> Reset Image
-                        </button>
-                      )}
-                    </div>
-                    <h4 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 dark:text-neutral-100 font-sans tracking-tight">Lucas Kempe</h4>
-                    <p className="text-base sm:text-lg font-semibold text-neutral-700 dark:text-neutral-300 font-sans leading-snug">
-                      Founder &amp; Principal Director of Meridian Informatics
-                    </p>
-                  </div>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 font-mono flex items-center justify-center sm:justify-start gap-2 pt-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                    lucas.kempe@icloud.com
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-base sm:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans italic border-l-4 border-cyan-500 dark:border-cyan-400 pl-4 py-1">
-                Meridian is spearheaded by Lucas Kempe. Lucas's work centers on creating performant on-device compiler pipelines, deploying high-throughput local AI models, and optimizing neural engines to process complex multi-modal physics and structural chemistry streams cleanly.
-              </p>
-
-              {/* Social & Resume Action Grid */}
-              <div className="space-y-3 pt-2">
-                {/* Resume Download / View Card */}
-                {onOpenResume && (
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenResume();
-                    }}
-                    className="w-full flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 hover:from-cyan-500/20 hover:via-purple-500/20 hover:to-blue-500/20 border border-cyan-500/30 hover:border-cyan-500/60 rounded-2xl group transition-all cursor-pointer shadow-sm text-left"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105">
-                        <FileText className="w-6 h-6 stroke-[2]" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm sm:text-base font-extrabold text-neutral-900 dark:text-white block group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                            Curriculum Vitae / Resume
-                          </span>
-                          <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 text-[9px] font-mono font-bold uppercase rounded-full border border-cyan-500/30">
-                            Downloadable PDF &amp; MD
-                          </span>
-                        </div>
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono block mt-0.5">
-                          Synthesized across all articles, AST formulations &amp; systems
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-cyan-600 dark:text-cyan-400 group-hover:text-cyan-700 dark:group-hover:text-cyan-300 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1 flex items-center gap-1">
-                      <span>View &amp; Export</span>
-                      <span>&rarr;</span>
-                    </div>
-                  </button>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* LinkedIn */}
-                  <a 
-                    href="https://www.linkedin.com/in/lucaskempe/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#0077b5] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
-                        <Linkedin className="w-6 h-6 fill-current" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">LinkedIn Profile</span>
-                        <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">@lucaskempe</span>
-                      </div>
-                    </div>
-                    <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
-                      Connect &rarr;
-                    </div>
-                  </a>
-
-                  {/* WhatsApp */}
-                  <a 
-                    href="https://wa.me/541171323723"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer hover:shadow-md hover:border-neutral-300"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#25D366] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
-                        <PhoneCall className="w-5 h-5 text-white fill-current" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-extrabold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">Direct WhatsApp</span>
-                        <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono block">+54 11 7132-3723</span>
-                      </div>
-                    </div>
-                    <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold transform group-hover:translate-x-1">
-                      Chat &rarr;
-                    </div>
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            {/* Technical Integrity Badge */}
-            <div className="bg-neutral-50 dark:bg-neutral-900/40 border border-neutral-100 dark:border-neutral-800 rounded-2xl p-4 flex gap-3.5 text-neutral-800 dark:text-neutral-300">
-              <Shield className="w-5 h-5 shrink-0 text-cyan-500 dark:text-cyan-400 mt-0.5" />
-              <div className="flex flex-col gap-0.5">
-                <p className="text-xs font-bold font-sans">Open, Offline-First Security Paradigm</p>
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-sans">
-                  Meridian's architecture leverages secure client-side Firestore integration paired with offline-first persistence keys. Our scientific translations run transparently with clean sandboxed parameters, giving researchers absolute ownership of their translation telemetry.
+                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium uppercase tracking-widest font-mono">
+                  Quantum Optics · Computing · AI
                 </p>
               </div>
             </div>
 
-            {/* Privacy Policy & Advertising Disclosure (Google AdSense Policy Compliance) */}
-            <div className="bg-neutral-50/70 dark:bg-neutral-900/30 border border-neutral-100 dark:border-neutral-800/80 rounded-2xl p-4 flex flex-col gap-2 text-neutral-700 dark:text-neutral-300">
-              <div className="flex items-center gap-2 text-xs font-bold font-sans text-neutral-900 dark:text-neutral-100">
-                <Shield className="w-4 h-4 text-emerald-500" />
-                <span>Privacy Policy &amp; Cookie Disclosure</span>
+            {/* Discrete Header Nav Tabs */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-neutral-100 dark:bg-neutral-900 p-1 rounded-xl border border-neutral-200/60 dark:border-neutral-800 text-xs font-mono">
+                <button
+                  onClick={() => setActiveTab("overview")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeTab === "overview"
+                      ? "bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-xs"
+                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                  }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => setActiveTab("cv")}
+                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    activeTab === "cv"
+                      ? "bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-xs"
+                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5 text-cyan-500" />
+                  <span>Curriculum Vitae</span>
+                </button>
               </div>
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-sans">
-                Meridian utilizes Google AdSense and authorized digital sellers to serve non-intrusive, privacy-respecting educational and scholarly advertisements. Third-party vendors, including Google, use cookies to serve ads based on prior visits to our website and across the internet. Users may opt out of personalized advertising by visiting Google's <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 underline font-medium">Ads Settings</a> or <a href="https://aboutads.info" target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 underline font-medium">aboutads.info</a>.
-              </p>
-            </div>
 
+              <button 
+                onClick={handleCloseWithExplosion}
+                className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-950 dark:hover:text-neutral-100 rounded-xl transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Body (Scrollable) */}
+          <div className="relative z-20 p-5 sm:p-6 overflow-y-auto flex flex-col gap-6 no-scrollbar">
+            {activeTab === "overview" ? (
+              <>
+                {/* Mission Section */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-extrabold text-cyan-600 dark:text-cyan-400 uppercase tracking-widest font-mono flex items-center gap-2">
+                    <BookOpen className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" /> Our Editorial Mission
+                  </h4>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans">
+                    Welcome to <strong>Meridian Journal</strong>, an advanced translations companion that bridges the gap between intricate, mathematical, and cutting-edge quantum optics, quantum computing, and artificial intelligence papers (e.g., from arXiv) and highly legible, beautifully written editorial briefs.
+                  </p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans">
+                    Our core design paradigm values <strong>precision, transparency, and architectural elegance</strong>, preserving complex LaTeX-formatted scientific formulations while highlighting practical engineering constraints and physical insights.
+                  </p>
+                </div>
+
+                {/* Founder Section */}
+                <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6 space-y-6">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-neutral-50/50 dark:bg-neutral-900/40 p-5 rounded-3xl border border-neutral-100 dark:border-neutral-800">
+                    {/* Ray-Traced Neon Avatar Frame */}
+                    <div 
+                      className={`relative shrink-0 group p-[3px] rounded-3xl overflow-hidden shadow-xl cursor-pointer transition-all duration-300 ${
+                        isEditorMode && isDragging ? "scale-105 shadow-2xl" : ""
+                      }`}
+                      onClick={() => {
+                        if (isEditorMode) {
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      onDragOver={(e) => {
+                        if (isEditorMode) {
+                          handleDragOver(e);
+                        } else {
+                          e.preventDefault();
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (isEditorMode) {
+                          handleDragLeave();
+                        }
+                      }}
+                      onDrop={(e) => {
+                        if (isEditorMode) {
+                          handleDrop(e);
+                        } else {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      {/* Spinning Conic Neon Light Ring Around Avatar */}
+                      <div 
+                        className="absolute -inset-[100%] animate-[spin_6s_linear_infinite] opacity-85 group-hover:opacity-100 blur-sm transition-opacity"
+                        style={{
+                          background: `conic-gradient(from ${lightState.angle}deg, #06b6d4, #3b82f6, #a855f7, #ec4899, #06b6d4)`
+                        }}
+                      />
+
+                      {/* Crisp Refraction Edge */}
+                      <div 
+                        className="absolute -inset-[100%] animate-[spin_6s_linear_infinite] opacity-100"
+                        style={{
+                          background: `conic-gradient(from ${lightState.angle}deg, #06b6d4, #6366f1, #a855f7, #ec4899, #06b6d4)`
+                        }}
+                      />
+
+                      {/* Avatar Container Inner Dark Body */}
+                      <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-[22px] bg-neutral-950 overflow-hidden border border-neutral-800">
+                        <img 
+                          src={profileImg} 
+                          alt="Lucas Kempe" 
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                        />
+
+                        {/* Specular Raytraced Highlight Spot on Avatar */}
+                        <div 
+                          className="absolute inset-0 pointer-events-none opacity-40 group-hover:opacity-80 transition-opacity"
+                          style={{
+                            background: `radial-gradient(circle at ${lightState.lightX}% ${lightState.lightY}%, rgba(255,255,255,0.5), transparent 60%)`
+                          }}
+                        />
+
+                        {/* Hover / Drag Overlay for Editor Mode */}
+                        {isEditorMode && (
+                          <div className={`absolute inset-0 bg-neutral-950/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1.5 text-white transition-opacity duration-200 ${
+                            isDragging || isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                          }`}>
+                            {isUploading ? (
+                              <>
+                                <Loader2 className="w-6 h-6 animate-spin text-cyan-300" />
+                                <span className="text-[10px] font-mono tracking-wider">COMPRESSING...</span>
+                              </>
+                            ) : isDragging ? (
+                              <>
+                                <UploadCloud className="w-7 h-7 text-cyan-300 animate-bounce" />
+                                <span className="text-[10px] font-mono font-bold tracking-wider">DROP TO UPLOAD</span>
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="w-6 h-6 text-cyan-200" />
+                                <span className="text-[10px] font-mono tracking-wider font-semibold">TAP TO EDIT</span>
+                                <span className="text-[8px] font-mono text-neutral-300">OR DRAG IMAGE HERE</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Verified Checkmark Badge */}
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-tr from-cyan-500 to-emerald-400 rounded-full border-2 border-white dark:border-neutral-950 flex items-center justify-center shadow-lg z-20">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-black font-bold stroke-[3]" />
+                      </div>
+                    </div>
+
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      accept="image/*" 
+                      className="hidden" 
+                    />
+
+                    <div className="text-center sm:text-left space-y-2 py-1 flex-1 flex flex-col justify-between h-full">
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                          <span className="inline-block px-3 py-1 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/40 text-cyan-600 dark:text-cyan-300 rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono">
+                            Journal Founder
+                          </span>
+                          {isEditorMode && profileImg !== lucasProfileImg && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReset();
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-1 border border-red-200 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 rounded-full text-[10px] font-extrabold uppercase tracking-widest font-mono transition-colors cursor-pointer"
+                              title="Reset to default original image"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" /> Reset Image
+                            </button>
+                          )}
+                        </div>
+                        <h4 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 dark:text-neutral-100 font-sans tracking-tight">Lucas Kempe</h4>
+                        <p className="text-sm sm:text-base font-semibold text-neutral-700 dark:text-neutral-300 font-sans leading-snug">
+                          Founder &amp; Principal Director of Meridian Informatics
+                        </p>
+                      </div>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono flex items-center justify-center sm:justify-start gap-2 pt-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                        lucas.kempe@icloud.com · +54 11 7132-3723
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans italic border-l-4 border-cyan-500 dark:border-cyan-400 pl-4 py-1">
+                    Meridian is spearheaded by Lucas Kempe. Lucas's work centers on creating performant on-device compiler pipelines, deploying high-throughput local AI models, and optimizing neural engines to process complex multi-modal physics and structural chemistry streams cleanly.
+                  </p>
+
+                  {/* Discrete Integrated CV Bar */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-blue-500/5 border border-cyan-500/20 dark:border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center border border-cyan-500/20 shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-neutral-900 dark:text-white">Curriculum Vitae</span>
+                          <span className="px-1.5 py-0.2 text-[9px] font-mono bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 rounded font-semibold">PDF · MD · HTML</span>
+                        </div>
+                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400">Quantum photonics, QLDPC error correction, edge AI compilers</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
+                      <button
+                        onClick={() => setActiveTab("cv")}
+                        className="px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        <span>View CV</span>
+                        <span>&rarr;</span>
+                      </button>
+                      <button
+                        onClick={handlePrint}
+                        className="p-1.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-lg transition-colors cursor-pointer"
+                        title="Print / PDF Export"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={handleDownloadMarkdown}
+                        className="p-1.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-lg transition-colors cursor-pointer"
+                        title="Download Markdown (.md)"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Social Channels */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {/* LinkedIn */}
+                    <a 
+                      href="https://www.linkedin.com/in/lucaskempe/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/40 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#0077b5] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+                          <Linkedin className="w-5 h-5 fill-current" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">LinkedIn</span>
+                          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono block">@lucaskempe</span>
+                        </div>
+                      </div>
+                      <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold">
+                        &rarr;
+                      </div>
+                    </a>
+
+                    {/* WhatsApp */}
+                    <a 
+                      href="https://wa.me/541171323723"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/40 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-800 rounded-2xl group transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+                          <PhoneCall className="w-4 h-4 text-white fill-current" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 block group-hover:text-black dark:group-hover:text-white transition-colors">Direct WhatsApp</span>
+                          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono block">+54 11 7132-3723</span>
+                        </div>
+                      </div>
+                      <div className="text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-all text-xs font-mono font-bold">
+                        &rarr;
+                      </div>
+                    </a>
+                  </div>
+                </div>
+
+                {/* Technical Integrity Badge */}
+                <div className="bg-neutral-50 dark:bg-neutral-900/40 border border-neutral-100 dark:border-neutral-800 rounded-2xl p-4 flex gap-3.5 text-neutral-800 dark:text-neutral-300">
+                  <Shield className="w-5 h-5 shrink-0 text-cyan-500 dark:text-cyan-400 mt-0.5" />
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-xs font-bold font-sans">Open, Offline-First Security Paradigm</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-sans">
+                      Meridian's architecture leverages secure client-side Firestore integration paired with offline-first persistence keys. Our scientific translations run transparently with clean sandboxed parameters, giving researchers absolute ownership of their translation telemetry.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Privacy Policy & Advertising Disclosure (Google AdSense Policy Compliance) */}
+                <div className="bg-neutral-50/70 dark:bg-neutral-900/30 border border-neutral-100 dark:border-neutral-800/80 rounded-2xl p-4 flex flex-col gap-2 text-neutral-700 dark:text-neutral-300">
+                  <div className="flex items-center gap-2 text-xs font-bold font-sans text-neutral-900 dark:text-neutral-100">
+                    <Shield className="w-4 h-4 text-emerald-500" />
+                    <span>Privacy Policy &amp; Cookie Disclosure</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-sans">
+                    Meridian utilizes Google AdSense and authorized digital sellers to serve non-intrusive, privacy-respecting educational and scholarly advertisements. Third-party vendors, including Google, use cookies to serve ads based on prior visits to our website and across the internet. Users may opt out of personalized advertising by visiting Google's <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 underline font-medium">Ads Settings</a> or <a href="https://aboutads.info" target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 underline font-medium">aboutads.info</a>.
+                  </p>
+                </div>
+              </>
+            ) : (
+              /* DISCRETE CURRICULUM VITAE EMBEDDED VIEW */
+              <div className="space-y-6">
+                {/* CV Action Toolbar */}
+                <div className="p-3.5 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab("overview")}
+                      className="px-2.5 py-1 text-xs font-mono font-bold text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white rounded-md hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Overview</span>
+                    </button>
+                    <span className="text-neutral-300 dark:text-neutral-700">|</span>
+                    <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                      Export Options
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handlePrint}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-black text-xs font-mono font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="Print / Save as PDF"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print / PDF</span>
+                    </button>
+
+                    <button
+                      onClick={handleDownloadMarkdown}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 text-xs font-mono font-bold border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
+                      title="Download Markdown resume"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>.MD</span>
+                    </button>
+
+                    <button
+                      onClick={handleDownloadHtml}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 text-xs font-mono font-bold border border-purple-500/30 transition-all cursor-pointer active:scale-95"
+                      title="Download Standalone HTML resume"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>.HTML</span>
+                    </button>
+
+                    <button
+                      onClick={handleCopyMarkdown}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-mono font-bold transition-all cursor-pointer active:scale-95"
+                      title="Copy plain markdown to clipboard"
+                    >
+                      {copiedMd ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedMd ? "Copied!" : "Copy"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* CV Profile & Summary Card */}
+                <div className="p-5 bg-neutral-50/70 dark:bg-neutral-900/40 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 space-y-3">
+                  <div>
+                    <h2 className="text-xl font-bold font-serif text-neutral-950 dark:text-neutral-50 tracking-tight">
+                      {resume.name}
+                    </h2>
+                    <p className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 mt-0.5">
+                      {resume.title} · {resume.subtitle}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-neutral-500 dark:text-neutral-400 font-mono mt-2">
+                      <a href={`mailto:${resume.email}`} className="hover:text-cyan-600 dark:hover:text-cyan-400 underline">
+                        {resume.email}
+                      </a>
+                      <span>·</span>
+                      <a href="https://www.linkedin.com/in/lucaskempe/" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-600 dark:hover:text-cyan-400 underline">
+                        LinkedIn
+                      </a>
+                      <span>·</span>
+                      <span>{resume.phone}</span>
+                      <span>·</span>
+                      <span>{resume.location}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed font-sans border-l-2 border-cyan-500 pl-3">
+                    {resume.summary}
+                  </p>
+                </div>
+
+                {/* Core Competencies */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-extrabold uppercase tracking-widest font-mono text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
+                    <span>Core Competencies &amp; Specializations</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {resume.coreCompetencies.map((comp, idx) => (
+                      <div key={idx} className="p-3.5 bg-neutral-50/70 dark:bg-neutral-900/40 rounded-xl border border-neutral-200/60 dark:border-neutral-800 space-y-2">
+                        <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100 block">
+                          {comp.category}
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {comp.skills.map((skill, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className="px-1.5 py-0.5 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded text-[10px] font-mono border border-neutral-200/50 dark:border-neutral-700/60"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Professional Experience */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-extrabold uppercase tracking-widest font-mono text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-purple-500" />
+                    <span>Professional Experience</span>
+                  </h4>
+                  <div className="space-y-3">
+                    {resume.experience.map((exp, idx) => (
+                      <div key={idx} className="p-4 bg-neutral-50/70 dark:bg-neutral-900/40 rounded-xl border border-neutral-200/60 dark:border-neutral-800 space-y-2">
+                        <div className="flex flex-wrap items-baseline justify-between gap-1">
+                          <h5 className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                            {exp.role} <span className="font-normal text-neutral-500">· {exp.organization}</span>
+                          </h5>
+                          <span className="text-[10px] font-mono font-semibold text-cyan-600 dark:text-cyan-400">
+                            {exp.period} · {exp.location}
+                          </span>
+                        </div>
+                        <ul className="space-y-1 text-xs text-neutral-600 dark:text-neutral-300 list-disc list-inside">
+                          {exp.highlights.map((h, hIdx) => (
+                            <li key={hIdx} className="leading-relaxed">
+                              {h}
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {exp.technologies.map((t, tIdx) => (
+                            <span
+                              key={tIdx}
+                              className="px-1.5 py-0.2 bg-neutral-200/60 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded text-[9px] font-mono"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Key Research Domains */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-extrabold uppercase tracking-widest font-mono text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Key Research Domains &amp; Theoretical Syntheses</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {resume.researchDomains.map((dom, idx) => (
+                      <div key={idx} className="p-3.5 bg-neutral-50/70 dark:bg-neutral-900/40 rounded-xl border border-neutral-200/60 dark:border-neutral-800 space-y-2">
+                        <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100 block">
+                          {dom.domain}
+                        </span>
+                        <div className="space-y-1 text-[11px] text-neutral-600 dark:text-neutral-300">
+                          {dom.keyThemes.map((theme, tIdx) => (
+                            <p key={tIdx} className="leading-snug">
+                              • {theme}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Selected Publications */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-extrabold uppercase tracking-widest font-mono text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Selected Publications &amp; Editorial Briefs</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {resume.keyPublications.map((pub, idx) => (
+                      <div key={idx} className="p-3 bg-neutral-50/70 dark:bg-neutral-900/40 rounded-xl border border-neutral-200/60 dark:border-neutral-800 space-y-1">
+                        <div className="flex flex-wrap items-baseline justify-between gap-1">
+                          <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                            {pub.title}
+                          </span>
+                          {pub.arxivLink && (
+                            <a
+                              href={pub.arxivLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-0.5"
+                            >
+                              <span>arXiv Preprint</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                          {pub.impactSummary}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Technical Keywords Cloud */}
+                <div className="space-y-2 pt-1">
+                  <h4 className="text-xs font-extrabold uppercase tracking-widest font-mono text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-cyan-500" />
+                    <span>ATS Technical Keywords Index</span>
+                  </h4>
+                  <div className="flex flex-wrap gap-1">
+                    {resume.technicalKeywords.map((kw, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 rounded text-[10px] font-mono border border-neutral-200/50 dark:border-neutral-800"
+                      >
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
