@@ -1,5 +1,119 @@
 [
   {
+    "jobId": "test-job-1788172712188",
+    "triggerId": 1788172712188,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1788172707188,
+    "endTime": 1788172712188,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1788172707188,
+        "endTime": 1788172708188,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "test-job-1788172697702",
+    "triggerId": 1788172697702,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1788172692702,
+    "endTime": 1788172697702,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1788172692702,
+        "endTime": 1788172693702,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "test-job-1788172693889",
+    "triggerId": 1788172693889,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1788172688889,
+    "endTime": 1788172693889,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1788172688889,
+        "endTime": 1788172689889,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
     "jobId": "test-job-9999",
     "triggerId": 1787918810105,
     "arxivInput": "2402.09854",
