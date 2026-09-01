@@ -22,7 +22,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "August 29, 2026",
     "createdAt": 1788006573779,
     "timestamp": 1788006573779,
-    "views": 400
+    "views": 399
   },
   {
     "title": "Artificial Anisotropy Induced Bound States in the Continuum for Integrated Photonic Waveguide",
@@ -106,7 +106,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "editorial-frontier-photonic-engines-8842",
     "slug": "frontier-photonic-engines-from-quantum-readouts-to-deep-tissue-imaging-8842",
     "date": "August 22, 2026",
-    "views": 468,
+    "views": 466,
     "isEditorEdition": true
   },
   {
@@ -127,7 +127,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1787340727569",
     "slug": "intensity-based-scattering-correction-enables-in-vivo-two-photon-imaging-beyond-1-mm-7569",
     "date": "August 21, 2026",
-    "views": 1316
+    "views": 1313
   },
   {
     "title": "The vanishing distance: a practical range boundary for dynamic wavefront shaping: A Rigorous Analysis of Quantum Mechanisms and Mathematical Foundations",
