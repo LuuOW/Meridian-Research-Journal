@@ -70,6 +70,19 @@ import {
   extractClientFingerprint,
   generateSecureChallenge
 } from "./src/lib/passkeyManager";
+import {
+  fetchLiveBinanceTickers,
+  fetchLiveBinanceDepth,
+  fetchLiveBinanceKlines,
+  fetchBinanceAccountInfo,
+  fetchBinanceOpenOrders,
+  executeBinanceTestOrder,
+  previewOrder,
+  getPublicDonationAddresses,
+  DEFAULT_TRACKED_SYMBOLS,
+  DEFAULT_SYMBOL_RULES,
+} from "./src/lib/binanceManager";
+
 
 
 dotenv.config();
@@ -2974,6 +2987,207 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
     console.error("Error generating AI LinkedIn post:", error);
     const fallback = generateFallbackLinkedInPost({ title, excerpt, content, tags, tone, blogUrl, blogId });
     return res.json(fallback);
+  }
+});
+
+// ==========================================
+// BINANCE TREASURY & DAILY WORK API ROUTES
+// ==========================================
+
+// 1. System Connectivity & API Status
+app.get("/api/binance/status", async (req, res) => {
+  const hasApiKey = Boolean(process.env.BINANCE_API_KEY && process.env.BINANCE_API_KEY.trim().length > 0);
+  const hasSecretKey = Boolean(process.env.BINANCE_SECRET_KEY && process.env.BINANCE_SECRET_KEY.trim().length > 0);
+  const baseEndpoint = process.env.BINANCE_BASE_URL || "https://api.binance.com";
+  const localTime = Date.now();
+
+  let connected = false;
+  let serverTime = localTime;
+  let latencyMs = 0;
+  let driftMs = 0;
+
+  try {
+    const start = Date.now();
+    const timeRes = await fetch(`${baseEndpoint}/api/v3/time`, { signal: AbortSignal.timeout(3500) });
+    latencyMs = Date.now() - start;
+    if (timeRes.ok) {
+      const timeData: any = await timeRes.json();
+      serverTime = timeData.serverTime || Date.now();
+      driftMs = serverTime - (localTime + latencyMs / 2);
+      connected = true;
+    }
+  } catch (_) {
+    // If external call is blocked, provide local timestamp
+  }
+
+  res.json({
+    configured: hasApiKey && hasSecretKey,
+    hasApiKey,
+    hasSecretKey,
+    connected,
+    serverTime,
+    localTime,
+    driftMs,
+    latencyMs,
+    baseEndpoint,
+  });
+});
+
+// 2. Real-time Market Tickers
+app.get("/api/binance/market/tickers", async (req, res) => {
+  try {
+    const symbolsParam = req.query.symbols as string | undefined;
+    const symbols = symbolsParam ? symbolsParam.split(",").map((s) => s.trim().toUpperCase()) : undefined;
+    const tickers = await fetchLiveBinanceTickers(symbols);
+    res.json({ success: true, tickers });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Failed to fetch market tickers" });
+  }
+});
+
+// 3. Real-time Order Book Depth
+app.get("/api/binance/market/depth", async (req, res) => {
+  try {
+    const symbol = ((req.query.symbol as string) || "BTCUSDT").toUpperCase();
+    const limit = Math.min(50, Math.max(5, parseInt(req.query.limit as string, 10) || 20));
+    const depth = await fetchLiveBinanceDepth(symbol, limit);
+    res.json({ success: true, depth });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Failed to fetch order book depth" });
+  }
+});
+
+// 4. Candlestick (Kline) Series with Technical Indicators (SMA & RSI)
+app.get("/api/binance/market/klines", async (req, res) => {
+  try {
+    const symbol = ((req.query.symbol as string) || "BTCUSDT").toUpperCase();
+    const interval = (req.query.interval as string) || "1h";
+    const limit = Math.min(100, Math.max(10, parseInt(req.query.limit as string, 10) || 24));
+    const klines = await fetchLiveBinanceKlines(symbol, interval, limit);
+    res.json({ success: true, symbol, interval, klines });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Failed to fetch klines" });
+  }
+});
+
+// 5. Authenticated Account & Spot Portfolio Balances
+app.get("/api/binance/account", async (req, res) => {
+  const apiKey = process.env.BINANCE_API_KEY;
+  const secretKey = process.env.BINANCE_SECRET_KEY;
+
+  if (!apiKey || !secretKey) {
+    // Return structured simulation portfolio for preview
+    const tickers = await fetchLiveBinanceTickers();
+    const btcPrice = tickers.find((t) => t.symbol === "BTCUSDT")?.price || 91850;
+    const ethPrice = tickers.find((t) => t.symbol === "ETHUSDT")?.price || 2680;
+    const solPrice = tickers.find((t) => t.symbol === "SOLUSDT")?.price || 194.5;
+    const bnbPrice = tickers.find((t) => t.symbol === "BNBUSDT")?.price || 648.2;
+
+    const simulatedBalances = [
+      { asset: "BTC", free: 0.125, locked: 0.0, total: 0.125, usdPrice: btcPrice, usdValue: 0.125 * btcPrice, btcValue: 0.125, allocationPercent: 55.4 },
+      { asset: "ETH", free: 1.85, locked: 0.0, total: 1.85, usdPrice: ethPrice, usdValue: 1.85 * ethPrice, btcValue: (1.85 * ethPrice) / btcPrice, allocationPercent: 24.1 },
+      { asset: "SOL", free: 12.0, locked: 0.0, total: 12.0, usdPrice: solPrice, usdValue: 12.0 * solPrice, btcValue: (12.0 * solPrice) / btcPrice, allocationPercent: 11.3 },
+      { asset: "BNB", free: 2.5, locked: 0.0, total: 2.5, usdPrice: bnbPrice, usdValue: 2.5 * bnbPrice, btcValue: (2.5 * bnbPrice) / btcPrice, allocationPercent: 7.8 },
+      { asset: "USDT", free: 320.0, locked: 0.0, total: 320.0, usdPrice: 1.0, usdValue: 320.0, btcValue: 320 / btcPrice, allocationPercent: 1.4 },
+    ];
+
+    const totalUsd = simulatedBalances.reduce((acc, b) => acc + b.usdValue, 0);
+    const totalBtc = totalUsd / btcPrice;
+
+    return res.json({
+      success: true,
+      isSimulation: true,
+      account: {
+        makerCommission: 10,
+        takerCommission: 10,
+        canTrade: true,
+        canWithdraw: false,
+        canDeposit: true,
+        updateTime: Date.now(),
+        accountType: "SPOT (SIMULATION - Configure BINANCE_API_KEY)",
+        balances: simulatedBalances,
+        totalUsdValue: totalUsd,
+        totalBtcValue: totalBtc,
+        nonZeroCount: simulatedBalances.length,
+      },
+    });
+  }
+
+  try {
+    const account = await fetchBinanceAccountInfo(apiKey, secretKey);
+    res.json({ success: true, isSimulation: false, account });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Failed to fetch Binance account data" });
+  }
+});
+
+// 6. Authenticated Open Orders
+app.get("/api/binance/orders/open", async (req, res) => {
+  const apiKey = process.env.BINANCE_API_KEY;
+  const secretKey = process.env.BINANCE_SECRET_KEY;
+
+  if (!apiKey || !secretKey) {
+    return res.json({ success: true, isSimulation: true, orders: [] });
+  }
+
+  try {
+    const symbol = req.query.symbol as string | undefined;
+    const orders = await fetchBinanceOpenOrders(apiKey, secretKey, symbol);
+    res.json({ success: true, isSimulation: false, orders });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Failed to fetch open orders" });
+  }
+});
+
+// 7. Pre-flight Trade Order Preview & Fee Validation
+app.post("/api/binance/order/preview", async (req, res) => {
+  try {
+    const { symbol = "BTCUSDT", side = "BUY", type = "LIMIT", quantity = 0.01, price } = req.body;
+    const tickers = await fetchLiveBinanceTickers([symbol, "BNBUSDT"]);
+    const currentPrice = tickers.find((t) => t.symbol === symbol)?.price || price || 91850;
+    const bnbPrice = tickers.find((t) => t.symbol === "BNBUSDT")?.price || 648.2;
+
+    const preview = previewOrder(symbol, side, type, parseFloat(quantity), price ? parseFloat(price) : undefined, currentPrice, undefined, bnbPrice);
+    res.json({ success: true, preview });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Failed to preview order" });
+  }
+});
+
+// 8. Test Order Execution against Binance Matching Engine
+app.post("/api/binance/order/test", async (req, res) => {
+  try {
+    const apiKey = process.env.BINANCE_API_KEY || "";
+    const secretKey = process.env.BINANCE_SECRET_KEY || "";
+    const { symbol = "BTCUSDT", side = "BUY", type = "LIMIT", quantity = 0.01, price, timeInForce = "GTC" } = req.body;
+
+    const result = await executeBinanceTestOrder(apiKey, secretKey, {
+      symbol,
+      side,
+      type,
+      quantity: parseFloat(quantity),
+      price: price ? parseFloat(price) : undefined,
+      timeInForce,
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Order test execution failed" });
+  }
+});
+
+// 9. Public Research Donation Addresses
+app.get("/api/binance/donations", (req, res) => {
+  try {
+    const donations = getPublicDonationAddresses();
+    res.json({
+      success: true,
+      title: "Meridian Independent Research Treasury",
+      description: "Support open-access arXiv synthesis, quantitative editorial reviews, and distributed math compute.",
+      donations,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Failed to load donation addresses" });
   }
 });
 

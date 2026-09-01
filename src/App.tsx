@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download, FileEdit, FileText, Palette, Trash2 } from "lucide-react";
+import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download, FileEdit, FileText, Palette, Trash2, Coins, Heart } from "lucide-react";
 
 import { BlogPost, GenerationJob } from "./types";
 import { PRELOADED_BLOGS } from "./data";
@@ -39,6 +39,8 @@ import { SearchFilterBar } from "./components/SearchFilterBar";
 import { filterBlogsIntelligently } from "./lib/autocompleteUtils";
 import { GoogleAdSlot } from "./components/GoogleAdSlot";
 import { AdSenseRevenueModal } from "./components/AdSenseRevenueModal";
+import { BinanceTerminalModal } from "./components/BinanceTerminalModal";
+import { DonationModal } from "./components/DonationModal";
 import {
   calculateCatalogRevenue,
   calculateArticleRevenue,
@@ -87,6 +89,8 @@ export default function App() {
   }, [searchQuery, isSearching]);
   const [isLinkedInModalOpen, setIsLinkedInModalOpen] = useState(false);
   const [isAdSenseModalOpen, setIsAdSenseModalOpen] = useState(false);
+  const [isBinanceModalOpen, setIsBinanceModalOpen] = useState(false);
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);

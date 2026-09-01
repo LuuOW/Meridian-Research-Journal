@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, Compass, Sun, Moon, Activity, Loader2, DollarSign, ChevronDown, Wrench, ArrowUpRight, FileText } from "lucide-react";
+import { Sparkles, Compass, Sun, Moon, Activity, Loader2, DollarSign, ChevronDown, Wrench, ArrowUpRight, FileText, Coins, Heart, QrCode } from "lucide-react";
 import { GenerationJob } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
 
@@ -7,6 +7,8 @@ interface NavbarProps {
   onOpenCreate: () => void;
   onOpenAbout: () => void;
   onOpenResume?: () => void;
+  onOpenBinance?: () => void;
+  onOpenDonations?: () => void;
   isEditorMode: boolean;
   onToggleEditorMode: () => void;
   onHome?: () => void;
@@ -22,6 +24,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCreate, 
   onOpenAbout, 
   onOpenResume,
+  onOpenBinance,
+  onOpenDonations,
   isEditorMode, 
   onToggleEditorMode,
   onHome,
