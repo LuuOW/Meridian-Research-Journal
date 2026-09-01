@@ -22,7 +22,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "August 29, 2026",
     "createdAt": 1788006573779,
     "timestamp": 1788006573779,
-    "views": 399
+    "views": 400
   },
   {
     "title": "Artificial Anisotropy Induced Bound States in the Continuum for Integrated Photonic Waveguide",
@@ -85,7 +85,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "August 24, 2026",
     "createdAt": 1787570419854,
     "timestamp": 1787570419854,
-    "views": 811
+    "views": 1542
   },
   {
     "title": "Frontier Photonic Engines: From Quantum Readouts to Deep-Tissue Imaging",
@@ -106,7 +106,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "editorial-frontier-photonic-engines-8842",
     "slug": "frontier-photonic-engines-from-quantum-readouts-to-deep-tissue-imaging-8842",
     "date": "August 22, 2026",
-    "views": 466,
+    "views": 468,
     "isEditorEdition": true
   },
   {
@@ -127,7 +127,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1787340727569",
     "slug": "intensity-based-scattering-correction-enables-in-vivo-two-photon-imaging-beyond-1-mm-7569",
     "date": "August 21, 2026",
-    "views": 1313
+    "views": 1316
   },
   {
     "title": "The vanishing distance: a practical range boundary for dynamic wavefront shaping: A Rigorous Analysis of Quantum Mechanisms and Mathematical Foundations",
@@ -167,7 +167,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1787148362988",
     "slug": "topological-symmetry-breaking-and-the-quantized-conservation-of-pseudoangular-momentum-in-valley-polarized-lattice-resonances-2988",
     "date": "August 19, 2026",
-    "views": 1823
+    "views": 1822
   },
   {
     "title": "Algebraic Resilience in the Adversarial Regime: A Formal Framework for Fault-Tolerant Quantum Circuits",
