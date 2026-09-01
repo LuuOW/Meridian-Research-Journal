@@ -22,7 +22,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "September 1, 2026",
     "createdAt": 1788304605272,
     "timestamp": 1788304605272,
-    "views": 733
+    "views": 734
   },
   {
     "id": "blog-1788302817617-104kn",
