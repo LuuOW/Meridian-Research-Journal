@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { initializeApp } from "firebase/app";
 import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import nodemailer from "nodemailer";
+import { MicroserviceRegistry } from "./src/services/MicroserviceRegistry";
 import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml, extractSvgString } from "./src/lib/arxivUtils";
 import { generateProceduralBannerSvg } from "./src/lib/svgBannerGenerator";
 import { generateScientificArticleFromArxiv } from "./src/lib/paperGenerationEngine";
@@ -3188,6 +3189,68 @@ app.get("/api/binance/donations", (req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message || "Failed to load donation addresses" });
+  }
+});
+
+// ------------------------------------------------------------------------------------------------
+// MERIDIAN MICROSERVICES ARCHITECTURE MANAGEMENT ENDPOINTS
+// ------------------------------------------------------------------------------------------------
+const microservicesRegistry = MicroserviceRegistry.getInstance();
+microservicesRegistry.initializeAll().catch((err) => console.error("[Microservices] Initialization warning:", err));
+
+// Aggregated health and diagnostics
+app.get("/api/services/health", async (req, res) => {
+  try {
+    const health = await microservicesRegistry.getAggregatedHealth();
+    res.json({ success: true, ...health });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Cross-device and cross-IP state synchronization
+app.post("/api/services/sync-cross-device", async (req, res) => {
+  try {
+    const clientIp = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1").toString().split(",")[0].trim();
+    const payload = { ...req.body, ipAddress: req.body.ipAddress || clientIp };
+    const syncRes = await microservicesRegistry.getPersistenceService().syncCrossDevice(payload);
+    res.json(syncRes);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || "Cross-device sync failed" });
+  }
+});
+
+// Multi-tier snapshots management
+app.get("/api/services/snapshots", (req, res) => {
+  try {
+    const snapshots = microservicesRegistry.getPersistenceService().listSnapshots();
+    res.json({ success: true, snapshots });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Multi-tier snapshot rollback
+app.post("/api/services/snapshots/rollback", async (req, res) => {
+  try {
+    const { filename } = req.body;
+    if (!filename) {
+      return res.status(400).json({ success: false, error: "filename required" });
+    }
+    const rollbackRes = await microservicesRegistry.getPersistenceService().rollbackToSnapshot(filename);
+    res.json(rollbackRes);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Registered roaming devices list
+app.get("/api/services/devices", (req, res) => {
+  try {
+    const devices = microservicesRegistry.getPersistenceService().getRegisteredDevices();
+    res.json({ success: true, devices });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

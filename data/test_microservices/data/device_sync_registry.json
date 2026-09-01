@@ -1,0 +1,13 @@
+[
+  {
+    "deviceId": "device_ipad_pro_01",
+    "deviceName": "Lucas's iPad Pro",
+    "browser": "fp_ipad_safari",
+    "os": "Cross-Platform",
+    "ipAddress": "166.199.12.84",
+    "lastSyncTimestamp": 1788302381340,
+    "fingerprintHash": "fp_ipad_safari",
+    "version": "2.5.0",
+    "pendingChangesCount": 2
+  }
+]

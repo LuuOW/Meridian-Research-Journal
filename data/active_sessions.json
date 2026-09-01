@@ -1,0 +1,68 @@
+[
+  {
+    "sessionId": "sess_k15bnhvvrkmtj8x3da",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302136142,
+    "expiresAt": 1788388536142,
+    "lastActiveAt": 1788302136142,
+    "authorized": true,
+    "windowReloadCount": 0,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_u4oqltbdn4qmtj8x3dc",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302136144,
+    "expiresAt": 1788388536144,
+    "lastActiveAt": 1788302136144,
+    "authorized": true,
+    "windowReloadCount": 1,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_hgjrocqrmocmtj8xlrc",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302159976,
+    "expiresAt": 1788388559976,
+    "lastActiveAt": 1788302159976,
+    "authorized": true,
+    "windowReloadCount": 0,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_fvio96rzr3mtj8xlrd",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302159977,
+    "expiresAt": 1788388559977,
+    "lastActiveAt": 1788302159977,
+    "authorized": true,
+    "windowReloadCount": 1,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_pd183zbk8pgmtj8y2jo",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302181732,
+    "expiresAt": 1788388581732,
+    "lastActiveAt": 1788302181732,
+    "authorized": true,
+    "windowReloadCount": 0,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_pndkb4bd81mtj8y2jp",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302181733,
+    "expiresAt": 1788388581733,
+    "lastActiveAt": 1788302181733,
+    "authorized": true,
+    "windowReloadCount": 1,
+    "editorPassword": "meridian"
+  }
+]

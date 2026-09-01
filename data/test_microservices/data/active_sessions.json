@@ -1,0 +1,90 @@
+[
+  {
+    "sessionId": "sess_18o0lmohvzmmtj8ze63",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302243451,
+    "expiresAt": 1788388643451,
+    "lastActiveAt": 1788302243451,
+    "authorized": true,
+    "windowReloadCount": 0,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_6tavt5wju3wmtj8ze65",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302243453,
+    "expiresAt": 1788388643453,
+    "lastActiveAt": 1788302243454,
+    "authorized": true,
+    "windowReloadCount": 1,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_gusy0d2q25fmtj908rr",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302283111,
+    "expiresAt": 1788388683111,
+    "lastActiveAt": 1788302283111,
+    "authorized": true,
+    "windowReloadCount": 0,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_8vzdg8wpp6omtj908rs",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302283112,
+    "expiresAt": 1788388683112,
+    "lastActiveAt": 1788302283113,
+    "authorized": true,
+    "windowReloadCount": 1,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_z4ic4sk5x0pmtj91hht",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302341073,
+    "expiresAt": 1788388741073,
+    "lastActiveAt": 1788302341073,
+    "authorized": true,
+    "windowReloadCount": 0,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_5t6s1wkma5fmtj91hhu",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302341074,
+    "expiresAt": 1788388741074,
+    "lastActiveAt": 1788302341075,
+    "authorized": true,
+    "windowReloadCount": 1,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_ql9pqcohw4qmtj92faa",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302384866,
+    "expiresAt": 1788388784866,
+    "lastActiveAt": 1788302384866,
+    "authorized": true,
+    "windowReloadCount": 0,
+    "editorPassword": "meridian"
+  },
+  {
+    "sessionId": "sess_0lujzgz5etrmtj92fab",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "issuedAt": 1788302384867,
+    "expiresAt": 1788388784867,
+    "lastActiveAt": 1788302384867,
+    "authorized": true,
+    "windowReloadCount": 1,
+    "editorPassword": "meridian"
+  }
+]

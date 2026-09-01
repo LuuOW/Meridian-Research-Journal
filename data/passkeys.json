@@ -1,0 +1,11 @@
+[
+  {
+    "id": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...",
+    "createdAt": 1788302136141,
+    "lastUsedAt": 1788302181733,
+    "authCount": 9,
+    "biometricVerified": true
+  }
+]
