@@ -85,7 +85,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "August 24, 2026",
     "createdAt": 1787570419854,
     "timestamp": 1787570419854,
-    "views": 1542
+    "views": 811
   },
   {
     "title": "Frontier Photonic Engines: From Quantum Readouts to Deep-Tissue Imaging",
@@ -167,7 +167,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1787148362988",
     "slug": "topological-symmetry-breaking-and-the-quantized-conservation-of-pseudoangular-momentum-in-valley-polarized-lattice-resonances-2988",
     "date": "August 19, 2026",
-    "views": 1822
+    "views": 1823
   },
   {
     "title": "Algebraic Resilience in the Adversarial Regime: A Formal Framework for Fault-Tolerant Quantum Circuits",
