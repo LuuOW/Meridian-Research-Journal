@@ -3,23 +3,22 @@ import { ensureAnimatedSvg } from "./lib/svgUtils";
 
 const RAW_PRELOADED_BLOGS: BlogPost[] = [
   {
-    "id": "blog-test-1",
-    "title": "Non-Hermitian Quantum Mechanics & Exceptional Points",
-    "slug": "non-hermitian-quantum-mechanics",
-    "excerpt": "Comprehensive study of PT-symmetric open quantum systems.",
-    "content": "## Hamiltonian Dynamics\n\n$$\\hat{H} = \\begin{pmatrix} r e^{i\\theta} & J \\\\ J & r e^{-i\\theta} \\end{pmatrix}$$",
+    "id": "blog-device-new",
+    "title": "Topological Insulators and Chern Numbers",
+    "slug": "topological-insulators-chern",
+    "excerpt": "Calculation of Berry curvature and topological Chern invariant.",
+    "content": "$$\\mathcal{C} = \\frac{1}{2\\pi} \\int_{\\text{BZ}} \\mathcal{F} \\, d^2k$$",
     "author": "Lucas Kempe",
-    "date": "2026-08-30",
-    "readingTime": "9 min read",
-    "arxivLink": "https://arxiv.org/abs/2608.12345",
-    "bannerSvg": "<svg><text>Quantum</text></svg>",
+    "date": "2026-09-01",
+    "readingTime": "6 min read",
+    "arxivLink": "https://arxiv.org/abs/2609.99999",
+    "bannerSvg": "<svg></svg>",
     "tags": [
-      "Quantum Mechanics",
-      "Spectral Theory"
+      "Topology"
     ],
-    "views": 399,
-    "timestamp": 1725000000000,
-    "createdAt": 1725000000000
+    "views": 10,
+    "timestamp": 1725200000000,
+    "createdAt": 1725200000000
   },
   {
     "id": "blog-test-2",
@@ -39,6 +38,26 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "views": 120,
     "timestamp": 1725100000000,
     "createdAt": 1725100000000
+  },
+  {
+    "id": "blog-test-1",
+    "title": "Non-Hermitian Quantum Mechanics & Exceptional Points",
+    "slug": "non-hermitian-quantum-mechanics",
+    "excerpt": "Comprehensive study of PT-symmetric open quantum systems.",
+    "content": "## Hamiltonian Dynamics\n\n$$\\hat{H} = \\begin{pmatrix} r e^{i\\theta} & J \\\\ J & r e^{-i\\theta} \\end{pmatrix}$$",
+    "author": "Lucas Kempe",
+    "date": "2026-08-30",
+    "readingTime": "9 min read",
+    "arxivLink": "https://arxiv.org/abs/2608.12345",
+    "bannerSvg": "<svg><text>Quantum</text></svg>",
+    "tags": [
+      "Quantum Mechanics",
+      "Spectral Theory",
+      "Optics"
+    ],
+    "views": 450,
+    "timestamp": 1725200000000,
+    "createdAt": 1725000000000
   }
 ];
 
