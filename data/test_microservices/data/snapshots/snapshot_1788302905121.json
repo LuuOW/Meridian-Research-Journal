@@ -1,6 +1,6 @@
 [
   {
-    "id": "blog-1788302959704-mrr38",
+    "id": "blog-1788302905117-7q84u",
     "title": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
     "slug": "diagnostic-foundation-for-evaluating-llms-research-integrity",
     "excerpt": "Language models are increasingly deployed as co-scientists, yet their ability to uphold research integrity under institutional pressure remains unmeasured. We introduce IntegrityBench, a ben...",
@@ -15,8 +15,8 @@
       "Mathematical Physics",
       "Algorithms"
     ],
-    "createdAt": 1788302959705,
-    "timestamp": 1788302959705,
+    "createdAt": 1788302905117,
+    "timestamp": 1788302905117,
     "views": 1
   },
   {

@@ -120,17 +120,47 @@ export function generateSitemapXml(blogs: BlogPost[], domain: string = "https://
 /**
  * Updates custom_blogs.json, src/data.ts, and public/sitemap.xml on local disk
  */
-export function writeLocalBlogFiles(blogs: BlogPost[]): boolean {
+export function writeLocalBlogFiles(blogs: BlogPost[], targetBaseDir?: string): boolean {
   try {
-    const customBlogsPath = path.join(process.cwd(), "custom_blogs.json");
-    fs.writeFileSync(customBlogsPath, JSON.stringify(blogs, null, 2), "utf-8");
+    const baseDir = targetBaseDir || process.cwd();
+    const customBlogsPath = path.join(baseDir, "custom_blogs.json");
+    
+    // Safety guard: if writing to root, merge with existing snapshot archive if incoming is small
+    let finalBlogs = blogs;
+    if (baseDir === process.cwd()) {
+      let existing: BlogPost[] = [];
+      try {
+        if (fs.existsSync(customBlogsPath)) {
+          existing = JSON.parse(fs.readFileSync(customBlogsPath, "utf-8"));
+        }
+      } catch {}
 
-    const dataTsPath = path.join(process.cwd(), "src", "data.ts");
-    const dataTsContent = generateDataTsContent(blogs);
+      if (existing.length > blogs.length) {
+        const map = new Map<string, BlogPost>();
+        for (const b of existing) {
+          const key = b.slug || b.id || b.title;
+          if (key) map.set(key, b);
+        }
+        for (const b of blogs) {
+          const key = b.slug || b.id || b.title;
+          if (key) map.set(key, { ...map.get(key), ...b });
+        }
+        finalBlogs = Array.from(map.values());
+      }
+    }
+
+    fs.writeFileSync(customBlogsPath, JSON.stringify(finalBlogs, null, 2), "utf-8");
+
+    const dataTsPath = path.join(baseDir, "src", "data.ts");
+    const dataTsContent = generateDataTsContent(finalBlogs);
     fs.writeFileSync(dataTsPath, dataTsContent, "utf-8");
 
-    const sitemapContent = generateSitemapXml(blogs);
-    const publicSitemapPath = path.join(process.cwd(), "public", "sitemap.xml");
+    const sitemapContent = generateSitemapXml(finalBlogs);
+    const publicDir = path.join(baseDir, "public");
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
+    }
+    const publicSitemapPath = path.join(publicDir, "sitemap.xml");
     fs.writeFileSync(publicSitemapPath, sitemapContent, "utf-8");
     return true;
   } catch (err) {

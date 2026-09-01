@@ -146,29 +146,52 @@ export class PersistenceMicroservice implements IMicroservice {
    * Reads blogs from custom_blogs.json, falling back to data.ts or most recent snapshot
    */
   public readBlogs(): BlogPost[] {
+    const map = new Map<string, BlogPost>();
+
+    // 1. Read from snapshots (historical archive)
+    const snapshots = this.listSnapshots();
+    for (const snap of snapshots) {
+      try {
+        const raw = fs.readFileSync(snap.path, "utf-8");
+        const list: BlogPost[] = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          for (const b of list) {
+            const key = b.slug || b.id || b.title;
+            if (key && !map.has(key)) {
+              map.set(key, b);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Read from custom_blogs.json (overriding / augmenting)
     try {
       if (fs.existsSync(this.customBlogsFile)) {
         const raw = fs.readFileSync(this.customBlogsFile, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        const parsed: BlogPost[] = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const b of parsed) {
+            const key = b.slug || b.id || b.title;
+            if (key) {
+              const existing = map.get(key);
+              map.set(key, { ...existing, ...b });
+            }
+          }
         }
       }
     } catch (err) {
       console.error(`[${this.serviceName}] Error reading custom_blogs.json:`, err);
     }
 
-    // Fallback to latest snapshot
-    const snapshots = this.listSnapshots();
-    if (snapshots.length > 0) {
-      try {
-        const latest = snapshots[0];
-        const raw = fs.readFileSync(latest.path, "utf-8");
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch {}
+    const all = Array.from(map.values());
+    if (all.length > 0) {
+      all.sort((a, b) => {
+        const timeA = a.createdAt || (a.date ? new Date(a.date).getTime() : 0) || 0;
+        const timeB = b.createdAt || (b.date ? new Date(b.date).getTime() : 0) || 0;
+        return timeB - timeA;
+      });
+      return all;
     }
 
     return [];
@@ -182,6 +205,31 @@ export class PersistenceMicroservice implements IMicroservice {
     reason: string = "microservice sync"
   ): Promise<{ success: boolean; status: MultiTierStorageStatus }> {
     this.ensureDirectories();
+
+    // Union merge with existing library to avoid accidental truncations
+    const mergedMap = new Map<string, BlogPost>();
+    const existing = this.readBlogs();
+    for (const b of existing) {
+      const key = b.slug || b.id || b.title;
+      if (key) mergedMap.set(key, b);
+    }
+    for (const b of blogs) {
+      const key = b.slug || b.id || b.title;
+      if (key) {
+        const prev = mergedMap.get(key);
+        mergedMap.set(key, { ...prev, ...b });
+      }
+    }
+
+    const mergedBlogs = Array.from(mergedMap.values());
+    mergedBlogs.sort((a, b) => {
+      const timeA = a.createdAt || (a.date ? new Date(a.date).getTime() : 0) || 0;
+      const timeB = b.createdAt || (b.date ? new Date(b.date).getTime() : 0) || 0;
+      return timeB - timeA;
+    });
+
+    const targetBlogs = mergedBlogs.length >= blogs.length ? mergedBlogs : blogs;
+
     const status: MultiTierStorageStatus = {
       customBlogsJson: false,
       dataTs: false,
@@ -197,7 +245,7 @@ export class PersistenceMicroservice implements IMicroservice {
 
     // Tier 1: custom_blogs.json (Local dynamic JSON)
     try {
-      fs.writeFileSync(this.customBlogsFile, JSON.stringify(blogs, null, 2), "utf-8");
+      fs.writeFileSync(this.customBlogsFile, JSON.stringify(targetBlogs, null, 2), "utf-8");
       status.customBlogsJson = true;
     } catch (err) {
       console.error(`[${this.serviceName}] Tier 1 (custom_blogs.json) write failed:`, err);
@@ -205,7 +253,7 @@ export class PersistenceMicroservice implements IMicroservice {
 
     // Tier 2: src/data.ts (Compiled TypeScript static source)
     try {
-      const dataTsContent = generateDataTsContent(blogs);
+      const dataTsContent = generateDataTsContent(targetBlogs);
       fs.writeFileSync(this.dataTsFile, dataTsContent, "utf-8");
       status.dataTs = true;
     } catch (err) {
@@ -214,7 +262,7 @@ export class PersistenceMicroservice implements IMicroservice {
 
     // Tier 3: Immutable timestamped snapshot
     try {
-      const snapPath = this.createSnapshot(blogs);
+      const snapPath = this.createSnapshot(targetBlogs);
       if (snapPath) status.snapshot = true;
     } catch (err) {
       console.error(`[${this.serviceName}] Tier 3 (snapshot) write failed:`, err);
@@ -222,7 +270,7 @@ export class PersistenceMicroservice implements IMicroservice {
 
     // Tier 4: public/sitemap.xml (SEO indexing)
     try {
-      const sitemapContent = generateSitemapXml(blogs);
+      const sitemapContent = generateSitemapXml(targetBlogs);
       fs.writeFileSync(this.sitemapFile, sitemapContent, "utf-8");
       status.sitemap = true;
     } catch (err) {

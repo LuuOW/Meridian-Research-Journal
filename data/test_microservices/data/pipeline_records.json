@@ -1,5 +1,329 @@
 [
   {
+    "jobId": "gen_1788302959687",
+    "triggerId": 1788302961323,
+    "arxivInput": "2608.12345",
+    "arxivId": "2608.12345",
+    "paperTitle": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
+    "authors": "Yash Tripathi, Silu Sharma, Sai Sidhanth Manoharan Jayanthi, Shivank Garg, Lin Li",
+    "status": "completed",
+    "startTime": 1788302959687,
+    "endTime": 1788302961323,
+    "totalDurationMs": 1636,
+    "modelUsed": "procedural-scholar-engine",
+    "provider": "procedural",
+    "tokenUsage": {
+      "promptTokens": 0,
+      "candidateTokens": 0,
+      "totalTokens": 0,
+      "estimatedCostUsd": 0
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "ArXiv Metadata Ingestion",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1788302959687,
+        "endTime": 1788302959704,
+        "durationMs": 17,
+        "details": "Source: arxiv_api"
+      },
+      {
+        "stepId": 2,
+        "stepName": "Scholarly Article Synthesis",
+        "category": "ai_inference",
+        "status": "completed",
+        "startTime": 1788302959704,
+        "endTime": 1788302959705,
+        "durationMs": 1,
+        "details": "Model: procedural-scholar-engine"
+      },
+      {
+        "stepId": 3,
+        "stepName": "KaTeX AST & Formula Verification",
+        "category": "ast_validation",
+        "status": "completed",
+        "startTime": 1788302959705,
+        "endTime": 1788302959705,
+        "durationMs": 0,
+        "details": "Validated 4 formulas"
+      },
+      {
+        "stepId": 4,
+        "stepName": "Multi-Tier 6-Tier Persistence Sync",
+        "category": "persistence",
+        "status": "completed",
+        "startTime": 1788302959705,
+        "endTime": 1788302961323,
+        "durationMs": 1618
+      }
+    ],
+    "resultingBlog": {
+      "id": "blog-1788302959704-mrr38",
+      "slug": "diagnostic-foundation-for-evaluating-llms-research-integrity",
+      "title": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
+      "contentLength": 1418,
+      "latexFormulaCount": 4,
+      "tags": [
+        "Quantum Mechanics",
+        "Mathematical Physics",
+        "Algorithms"
+      ]
+    },
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": true,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "gen_1788302905104",
+    "triggerId": 1788302907056,
+    "arxivInput": "2608.12345",
+    "arxivId": "2608.12345",
+    "paperTitle": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
+    "authors": "Yash Tripathi, Silu Sharma, Sai Sidhanth Manoharan Jayanthi, Shivank Garg, Lin Li",
+    "status": "completed",
+    "startTime": 1788302905104,
+    "endTime": 1788302907056,
+    "totalDurationMs": 1952,
+    "modelUsed": "procedural-scholar-engine",
+    "provider": "procedural",
+    "tokenUsage": {
+      "promptTokens": 0,
+      "candidateTokens": 0,
+      "totalTokens": 0,
+      "estimatedCostUsd": 0
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "ArXiv Metadata Ingestion",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1788302905104,
+        "endTime": 1788302905117,
+        "durationMs": 13,
+        "details": "Source: arxiv_api"
+      },
+      {
+        "stepId": 2,
+        "stepName": "Scholarly Article Synthesis",
+        "category": "ai_inference",
+        "status": "completed",
+        "startTime": 1788302905117,
+        "endTime": 1788302905117,
+        "durationMs": 0,
+        "details": "Model: procedural-scholar-engine"
+      },
+      {
+        "stepId": 3,
+        "stepName": "KaTeX AST & Formula Verification",
+        "category": "ast_validation",
+        "status": "completed",
+        "startTime": 1788302905117,
+        "endTime": 1788302905117,
+        "durationMs": 0,
+        "details": "Validated 4 formulas"
+      },
+      {
+        "stepId": 4,
+        "stepName": "Multi-Tier 6-Tier Persistence Sync",
+        "category": "persistence",
+        "status": "completed",
+        "startTime": 1788302905117,
+        "endTime": 1788302907056,
+        "durationMs": 1939
+      }
+    ],
+    "resultingBlog": {
+      "id": "blog-1788302905117-7q84u",
+      "slug": "diagnostic-foundation-for-evaluating-llms-research-integrity",
+      "title": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
+      "contentLength": 1418,
+      "latexFormulaCount": 4,
+      "tags": [
+        "Quantum Mechanics",
+        "Mathematical Physics",
+        "Algorithms"
+      ]
+    },
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": true,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "gen_1788302875230",
+    "triggerId": 1788302876842,
+    "arxivInput": "2608.12345",
+    "arxivId": "2608.12345",
+    "paperTitle": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
+    "authors": "Yash Tripathi, Silu Sharma, Sai Sidhanth Manoharan Jayanthi, Shivank Garg, Lin Li",
+    "status": "completed",
+    "startTime": 1788302875230,
+    "endTime": 1788302876842,
+    "totalDurationMs": 1612,
+    "modelUsed": "procedural-scholar-engine",
+    "provider": "procedural",
+    "tokenUsage": {
+      "promptTokens": 0,
+      "candidateTokens": 0,
+      "totalTokens": 0,
+      "estimatedCostUsd": 0
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "ArXiv Metadata Ingestion",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1788302875230,
+        "endTime": 1788302875240,
+        "durationMs": 10,
+        "details": "Source: arxiv_api"
+      },
+      {
+        "stepId": 2,
+        "stepName": "Scholarly Article Synthesis",
+        "category": "ai_inference",
+        "status": "completed",
+        "startTime": 1788302875240,
+        "endTime": 1788302875241,
+        "durationMs": 1,
+        "details": "Model: procedural-scholar-engine"
+      },
+      {
+        "stepId": 3,
+        "stepName": "KaTeX AST & Formula Verification",
+        "category": "ast_validation",
+        "status": "completed",
+        "startTime": 1788302875241,
+        "endTime": 1788302875241,
+        "durationMs": 0,
+        "details": "Validated 4 formulas"
+      },
+      {
+        "stepId": 4,
+        "stepName": "Multi-Tier 6-Tier Persistence Sync",
+        "category": "persistence",
+        "status": "completed",
+        "startTime": 1788302875241,
+        "endTime": 1788302876842,
+        "durationMs": 1601
+      }
+    ],
+    "resultingBlog": {
+      "id": "blog-1788302875240-r1ts1",
+      "slug": "diagnostic-foundation-for-evaluating-llms-research-integrity",
+      "title": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
+      "contentLength": 1418,
+      "latexFormulaCount": 4,
+      "tags": [
+        "Quantum Mechanics",
+        "Mathematical Physics",
+        "Algorithms"
+      ]
+    },
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": true,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "gen_1788302817604",
+    "triggerId": 1788302819186,
+    "arxivInput": "2608.12345",
+    "arxivId": "2608.12345",
+    "paperTitle": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
+    "authors": "Yash Tripathi, Silu Sharma, Sai Sidhanth Manoharan Jayanthi, Shivank Garg, Lin Li",
+    "status": "completed",
+    "startTime": 1788302817604,
+    "endTime": 1788302819186,
+    "totalDurationMs": 1582,
+    "modelUsed": "procedural-scholar-engine",
+    "provider": "procedural",
+    "tokenUsage": {
+      "promptTokens": 0,
+      "candidateTokens": 0,
+      "totalTokens": 0,
+      "estimatedCostUsd": 0
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "ArXiv Metadata Ingestion",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1788302817604,
+        "endTime": 1788302817617,
+        "durationMs": 13,
+        "details": "Source: arxiv_api"
+      },
+      {
+        "stepId": 2,
+        "stepName": "Scholarly Article Synthesis",
+        "category": "ai_inference",
+        "status": "completed",
+        "startTime": 1788302817617,
+        "endTime": 1788302817617,
+        "durationMs": 0,
+        "details": "Model: procedural-scholar-engine"
+      },
+      {
+        "stepId": 3,
+        "stepName": "KaTeX AST & Formula Verification",
+        "category": "ast_validation",
+        "status": "completed",
+        "startTime": 1788302817617,
+        "endTime": 1788302817617,
+        "durationMs": 0,
+        "details": "Validated 4 formulas"
+      },
+      {
+        "stepId": 4,
+        "stepName": "Multi-Tier 6-Tier Persistence Sync",
+        "category": "persistence",
+        "status": "completed",
+        "startTime": 1788302817618,
+        "endTime": 1788302819186,
+        "durationMs": 1568
+      }
+    ],
+    "resultingBlog": {
+      "id": "blog-1788302817617-104kn",
+      "slug": "diagnostic-foundation-for-evaluating-llms-research-integrity",
+      "title": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
+      "contentLength": 1418,
+      "latexFormulaCount": 4,
+      "tags": [
+        "Quantum Mechanics",
+        "Mathematical Physics",
+        "Algorithms"
+      ]
+    },
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": true,
+      "sitemapXml": true
+    }
+  },
+  {
     "jobId": "gen_1788302384914",
     "triggerId": 1788302386773,
     "arxivInput": "2608.12345",
