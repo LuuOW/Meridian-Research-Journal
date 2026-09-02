@@ -2,8 +2,20 @@ import fs from "fs";
 import path from "path";
 
 function restoreAllArticles() {
-  const snapPath = path.join(process.cwd(), "data", "snapshots", "snapshot_1788300423558.json");
-  const snap = JSON.parse(fs.readFileSync(snapPath, "utf8"));
+  const snapDir = path.join(process.cwd(), "data", "snapshots");
+  let snapshotBlogs = [];
+  if (fs.existsSync(snapDir)) {
+    const files = fs.readdirSync(snapDir).filter(f => f.endsWith(".json"));
+    for (const f of files) {
+      try {
+        const raw = fs.readFileSync(path.join(snapDir, f), "utf8");
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          snapshotBlogs.push(...list);
+        }
+      } catch {}
+    }
+  }
 
   let current = [];
   try {
@@ -19,7 +31,7 @@ function restoreAllArticles() {
   }
 
   // Add all snapshot articles
-  for (const b of snap) {
+  for (const b of snapshotBlogs) {
     const key = b.slug || b.id || b.title;
     if (key) {
       if (!map.has(key)) {

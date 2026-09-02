@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://ask-meridian.uk/</loc>
     <lastmod>2026-09-02</lastmod>
@@ -31,6 +31,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://ask-meridian.uk/blog/towards-optimal-quantum-estimators-for-state-frame-potential-9854</loc>
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://ask-meridian.uk/blog/artificial-anisotropy-induced-bound-states-in-the-continuum-for-integrated-photonic-waveguide-4879</loc>
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
@@ -38,12 +44,6 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/classical-versus-non-classical-photon-states-for-detecting-vacuum-non-linearity-a-rigorous-analysis-of-quantum-mechanisms-and-mathematical-foundations-0431</loc>
-    <lastmod>2026-08-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/towards-optimal-quantum-estimators-for-state-frame-potential-9854</loc>
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
