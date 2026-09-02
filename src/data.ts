@@ -45,6 +45,22 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "views": 1
   },
   {
+    "id": "test-snapshot-blog-1",
+    "title": "Quantum State Simulation",
+    "slug": "quantum-state-simulation",
+    "excerpt": "Simulation of open quantum systems.",
+    "content": "Content with LaTeX $$\\hat{H}\\psi = E\\psi$$",
+    "author": "Lucas Kempe",
+    "date": "2026-08-30",
+    "readingTime": "7 min read",
+    "bannerSvg": "<svg></svg>",
+    "arxivLink": "https://arxiv.org/abs/2608.99999",
+    "tags": [
+      "Quantum",
+      "Simulation"
+    ]
+  },
+  {
     "title": "Spectral Fingerprints of Gauge Theories on a Quantum Computer",
     "excerpt": "A rigorous scholarly analysis exploring the fundamental mathematical physics, quantum formulations, and transformative implications of Spectral Fingerprints of Gauge Theories on a Quantum Computer.",
     "readingTime": "10 min read",
