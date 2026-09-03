@@ -17,9 +17,9 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "September 3, 2026",
     "author": "Meridian Research",
     "arxivLink": "https://arxiv.org/abs/2609.02603",
-    "timestamp": 1788472086287,
-    "createdAt": 1788472086287,
-    "views": 563,
+    "timestamp": 1788472131267,
+    "createdAt": 1788472131267,
+    "views": 426,
     "slug": "2609-02603v1-0885",
     "status": "published",
     "readingTime": "7 min read"
