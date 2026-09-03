@@ -11,6 +11,7 @@ import { CrossDeviceAuthMicroservice } from "./CrossDeviceAuthMicroservice";
 import { ArxivPipelineMicroservice } from "./ArxivPipelineMicroservice";
 import { DispatchMicroservice } from "./DispatchMicroservice";
 import { BinanceTreasuryMicroservice } from "./BinanceTreasuryMicroservice";
+import { DailyScheduleDaemon } from "./DailyScheduleDaemon";
 
 export class MicroserviceRegistry {
   private static instance: MicroserviceRegistry;
@@ -20,6 +21,7 @@ export class MicroserviceRegistry {
   public readonly arxiv: ArxivPipelineMicroservice;
   public readonly dispatch: DispatchMicroservice;
   public readonly binance: BinanceTreasuryMicroservice;
+  public readonly dailySchedule: DailyScheduleDaemon;
 
   private services: Map<string, IMicroservice> = new Map();
   private eventListeners: Map<string, Array<(payload: any) => void>> = new Map();
@@ -30,12 +32,14 @@ export class MicroserviceRegistry {
     this.arxiv = new ArxivPipelineMicroservice(this.persistence);
     this.dispatch = new DispatchMicroservice(this.persistence);
     this.binance = new BinanceTreasuryMicroservice();
+    this.dailySchedule = new DailyScheduleDaemon(this.persistence);
 
     this.registerService(this.persistence);
     this.registerService(this.auth);
     this.registerService(this.arxiv);
     this.registerService(this.dispatch);
     this.registerService(this.binance);
+    this.registerService(this.dailySchedule);
   }
 
   public static getInstance(): MicroserviceRegistry {
@@ -91,6 +95,14 @@ export class MicroserviceRegistry {
 
   public getTreasuryService(): BinanceTreasuryMicroservice {
     return this.getTreasury();
+  }
+
+  public getDailySchedule(): DailyScheduleDaemon {
+    return this.getService<DailyScheduleDaemon>("DailyScheduleDaemon")!;
+  }
+
+  public getDailyScheduleDaemon(): DailyScheduleDaemon {
+    return this.getDailySchedule();
   }
 
   public async initializeAll(): Promise<{ initialized: string[]; failed: string[] }> {

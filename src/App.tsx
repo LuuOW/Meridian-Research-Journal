@@ -33,6 +33,7 @@ import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
 import { ResumeViewModal } from "./components/ResumeViewModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
+import { DailyEditorialPromptModal } from "./components/DailyEditorialPromptModal";
 import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
 import { SearchFilterBar } from "./components/SearchFilterBar";
@@ -94,6 +95,8 @@ export default function App() {
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
+  const [isDailyEditorialModalOpen, setIsDailyEditorialModalOpen] = useState(false);
+  const [hasPendingDispatch, setHasPendingDispatch] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>(() => {
     try {
       return sessionStorage.getItem("meridian_editor_pwd") || "";
@@ -217,6 +220,36 @@ export default function App() {
       });
     };
   }, [isEditorMode, jobs]);
+
+  // 9:00 AM ART Daily Editorial Dispatch:
+  // Automatically prompt editorial component when entering editor mode if a staged draft awaits review
+  useEffect(() => {
+    let isMounted = true;
+    const checkDispatch = () => {
+      fetch("/api/daily-dispatch/current")
+        .then((res) => res.json())
+        .then((data) => {
+          if (!isMounted) return;
+          if (data?.success && data?.dispatch) {
+            const isPending = data.dispatch.status === "staged_pending_review";
+            setHasPendingDispatch(isPending);
+            if (isEditorMode && isPending) {
+              setIsDailyEditorialModalOpen(true);
+            }
+          } else {
+            setHasPendingDispatch(false);
+          }
+        })
+        .catch((err) => console.warn("[DailyDispatch] Status check error:", err));
+    };
+
+    checkDispatch();
+    const timer = setInterval(checkDispatch, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [isEditorMode]);
 
   const handleToggleEditorMode = () => {
     if (!isEditorMode) {
@@ -1157,6 +1190,8 @@ export default function App() {
         }}
         onOpenPipelineStatus={() => setIsPipelineModalOpen(true)}
         onOpenAdSenseRevenue={() => setIsAdSenseModalOpen(true)}
+        onOpenDailyDispatch={() => setIsDailyEditorialModalOpen(true)}
+        hasPendingDispatch={hasPendingDispatch}
         todayRevenueEstimate={formatCurrency(calculateCatalogRevenue(blogs).todayEstimate)}
         activeJobs={jobs}
       />
@@ -1786,6 +1821,23 @@ export default function App() {
         onClose={() => setIsAdSenseModalOpen(false)}
         blogs={blogs}
         activeBlog={activeBlog || undefined}
+      />
+
+      {/* MERIDIAN 9:00 AM - 10:00 AM ART AUTONOMOUS DAILY EDITORIAL PROMPT MODAL */}
+      <DailyEditorialPromptModal
+        isOpen={isDailyEditorialModalOpen}
+        onClose={() => setIsDailyEditorialModalOpen(false)}
+        onArticlePublished={(newBlog) => {
+          setBlogs((prev) => [newBlog, ...prev.filter((b) => b.id !== newBlog.id && b.slug !== newBlog.slug)]);
+          setActiveBlog(newBlog);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onOpenInEditor={(draft) => {
+          setIsDailyEditorialModalOpen(false);
+          const match = draft.arxivLink ? draft.arxivLink.match(/(\d{4}\.\d{4,5})/) : null;
+          if (match) setInitialArxivId(match[1]);
+          setIsCreateOpen(true);
+        }}
       />
 
       {/* EDITOR PASSWORD MODAL */}

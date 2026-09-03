@@ -37,6 +37,13 @@ import {
   stripSlugTimestampSuffix
 } from "./src/lib/slugResolver";
 import {
+  postTweetToX,
+  testXConnection
+} from "./src/lib/xApi";
+import {
+  getArtTime
+} from "./src/lib/dailyEditorialEngine";
+import {
   persistMultiTierBlogs,
   appendGenerationJournal,
   readPipelineRecords,
@@ -3423,6 +3430,79 @@ app.get("/api/services/devices", (req, res) => {
   try {
     const devices = microservicesRegistry.getPersistenceService().getRegisteredDevices();
     res.json({ success: true, devices });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ------------------------------------------------------------------------------------------------
+// MERIDIAN 9:00 AM - 10:00 AM ART AUTONOMOUS DISPATCH & X (TWITTER) PIPELINE ENDPOINTS
+// ------------------------------------------------------------------------------------------------
+
+// Fetch current staged daily dispatch, countdown to 10:00 AM ART, and ART clock telemetry
+app.get("/api/daily-dispatch/current", (req, res) => {
+  try {
+    const data = microservicesRegistry.getDailyScheduleDaemon().getCurrentDispatch();
+    res.json({ success: true, ...data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Accept staged draft in Editor Mode: Immediately publishes article and posts companion tweet to X
+app.post("/api/daily-dispatch/accept", async (req, res) => {
+  try {
+    const { editedTweetText } = req.body || {};
+    const result = await microservicesRegistry.getDailyScheduleDaemon().acceptDraft(editedTweetText);
+    res.json(result);
+  } catch (err: any) {
+    console.error("[API] Failed to accept daily dispatch:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Re-draft with alternate arXiv candidate or rebalance optics vs quant-ph
+app.post("/api/daily-dispatch/redraft", async (req, res) => {
+  try {
+    const updatedDispatch = await microservicesRegistry.getDailyScheduleDaemon().redraftWithAlternate();
+    res.json({ success: true, dispatch: updatedDispatch });
+  } catch (err: any) {
+    console.error("[API] Failed to redraft daily dispatch:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Manually trigger 9:00 AM crawl & staging (for testing, demo, or forcing refresh)
+app.post("/api/daily-dispatch/trigger-crawl", async (req, res) => {
+  try {
+    const { category } = req.body || {};
+    const dispatch = await microservicesRegistry.getDailyScheduleDaemon().stageTodayDispatch(category);
+    res.json({ success: true, dispatch });
+  } catch (err: any) {
+    console.error("[API] Failed to trigger crawl:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Check X API connection & credentials status
+app.get("/api/x/status", async (req, res) => {
+  try {
+    const status = await testXConnection();
+    res.json({ success: true, ...status });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Publish arbitrary text post to X via OAuth 1.0a User Context
+app.post("/api/x/publish-post", async (req, res) => {
+  try {
+    const { text } = req.body || {};
+    if (!text) {
+      return res.status(400).json({ success: false, error: "Tweet text is required" });
+    }
+    const result = await postTweetToX(text);
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
