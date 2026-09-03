@@ -1,6 +1,6 @@
 [
   {
-    "id": "blog-1788302384925-imsq0",
+    "id": "blog-1788302817617-104kn",
     "title": "Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists",
     "slug": "diagnostic-foundation-for-evaluating-llms-research-integrity",
     "excerpt": "Language models are increasingly deployed as co-scientists, yet their ability to uphold research integrity under institutional pressure remains unmeasured. We introduce IntegrityBench, a ben...",
@@ -15,8 +15,8 @@
       "Mathematical Physics",
       "Algorithms"
     ],
-    "createdAt": 1788302384925,
-    "timestamp": 1788302384925,
+    "createdAt": 1788302817617,
+    "timestamp": 1788302817617,
     "views": 1
   },
   {
@@ -33,7 +33,7 @@
     "tags": [
       "Topology"
     ],
-    "views": 10,
+    "views": 480,
     "timestamp": 1725200000000,
     "createdAt": 1725200000000
   },
@@ -52,7 +52,7 @@
       "Differential Geometry",
       "Control Theory"
     ],
-    "views": 120,
+    "views": 420,
     "timestamp": 1725100000000,
     "createdAt": 1725100000000
   },

@@ -16,6 +16,17 @@ export const generateLinkedInDraft = (
   return `💡 New Research Highlight: ${cleanTitle}\n\n${cleanExcerpt}\n\nRead the full paper breakdown on Meridian: ${blogUrl}`;
 };
 
+export const generateXCompanionDraft = (
+  title: string,
+  excerpt: string,
+  blogId?: string
+): string => {
+  const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
+  const blogUrl = blogId ? `https://ask-meridian.uk/blog/${blogId.replace(/^\/+/, "")}` : "https://ask-meridian.uk/blog";
+  const cleanExcerpt = excerpt ? excerpt.trim() : "Pioneering research charting next-generation quantum frontiers.";
+  return `🌌 Futuristic Vision: "${cleanTitle}". ${cleanExcerpt} Explore the full mathematical derivations and physical paradigm shifts on Ask Meridian: ${blogUrl} #QuantumPhysics #FuturisticVision`;
+};
+
 export const generateTwitterDraft = (
   title: string,
   blogId?: string,

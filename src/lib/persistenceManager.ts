@@ -167,6 +167,8 @@ export async function persistMultiTierBlogs(
   try {
     const sitemapContent = generateSitemapXml(blogs);
     fs.writeFileSync(SITEMAP_FILE, sitemapContent, "utf-8");
+    const rootSitemap = path.join(process.cwd(), "sitemap.xml");
+    fs.writeFileSync(rootSitemap, sitemapContent, "utf-8");
     tiers.sitemap = true;
   } catch (err) {
     console.error("[Persistence] Failed writing sitemap.xml:", err);

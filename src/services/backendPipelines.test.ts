@@ -45,7 +45,7 @@ const sampleBlogs: BlogPost[] = [
     arxivLink: "https://arxiv.org/abs/2608.67890",
     bannerSvg: "<svg><text>Geometry</text></svg>",
     tags: ["Differential Geometry", "Control Theory"],
-    views: 120,
+    views: 420,
     timestamp: 1725100000000,
     createdAt: 1725100000000
   }
@@ -112,7 +112,7 @@ test("PersistenceMicroservice: Handles cross-device and cross-IP synchronization
         arxivLink: "https://arxiv.org/abs/2609.99999",
         bannerSvg: "<svg></svg>",
         tags: ["Topology"],
-        views: 10,
+        views: 480,
         timestamp: 1725200000000,
         createdAt: 1725200000000
       }

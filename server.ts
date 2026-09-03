@@ -19,6 +19,12 @@ import {
   sanitizeHashtags
 } from "./src/lib/linkedinUtils";
 import {
+  buildXSystemInstruction,
+  buildXUserPrompt,
+  generateFallbackXPost,
+  sanitizeHashtags as sanitizeXHashtags
+} from "./src/lib/xUtils";
+import {
   syncAllBlogsToGitHub,
   testGitHubConnection,
   getGitHubSyncConfig,
@@ -149,7 +155,7 @@ app.use(express.json({ limit: "10mb" }));
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn("WARNING: GEMINI_API_KEY is not defined. AI generation will fail.");
+    console.log("Notice: GEMINI_API_KEY is not defined. Procedural generation fallback will be used.");
   }
   return new GoogleGenAI({
     apiKey: apiKey || "MOCK_KEY",
@@ -160,6 +166,20 @@ const getGeminiClient = () => {
     },
   });
 };
+
+// Cached availability check for GitHub Models (Azure AI Inference) endpoint
+let isGitHubModelsSupported: boolean | null = null;
+async function checkGitHubModelsAvailability(): Promise<boolean> {
+  if (isGitHubModelsSupported !== null) return isGitHubModelsSupported;
+  try {
+    const dns = await import("dns/promises");
+    await dns.lookup("models.inference.ai.azure.com");
+    isGitHubModelsSupported = true;
+  } catch {
+    isGitHubModelsSupported = false;
+  }
+  return isGitHubModelsSupported;
+}
 
 // Simple arXiv API fetcher with quick abort timeout
 const fetchArxivMetadata = async (id: string) => {
@@ -1417,40 +1437,66 @@ app.get("/api/verify-github-token", async (req, res) => {
   }
 
   try {
-    // Perform a tiny test call to the GitHub Models API (Azure AI Inference) to verify the token works
-    const testResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
-      method: "POST",
+    // 1. Primary check: Verify token via GitHub REST API (which powers repo mirror & commits)
+    const userResponse = await fetch("https://api.github.com/user", {
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
+        "Authorization": `token ${token}`,
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "AskMeridian-Sync/1.0"
       },
-      body: JSON.stringify({
-        messages: [{ role: "user", content: "ping" }],
-        model: "gpt-4o-mini",
-        max_tokens: 1
-      })
+      signal: AbortSignal.timeout(6000)
     });
 
-    if (testResponse.ok) {
+    if (userResponse.ok) {
+      const userData: any = await userResponse.json();
       return res.json({
         valid: true,
         token_present: true,
-        message: "GITHUB_TOKEN is valid! Verified successfully with GitHub Models (gpt-4o-mini)."
-      });
-    } else {
-      const errText = await testResponse.text();
-      return res.json({
-        valid: false,
-        token_present: true,
-        message: `GitHub Models API rejected the token. Status: ${testResponse.status}`,
-        details: errText
+        user: userData.login,
+        name: userData.name,
+        message: `GITHUB_TOKEN is valid! Authenticated as ${userData.login}${userData.name ? ` (${userData.name})` : ""}.`
       });
     }
+
+    // 2. Secondary check: If supported, test GitHub Models API (Azure AI Inference)
+    if (await checkGitHubModelsAvailability()) {
+      try {
+        const testResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "ping" }],
+            model: "gpt-4o-mini",
+            max_tokens: 1
+          }),
+          signal: AbortSignal.timeout(6000)
+        });
+
+        if (testResponse.ok) {
+          return res.json({
+            valid: true,
+            token_present: true,
+            message: "GITHUB_TOKEN is valid! Verified successfully with GitHub Models (gpt-4o-mini)."
+          });
+        }
+      } catch {
+        // Fall through to report GitHub user API status
+      }
+    }
+
+    return res.json({
+      valid: false,
+      token_present: true,
+      message: `GitHub rejected the token. Status: ${userResponse.status}`
+    });
   } catch (err: any) {
     return res.json({
       valid: false,
       token_present: true,
-      message: `Failed to connect to GitHub Models API: ${err.message || err}`
+      message: `Failed to verify token: ${err.message || err}`
     });
   }
 });
@@ -1644,7 +1690,7 @@ Requirements:
     let resultText = "";
     if (response && response.text) {
       resultText = response.text;
-    } else if (process.env.GITHUB_TOKEN) {
+    } else if (process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
       console.log("Attempting fallback via GitHub Models (Azure AI Inference)...");
       try {
         const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
@@ -1672,14 +1718,14 @@ Requirements:
             provider = "github_models";
             console.log("Successfully generated content using GitHub Models (gpt-4o-mini)");
           } else {
-            console.warn("Invalid response structure from GitHub Models:", data);
+            console.log("Invalid response structure from GitHub Models:", data);
           }
         } else {
           const errText = await githubResponse.text();
-          console.warn(`GitHub Models API returned status ${githubResponse.status}: ${errText}`);
+          console.log(`GitHub Models API returned status ${githubResponse.status}: ${errText}`);
         }
       } catch (githubErr: any) {
-        console.error("Failed to query GitHub Models API:", githubErr);
+        console.log("GitHub Models API unavailable or failed:", githubErr?.message || githubErr);
       }
     }
 
@@ -1851,7 +1897,7 @@ Output strictly valid SVG XML starting with <svg> and ending with </svg>.`;
       }
     }
 
-    if (!rawSvgResult && process.env.GITHUB_TOKEN) {
+    if (!rawSvgResult && process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
       console.log("Attempting fallback to GitHub Models for banner SVG generation...");
       try {
         const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
@@ -1878,7 +1924,7 @@ Output strictly valid SVG XML starting with <svg> and ending with </svg>.`;
           }
         }
       } catch (githubErr: any) {
-        console.error("GitHub Models fallback failed:", githubErr);
+        console.log("GitHub Models fallback unavailable for banner SVG:", githubErr?.message || githubErr);
       }
     }
 
@@ -2060,7 +2106,7 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
     }
 
     // Fallback to GitHub Models if Gemini failed
-    if (!generatedBlogData && process.env.GITHUB_TOKEN) {
+    if (!generatedBlogData && process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
       try {
         console.log("Attempting article regeneration via GitHub Models (gpt-4o-mini)...");
         const ghResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
@@ -2088,8 +2134,8 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
             console.log("Successfully regenerated article via GitHub Models");
           }
         }
-      } catch (ghErr) {
-        console.warn("GitHub Models article regeneration failed:", ghErr);
+      } catch (ghErr: any) {
+        console.log("GitHub Models article regeneration unavailable:", ghErr?.message || ghErr);
       }
     }
 
@@ -2940,7 +2986,7 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
     }
 
     // Fallback to GitHub Models if Gemini failed
-    if (process.env.GITHUB_TOKEN) {
+    if (process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
       console.log("Attempting fallback to GitHub Models for LinkedIn post generation...");
       try {
         const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
@@ -2976,7 +3022,7 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
           }
         }
       } catch (githubErr: any) {
-        console.warn("GitHub Models fallback failed for LinkedIn post:", githubErr.message || githubErr);
+        console.log("GitHub Models fallback unavailable for LinkedIn post:", githubErr?.message || githubErr);
       }
     }
 
@@ -2987,6 +3033,134 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
   } catch (error: any) {
     console.error("Error generating AI LinkedIn post:", error);
     const fallback = generateFallbackLinkedInPost({ title, excerpt, content, tags, tone, blogUrl, blogId });
+    return res.json(fallback);
+  }
+});
+
+// API: AI-Enhanced X Companion Post Generator (Futuristic Vision) powered by Gemini
+app.post("/api/x/generate-post", async (req, res) => {
+  const { title, excerpt, content, tags, arxivLink, blogId, articleUrl: clientArticleUrl, customPrompt } = req.body;
+
+  if (!title) {
+    return res.status(400).json({ error: "Missing article title" });
+  }
+
+  const blogUrl = clientArticleUrl || (blogId ? `https://ask-meridian.uk/blog/${blogId.replace(/^\/+/, "")}` : "https://ask-meridian.uk/blog");
+
+  try {
+    const ai = getGeminiClient();
+
+    const systemInstruction = buildXSystemInstruction(blogUrl);
+    const promptText = buildXUserPrompt({ title, excerpt, content, tags, customPrompt });
+
+    const modelsToTry = [
+      "gemini-3.7-flash",
+      "gemini-flash-latest"
+    ];
+
+    let response: any = null;
+    let lastError = null;
+
+    if (process.env.GEMINI_API_KEY) {
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`Attempting X companion post generation with model: ${modelName}`);
+          const genPromise = ai.models.generateContent({
+            model: modelName,
+            contents: promptText,
+            config: {
+              systemInstruction,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  postText: { type: Type.STRING, description: "The full, visionary 3-sentence X post text ready for sharing." },
+                  headline: { type: Type.STRING, description: "A catchy 1-line futuristic preview title for the X post." },
+                  hashtags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-4 relevant cutting-edge hashtags" }
+                },
+                required: ["postText", "headline", "hashtags"]
+              }
+            }
+          });
+
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini X post generation timed out")), 10000));
+          response = await Promise.race([genPromise, timeoutPromise]);
+
+          if (response && response.text) {
+            console.log(`Successfully generated X post using model: ${modelName}`);
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`Model ${modelName} failed for X post generation:`, err.message || err);
+          lastError = err;
+        }
+      }
+    }
+
+    if (response && response.text) {
+      try {
+        const sanitized = cleanJsonText(response.text);
+        const parsed = JSON.parse(sanitized);
+        return res.json({
+          success: true,
+          postText: parsed.postText,
+          headline: parsed.headline,
+          hashtags: sanitizeXHashtags(parsed.hashtags),
+          tone: "future"
+        });
+      } catch (parseErr) {
+        console.warn("Failed to parse Gemini response for X post:", parseErr);
+      }
+    }
+
+    // Fallback to GitHub Models if Gemini failed
+    if (process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
+      console.log("Attempting fallback to GitHub Models for X post generation...");
+      try {
+        const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+          method: "POST",
+          signal: AbortSignal.timeout(8000),
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: `${systemInstruction}\nReturn JSON with schema: {"postText": string, "headline": string, "hashtags": string[]}` },
+              { role: "user", content: promptText }
+            ],
+            temperature: 0.7
+          })
+        });
+
+        if (githubResponse.ok) {
+          const data: any = await githubResponse.json();
+          if (data.choices && data.choices[0] && data.choices[0].message?.content) {
+            const parsed = JSON.parse(cleanJsonText(data.choices[0].message.content));
+            console.log("Successfully generated X post via GitHub Models");
+            return res.json({
+              success: true,
+              postText: parsed.postText,
+              headline: parsed.headline,
+              hashtags: sanitizeXHashtags(parsed.hashtags),
+              tone: "future"
+            });
+          }
+        }
+      } catch (githubErr: any) {
+        console.log("GitHub Models fallback unavailable for X post:", githubErr?.message || githubErr);
+      }
+    }
+
+    // High-quality fallback
+    const fallback = generateFallbackXPost({ title, excerpt, content, tags, blogUrl, blogId });
+    return res.json(fallback);
+
+  } catch (error: any) {
+    console.error("Error generating AI X post:", error);
+    const fallback = generateFallbackXPost({ title, excerpt, content, tags, blogUrl, blogId });
     return res.json(fallback);
   }
 });
