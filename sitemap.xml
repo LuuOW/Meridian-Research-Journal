@@ -31,18 +31,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/quantum-phase-transitions-of-the-cavity-heisenberg-spin-chain-1626</loc>
-    <lastmod>2026-09-03</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/optical-reservoir-computing-with-structural-nonlinearity-for-forecasting-chaotic-time-series-2243</loc>
-    <lastmod>2026-09-03</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/bosonic-codes-from-compact-phase-spaces-5272</loc>
     <lastmod>2026-09-01</lastmod>
     <changefreq>monthly</changefreq>
@@ -67,6 +55,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://ask-meridian.uk/blog/towards-optimal-quantum-estimators-for-state-frame-potential-9854</loc>
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://ask-meridian.uk/blog/artificial-anisotropy-induced-bound-states-in-the-continuum-for-integrated-photonic-waveguide-4879</loc>
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
@@ -74,12 +68,6 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/classical-versus-non-classical-photon-states-for-detecting-vacuum-non-linearity-a-rigorous-analysis-of-quantum-mechanisms-and-mathematical-foundations-0431</loc>
-    <lastmod>2026-08-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/towards-optimal-quantum-estimators-for-state-frame-potential-9854</loc>
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
