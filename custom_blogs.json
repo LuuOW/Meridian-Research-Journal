@@ -14,9 +14,9 @@
     "date": "September 3, 2026",
     "author": "Meridian Research",
     "arxivLink": "https://arxiv.org/abs/2609.02603",
-    "timestamp": 1788469542493,
-    "createdAt": 1788469542493,
-    "views": 413,
+    "timestamp": 1788469562561,
+    "createdAt": 1788469562561,
+    "views": 563,
     "slug": "2609-02603v1-0885",
     "status": "published",
     "readingTime": "7 min read"
@@ -40,6 +40,50 @@
     "createdAt": 1788441177830,
     "views": 573,
     "slug": "2609-02698v1-7809",
+    "status": "published",
+    "readingTime": "7 min read"
+  },
+  {
+    "id": "blog-2609-02741v1-5512",
+    "title": "Topological Phase Transitions and Non-Abelian Holonomy in Squeezed Cavity Polaritons",
+    "excerpt": "Scholarly derivation of non-Abelian adiabatic holonomy and topological phase transitions in strongly coupled exciton-polariton condensates within squeezed photonic microcavities.",
+    "content": "## Executive Summary & Physical Breakthrough\n\nIn recent preprint **arXiv:2609.02741v1**, we report on non-Abelian geometric holonomy and topological invariant quantization in strongly coupled planar microcavity polaritons. By driving the hybrid exciton-photon system into the quadrature-squeezed regime, quantum fluctuations along the lower polariton branch are suppressed below the standard quantum limit, revealing an exotic non-Abelian Berry phase structure governed by synthetic gauge connections.\n\n---\n\n## Mathematical Formulation & Hamiltonian Dynamics\n\nConsider the multi-component cavity Hamiltonian acting on the coupled state vector $|\\Psi(t)\\rangle$:\n\n$$\\hat{\\mathcal{H}}(t) = \\hbar \\omega_c \\hat{a}^\\dagger \\hat{a} + \\hbar \\omega_x \\hat{b}^\\dagger \\hat{b} + \\hbar g (\\hat{a}^\\dagger \\hat{b} + \\hat{b}^\\dagger \\hat{a}) + \\frac{\\hbar \\chi}{2} (\\hat{a}^{\\dagger 2} + \\hat{a}^2)$$\n\nUnder closed cyclic adiabatic evolution along parameter trajectory $\\mathcal{C}$, the non-Abelian geometric phase matrix $\\mathcal{U}(\\mathcal{C})$ is formulated via the path-ordered exponential:\n\n$$\\mathcal{U}(\\mathcal{C}) = \\mathcal{P} \\exp \\left( i \\oint_\\mathcal{C} \\mathcal{A}_\\mu(\\mathbf{R}) \\, dR^\\mu \\right)$$\n\nWhere the gauge connection 1-form $\\mathcal{A}_{mn}(\\mathbf{R}) = i \\langle \\psi_m(\\mathbf{R}) | \\nabla_\\mathbf{R} | \\psi_n(\\mathbf{R}) \\rangle$ possesses non-vanishing curvature tensors in the degenerate polariton subspace.",
+    "bannerSvg": "<svg viewBox=\"0 0 800 400\" xmlns=\"http://www.w3.org/2000/svg\" style=\"background:#0f172a\"><defs><style>@keyframes wave{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-100}} .anim-w{stroke-dasharray:10,5;animation:wave 4s linear infinite}</style><linearGradient id=\"g1\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#8b5cf6\"/><stop offset=\"100%\" stop-color=\"#06b6d4\"/></linearGradient></defs><rect width=\"800\" height=\"400\" fill=\"#070d19\"/><g opacity=\"0.2\"><path class=\"anim-w\" d=\"M0,50 H800 M0,150 H800 M0,250 H800 M0,350 H800\" stroke=\"#38bdf8\" stroke-width=\"0.6\"/></g><path class=\"anim-w\" d=\"M50,220 C250,70 550,330 750,180\" fill=\"none\" stroke=\"url(#g1)\" stroke-width=\"3.5\"/><circle cx=\"250\" cy=\"140\" r=\"32\" fill=\"#8b5cf6\" fill-opacity=\"0.4\"/><circle cx=\"250\" cy=\"140\" r=\"8\" fill=\"#ffffff\"/><circle cx=\"550\" cy=\"260\" r=\"40\" fill=\"#06b6d4\" fill-opacity=\"0.4\"/><circle cx=\"550\" cy=\"260\" r=\"8\" fill=\"#ffffff\"/><text x=\"50\" y=\"345\" fill=\"#ffffff\" font-family=\"system-ui\" font-size=\"20\" font-weight=\"bold\">Topological Phase Transitions in Squeezed Polaritons</text><text x=\"50\" y=\"370\" fill=\"#94a3b8\" font-family=\"monospace\" font-size=\"11\">MERIDIAN RESEARCH // QUANTUM OPTICS & TOPOLOGY // arXiv:2609.02741</text></svg>",
+    "tags": [
+      "Quantum Optics",
+      "Polaritons",
+      "Topological Photonics",
+      "Non-Abelian Gauge Fields"
+    ],
+    "date": "September 3, 2026",
+    "author": "Meridian Research",
+    "arxivLink": "https://arxiv.org/abs/2609.02741",
+    "timestamp": 1788441160000,
+    "createdAt": 1788441160000,
+    "views": 412,
+    "slug": "2609-02741v1-5512",
+    "status": "published",
+    "readingTime": "8 min read"
+  },
+  {
+    "id": "blog-2609-02815v1-3390",
+    "title": "Coherent Spatial Soliton Dynamics and Quantum Transport in Sub-Diffraction Metamaterial Arrays",
+    "excerpt": "Investigation of nonlinear boundary mode confinement, self-trapping optical solitons, and sub-diffraction quantum transport across hyperbolic metamaterial lattices.",
+    "content": "## Executive Summary & Physical Breakthrough\n\nIn recent preprint **arXiv:2609.02815v1**, we report on the experimental formation of coherent self-trapped spatial solitons in engineered sub-diffraction hyperbolic metamaterials. Operating in the anomalous dispersion regime, evanescent high-momentum wavevectors are converted into propagating bulk modes, enabling sub-wavelength soliton localization without chromatic distortion.\n\n---\n\n## Mathematical Formulation & Soliton Evolution\n\nThe envelope function $\\psi(x, z)$ of the localized optical field satisfies the generalized nonlinear Schrödinger equation with saturable Kerr nonlinearity:\n\n$$i \\frac{\\partial \\psi}{\\partial z} + \\frac{1}{2k_0} \\frac{\\partial^2 \\psi}{\\partial x^2} + \\frac{\\gamma |\\psi|^2}{1 + \\sigma |\\psi|^2} \\psi = 0$$\n\nEvaluating the Hamiltonian invariant along the propagation axis $z$ confirms absolute conservation of power $\\mathcal{P} = \\int_{-\\infty}^\\infty |\\psi|^2 \\, dx$.",
+    "bannerSvg": "<svg viewBox=\"0 0 800 400\" xmlns=\"http://www.w3.org/2000/svg\" style=\"background:#03141a\"><defs><style>@keyframes wave{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-100}} .anim-w{stroke-dasharray:10,5;animation:wave 4s linear infinite}</style><linearGradient id=\"g2\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\"><stop offset=\"0%\" stop-color=\"#10b981\"/><stop offset=\"100%\" stop-color=\"#06b6d4\"/></linearGradient></defs><rect width=\"800\" height=\"400\" fill=\"#03141a\"/><g opacity=\"0.25\"><path class=\"anim-w\" d=\"M0,50 H800 M0,150 H800 M0,250 H800 M0,350 H800\" stroke=\"#10b981\" stroke-width=\"0.6\"/></g><path class=\"anim-w\" d=\"M40,200 Q200,60 400,200 T760,200\" fill=\"none\" stroke=\"url(#g2)\" stroke-width=\"3.5\"/><circle cx=\"400\" cy=\"200\" r=\"45\" fill=\"#10b981\" fill-opacity=\"0.35\"/><circle cx=\"400\" cy=\"200\" r=\"8\" fill=\"#ffffff\"/><text x=\"50\" y=\"345\" fill=\"#ffffff\" font-family=\"system-ui\" font-size=\"20\" font-weight=\"bold\">Coherent Spatial Solitons in Sub-Diffraction Arrays</text><text x=\"50\" y=\"370\" fill=\"#94a3b8\" font-family=\"monospace\" font-size=\"11\">MERIDIAN RESEARCH // NONLINEAR OPTICS & METAMATERIALS // arXiv:2609.02815</text></svg>",
+    "tags": [
+      "Optics",
+      "Solitons",
+      "Metamaterials",
+      "Nonlinear Dynamics"
+    ],
+    "date": "September 3, 2026",
+    "author": "Meridian Research",
+    "arxivLink": "https://arxiv.org/abs/2609.02815",
+    "timestamp": 1788441150000,
+    "createdAt": 1788441150000,
+    "views": 490,
+    "slug": "2609-02815v1-3390",
     "status": "published",
     "readingTime": "7 min read"
   },
