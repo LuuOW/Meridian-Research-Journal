@@ -19,7 +19,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "arxivLink": "https://arxiv.org/abs/2609.02603",
     "timestamp": 1788490790824,
     "createdAt": 1788490790824,
-    "views": 554,
+    "views": 1690,
     "slug": "2609-02603v1-0885",
     "status": "published",
     "readingTime": "7 min read"
@@ -63,7 +63,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "arxivLink": "https://arxiv.org/abs/2609.02741",
     "timestamp": 1788441160000,
     "createdAt": 1788441160000,
-    "views": 412,
+    "views": 675,
     "slug": "2609-02741v1-5512",
     "status": "published",
     "readingTime": "8 min read"
@@ -110,7 +110,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "September 3, 2026",
     "createdAt": 1788437991626,
     "timestamp": 1788437991626,
-    "views": 1597
+    "views": 1598
   },
   {
     "title": "Optical Reservoir Computing with Structural Nonlinearity for Forecasting Chaotic Time Series",
@@ -174,7 +174,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     ],
     "createdAt": 1788302817617,
     "timestamp": 1788302817617,
-    "views": 1
+    "views": 1758
   },
   {
     "id": "test-snapshot-blog-1",
@@ -1573,7 +1573,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "tags": [
       "Topology"
     ],
-    "views": 480,
+    "views": 1739,
     "timestamp": 1725200000000,
     "createdAt": 1725200000000
   },
