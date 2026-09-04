@@ -677,7 +677,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "readingTime": "9 min read",
     "slug": "beyond-the-gauge-frontier-resolving-quantum-spam-and-gate-noise-via-pauli-symmetries-9094",
     "arxivLink": "https://arxiv.org/abs/2607.02481",
-    "views": 516
+    "views": 517
   },
   {
     "id": "generated-1783102659629",
