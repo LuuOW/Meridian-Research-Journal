@@ -103,11 +103,17 @@ export class DailyScheduleDaemon implements IMicroservice {
       let dispatch = loadStagedDailyDispatch();
 
       // If no dispatch staged for today, or previous dispatch is from a previous date:
-      // When current time in ART is >= 9:00 AM, stage today's publication draft.
+      // Only auto-stage during the 9:00 AM ART review window (hour === 9). This avoids staging
+      // drafts after the 10:00 AM auto-publish cutoff which would be immediately auto-published.
       if (!dispatch || dispatch.dateArt !== art.dateString) {
-        if (art.hour >= 9) {
-          console.log(`[${this.serviceName}] 9:00 AM ART reached for date ${art.dateString}. Staging today's arXiv draft...`);
+        if (art.isReviewWindow) {
+          console.log(`[${this.serviceName}] 9:00 AM ART review window detected for date ${art.dateString}. Staging today's arXiv draft...`);
           dispatch = await this.stageTodayDispatch();
+        } else {
+          // If we're already past 10 AM ART, skip staging to avoid immediate auto-publish loops.
+          if (art.isPast10AmArt) {
+            console.log(`[${this.serviceName}] Past 10:00 AM ART and no staged dispatch present; skipping staging to avoid immediate auto-publish.`);
+          }
         }
       }
 
@@ -131,6 +137,13 @@ export class DailyScheduleDaemon implements IMicroservice {
    */
   public async stageTodayDispatch(forceCategory?: "physics.optics" | "quant-ph"): Promise<StagedDailyDispatch> {
     const art = getArtTime();
+
+    // Defensive: do not stage if past 10:00 AM ART (auto-publish cutoff)
+    if (art.isPast10AmArt && !forceCategory) {
+      console.log(`[${this.serviceName}] stageTodayDispatch called after 10:00 AM ART; skipping staging to prevent immediate auto-publish.`);
+      throw new Error("Staging skipped: past 10:00 AM ART");
+    }
+
     const sourceBatch = getSourceArxivBatch(art.dayOfWeek);
     const existingBlogs = this.persistenceService.readBlogs();
 
@@ -159,14 +172,14 @@ export class DailyScheduleDaemon implements IMicroservice {
         {
           id: "2609.11042",
           title: "Nonlinear Topological Waveguiding in Squeezed Vacuum Photonic Circuits",
-          summary: "We demonstrate robust edge-state optical transport under high-order Kerr nonlinearities. Using symplectic phase-space projections, we construct a symmetry-protected boundary mode resistant to thermal fluctuations.",
+          summary: "We demonstrate robust edge-state optical transport under high-order Kerr nonlinearities. Using symplectic phase-space projections, we construct a symmetry-protected boundary m[...]
           authors: "L. Kempe, V. Voronov, et al.",
           link: "https://arxiv.org/abs/2609.11042",
         },
         {
           id: "2609.11043",
           title: "Exact Soliton Solvability in Non-Hermitian Quantum Optical Lattices",
-          summary: "We present exact analytic solutions for self-trapped optical wavepackets in complex parity-time (PT) symmetric potentials, proving complete conservation of quasi-power across exceptional points.",
+          summary: "We present exact analytic solutions for self-trapped optical wavepackets in complex parity-time (PT) symmetric potentials, proving complete conservation of quasi-power across [...]
           authors: "S. Al-Mansoor, H. Chen, et al.",
           link: "https://arxiv.org/abs/2609.11043",
         },
