@@ -102,6 +102,20 @@ export class DailyScheduleDaemon implements IMicroservice {
       const art = getArtTime();
       let dispatch = loadStagedDailyDispatch();
 
+      // Skip automatic staging on weekends (Saturday=6, Sunday=0)
+      if (art.dayOfWeek === 0 || art.dayOfWeek === 6) {
+        console.log(`[${this.serviceName}] Weekend detected (${art.dayName}); skipping automatic staging.`);
+        // Still allow auto-publish if a dispatch was already staged earlier
+        if (dispatch && dispatch.status === "staged_pending_review") {
+          if (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now()) {
+            console.log(`[${this.serviceName}] 10:00 AM ART timeout reached on weekend. Auto-publishing unreviewed staged dispatch (${dispatch.id})...`);
+            await this.executePublish(dispatch, "auto_timeout_publish");
+          }
+        }
+
+        return;
+      }
+
       // If no dispatch staged for today, or previous dispatch is from a previous date:
       // Only auto-stage during the 9:00 AM ART review window (hour === 9). This avoids staging
       // drafts after the 10:00 AM auto-publish cutoff which would be immediately auto-published.
@@ -142,6 +156,12 @@ export class DailyScheduleDaemon implements IMicroservice {
     if (art.isPast10AmArt && !forceCategory) {
       console.log(`[${this.serviceName}] stageTodayDispatch called after 10:00 AM ART; skipping staging to prevent immediate auto-publish.`);
       throw new Error("Staging skipped: past 10:00 AM ART");
+    }
+
+    // Defensive: skip staging on weekends unless explicitly forced (forceCategory used for manual/testing)
+    if ((art.dayOfWeek === 0 || art.dayOfWeek === 6) && !forceCategory) {
+      console.log(`[${this.serviceName}] stageTodayDispatch called on weekend (${art.dayName}); skipping staging.`);
+      throw new Error("Staging skipped: weekend");
     }
 
     const sourceBatch = getSourceArxivBatch(art.dayOfWeek);
