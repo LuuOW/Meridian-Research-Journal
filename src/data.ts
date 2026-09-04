@@ -110,7 +110,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "date": "September 3, 2026",
     "createdAt": 1788437991626,
     "timestamp": 1788437991626,
-    "views": 1598
+    "views": 1597
   },
   {
     "title": "Optical Reservoir Computing with Structural Nonlinearity for Forecasting Chaotic Time Series",
@@ -174,7 +174,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     ],
     "createdAt": 1788302817617,
     "timestamp": 1788302817617,
-    "views": 1758
+    "views": 1
   },
   {
     "id": "test-snapshot-blog-1",
@@ -1573,7 +1573,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "tags": [
       "Topology"
     ],
-    "views": 1739,
+    "views": 480,
     "timestamp": 1725200000000,
     "createdAt": 1725200000000
   },
