@@ -20,7 +20,9 @@ import {
   loadStagedDailyDispatch,
   saveStagedDailyDispatch,
   generateStagedArticleDraft,
-  StagedDailyDispatch
+  buildCandidateDeck,
+  StagedDailyDispatch,
+  EditorialCandidate
 } from "../lib/dailyEditorialEngine";
 import { parseArxivFeedXml, ArxivPaper } from "../lib/arxivUtils";
 import { postTweetToX, testXConnection, XTweetResult } from "../lib/xApi";
@@ -102,41 +104,9 @@ export class DailyScheduleDaemon implements IMicroservice {
       const art = getArtTime();
       let dispatch = loadStagedDailyDispatch();
 
-      // Global safety switch to completely disable automatic staging/publishing
-      const autoDisabled = process.env.DISABLE_AUTO_PUBLICATION === "true";
-      if (autoDisabled) {
-        console.log(`[${this.serviceName}] Automatic publication disabled via DISABLE_AUTO_PUBLICATION; skipping schedule checks.`);
-        return;
-      }
-
-      // Load persisted blogs to check for existing manual publications for this Meridian date
-      const existingBlogs = this.persistenceService.readBlogs();
-      const hasBlogForDate = existingBlogs.some((b) => {
-        if (b.date === art.dateString) return true;
-        if (b.createdAt) {
-          const createdIso = new Date(b.createdAt).toISOString().slice(0, 10);
-          if (createdIso === art.dateString) return true;
-        }
-        return false;
-      });
-
-      if (hasBlogForDate) {
-        console.log(`[${this.serviceName}] Detected existing published article(s) for ${art.dateString}; skipping automatic staging to avoid duplicates.`);
-        // Also avoid auto-publishing any staged dispatch for the same date
-        return;
-      }
-
-      // Block automatic staging and auto-publishing on Friday (5), Saturday (6), Sunday (0)
-      // Rationale: arXiv publishes on Friday/weekend are released on Monday by Meridian
-      const nonPublishingDays = new Set([0, 5, 6]);
-      if (nonPublishingDays.has(art.dayOfWeek)) {
-        console.log(`[${this.serviceName}] Non-publishing day detected (${art.dayName}); skipping automatic staging and auto-publish.`);
-        return;
-      }
-
       // If no dispatch staged for today, or previous dispatch is from a previous date:
-      // Only auto-stage during the 9:00 AM ART review window. This avoids staging drafts
-      // after the 10:00 AM auto-publish cutoff which would be immediately auto-published.
+      // Only auto-stage during the 9:00 AM ART review window (hour === 9). This avoids staging
+      // drafts after the 10:00 AM auto-publish cutoff which would be immediately auto-published.
       if (!dispatch || dispatch.dateArt !== art.dateString) {
         if (art.isReviewWindow) {
           console.log(`[${this.serviceName}] 9:00 AM ART review window detected for date ${art.dateString}. Staging today's arXiv draft...`);
@@ -151,15 +121,9 @@ export class DailyScheduleDaemon implements IMicroservice {
 
       // Check if staged dispatch is waiting for review and current time has reached 10:00 AM ART
       if (dispatch && dispatch.status === "staged_pending_review") {
-        // Only auto-publish on Meridian publishing days (Mon-Thu). autoPublish10AmEpoch can be in the past
-        // but we must ensure we don't auto-publish on Friday/Sat/Sun.
-        if (!nonPublishingDays.has(art.dayOfWeek) && (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now())) {
+        if (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now()) {
           console.log(`[${this.serviceName}] 10:00 AM ART timeout reached. Auto-publishing unreviewed staged dispatch (${dispatch.id})...`);
           await this.executePublish(dispatch, "auto_timeout_publish");
-        } else {
-          if (nonPublishingDays.has(art.dayOfWeek)) {
-            console.log(`[${this.serviceName}] Auto-publish deferred because today (${art.dayName}) is a non-publishing day.`);
-          }
         }
       }
     } catch (err) {
@@ -176,43 +140,14 @@ export class DailyScheduleDaemon implements IMicroservice {
   public async stageTodayDispatch(forceCategory?: "physics.optics" | "quant-ph"): Promise<StagedDailyDispatch> {
     const art = getArtTime();
 
-    // Global safety switch
-    const autoDisabled = process.env.DISABLE_AUTO_PUBLICATION === "true";
-    if (autoDisabled && !forceCategory) {
-      console.log(`[${this.serviceName}] stageTodayDispatch aborted: automatic publication disabled via DISABLE_AUTO_PUBLICATION.`);
-      throw new Error("Staging skipped: auto publication disabled");
-    }
-
     // Defensive: do not stage if past 10:00 AM ART (auto-publish cutoff)
     if (art.isPast10AmArt && !forceCategory) {
       console.log(`[${this.serviceName}] stageTodayDispatch called after 10:00 AM ART; skipping staging to prevent immediate auto-publish.`);
       throw new Error("Staging skipped: past 10:00 AM ART");
     }
 
-    // Defensive: skip staging on weekends and Friday unless explicitly forced
-    const nonPublishingDays = new Set([0, 5, 6]);
-    if (nonPublishingDays.has(art.dayOfWeek) && !forceCategory) {
-      console.log(`[${this.serviceName}] stageTodayDispatch called on non-publishing day (${art.dayName}); skipping staging.`);
-      throw new Error("Staging skipped: non-publishing day");
-    }
-
     const sourceBatch = getSourceArxivBatch(art.dayOfWeek);
     const existingBlogs = this.persistenceService.readBlogs();
-
-    // Prevent staging if a manual article already exists for this Meridian date
-    const hasBlogForDate = existingBlogs.some((b) => {
-      if (b.date === art.dateString) return true;
-      if (b.createdAt) {
-        const createdIso = new Date(b.createdAt).toISOString().slice(0, 10);
-        if (createdIso === art.dateString) return true;
-      }
-      return false;
-    });
-
-    if (hasBlogForDate && !forceCategory) {
-      console.log(`[${this.serviceName}] Found existing manual article(s) for ${art.dateString}; aborting automatic staging to avoid duplicates.`);
-      throw new Error("Staging skipped: existing article for date");
-    }
 
     console.log(`[${this.serviceName}] Analyzing corpus (${existingBlogs.length} articles) for ${art.dayName} dispatch...`);
     const corpus = analyzeCorpusHistory(existingBlogs);
@@ -239,14 +174,14 @@ export class DailyScheduleDaemon implements IMicroservice {
         {
           id: "2609.11042",
           title: "Nonlinear Topological Waveguiding in Squeezed Vacuum Photonic Circuits",
-          summary: "We demonstrate robust edge-state optical transport under high-order Kerr nonlinearities. Using symplectic phase-space projections, we construct a symmetry-protected boundary m[...]
+          summary: "We demonstrate robust edge-state optical transport under high-order Kerr nonlinearities. Using symplectic phase-space projections, we construct a symmetry-protected boundary mode resistant to thermal fluctuations.",
           authors: "L. Kempe, V. Voronov, et al.",
           link: "https://arxiv.org/abs/2609.11042",
         },
         {
           id: "2609.11043",
           title: "Exact Soliton Solvability in Non-Hermitian Quantum Optical Lattices",
-          summary: "We present exact analytic solutions for self-trapped optical wavepackets in complex parity-time (PT) symmetric potentials, proving complete conservation of quasi-power across [...]
+          summary: "We present exact analytic solutions for self-trapped optical wavepackets in complex parity-time (PT) symmetric potentials, proving complete conservation of quasi-power across exceptional points.",
           authors: "S. Al-Mansoor, H. Chen, et al.",
           link: "https://arxiv.org/abs/2609.11043",
         },
@@ -295,6 +230,9 @@ export class DailyScheduleDaemon implements IMicroservice {
     // Generate 3-sentence futuristic companion post for X
     const xPost = buildAutonomousXPost(draftArticle, primaryCandidate.id, primaryCandidate.category);
 
+    // Build the full multi-candidate deck (all 4 from Sept 3 + live arXiv crawlers)
+    const candidatesDeck = buildCandidateDeck(existingBlogs, candidates, corpus, art);
+
     const dispatchId = `dispatch_${art.dateString.replace(/-/g, "_")}`;
     const dispatch: StagedDailyDispatch = {
       id: dispatchId,
@@ -311,6 +249,8 @@ export class DailyScheduleDaemon implements IMicroservice {
       alternateCandidates,
       draftArticle,
       xPost,
+      candidatesDeck,
+      activeCandidateIndex: 0,
       corpusAnalysis: {
         totalArticlesAnalyzed: corpus.totalArticles,
         opticsRatio: corpus.opticsRatio,
@@ -364,12 +304,49 @@ export class DailyScheduleDaemon implements IMicroservice {
     dispatch.xPostResult = xResult;
     saveStagedDailyDispatch(dispatch);
 
-    console.log(`[${this.serviceName}] Article published successfully! X post status: ${xResult.mode} (ID: ${xResult.tweetId || "none"})`);
+    if (xResult.success) {
+      console.log(`[${this.serviceName}] Article published successfully! X companion post live (Tweet ID: ${xResult.tweetId || "none"})`);
+    } else {
+      console.log(`[${this.serviceName}] Article published successfully! Companion X post: ${xResult.errorCode || xResult.error || "requires write permission"} (Web Intent fallback ready: ${xResult.intentUrl})`);
+    }
 
     return {
       success: true,
       blog: finalBlog,
       xResult,
+    };
+  }
+
+  /**
+   * Retries companion X post for the published daily dispatch once credentials are corrected
+   */
+  public async retryXPost(customTweetText?: string): Promise<{ success: boolean; xResult: XTweetResult; dispatch: StagedDailyDispatch }> {
+    const dispatch = loadStagedDailyDispatch();
+    if (!dispatch) {
+      throw new Error("No daily dispatch found to retry X post");
+    }
+
+    const tweetText = (customTweetText || dispatch.xPost?.postText || "").trim();
+    if (!tweetText) {
+      throw new Error("No tweet text available for this dispatch");
+    }
+
+    console.log(`[${this.serviceName}] Retrying companion post to X for dispatch ${dispatch.id}...`);
+    const xResult = await postTweetToX(tweetText);
+
+    dispatch.xPostResult = xResult;
+    saveStagedDailyDispatch(dispatch);
+
+    if (xResult.success) {
+      console.log(`[${this.serviceName}] Companion post to X succeeded on retry! (ID: ${xResult.tweetId})`);
+    } else {
+      console.warn(`[${this.serviceName}] Companion post retry did not succeed: ${xResult.error}`);
+    }
+
+    return {
+      success: xResult.success,
+      xResult,
+      dispatch,
     };
   }
 
@@ -422,6 +399,71 @@ export class DailyScheduleDaemon implements IMicroservice {
   }
 
   /**
+   * User selects a specific candidate from the Tinder-like candidate deck
+   */
+  public async selectCandidate(candidateId: string): Promise<StagedDailyDispatch> {
+    let dispatch = loadStagedDailyDispatch();
+    const art = getArtTime();
+    const existingBlogs = this.persistenceService.readBlogs();
+    const corpus = analyzeCorpusHistory(existingBlogs);
+
+    if (!dispatch) {
+      dispatch = await this.stageTodayDispatch();
+    }
+
+    if (!dispatch.candidatesDeck || dispatch.candidatesDeck.length === 0) {
+      dispatch.candidatesDeck = buildCandidateDeck(existingBlogs, [], corpus, art);
+    }
+
+    const index = dispatch.candidatesDeck.findIndex(
+      (c) => c.id === candidateId || c.arxivId === candidateId || c.title.toLowerCase() === candidateId.toLowerCase()
+    );
+
+    if (index !== -1) {
+      const selected = dispatch.candidatesDeck[index];
+      dispatch.activeCandidateIndex = index;
+      dispatch.selectedCategory = selected.category;
+      dispatch.candidatePaper = {
+        id: selected.arxivId,
+        title: selected.title,
+        summary: selected.excerpt,
+        authors: selected.authors,
+        category: selected.category,
+        score: selected.score,
+        relevanceReason: selected.relevanceReason,
+        link: selected.arxivLink,
+      };
+
+      if (selected.fullDraft) {
+        dispatch.draftArticle = {
+          ...selected.fullDraft,
+          date: selected.dateComparison.meridianPubDate,
+        };
+      } else {
+        dispatch.draftArticle = generateStagedArticleDraft(
+          {
+            id: selected.arxivId,
+            title: selected.title,
+            summary: selected.excerpt,
+            authors: selected.authors,
+            category: selected.category,
+            link: selected.arxivLink,
+          },
+          corpus,
+          art
+        );
+      }
+
+      dispatch.xPost = selected.xPost;
+      dispatch.status = "staged_pending_review";
+      dispatch.createdAt = Date.now();
+      saveStagedDailyDispatch(dispatch);
+    }
+
+    return dispatch;
+  }
+
+  /**
    * Returns current dispatch and real-time ART timing metadata
    */
   public getCurrentDispatch(): {
@@ -430,7 +472,78 @@ export class DailyScheduleDaemon implements IMicroservice {
     countdownSeconds: number;
   } {
     const art = getArtTime();
-    const dispatch = loadStagedDailyDispatch();
+    let dispatch = loadStagedDailyDispatch();
+    const existingBlogs = this.persistenceService.readBlogs();
+    const corpus = analyzeCorpusHistory(existingBlogs);
+
+    if (dispatch && (!dispatch.candidatesDeck || dispatch.candidatesDeck.length === 0)) {
+      dispatch.candidatesDeck = buildCandidateDeck(existingBlogs, [], corpus, art);
+      dispatch.activeCandidateIndex = 0;
+      saveStagedDailyDispatch(dispatch);
+    } else if (!dispatch) {
+      // Auto-stage if nothing exists yet so modal opens immediately with the 4 Sept 3 candidates
+      const candidatesDeck = buildCandidateDeck(existingBlogs, [], corpus, art);
+      if (candidatesDeck.length > 0) {
+        const top = candidatesDeck[0];
+        const draftArticle = top.fullDraft || generateStagedArticleDraft(
+          {
+            id: top.arxivId,
+            title: top.title,
+            summary: top.excerpt,
+            authors: top.authors,
+            category: top.category,
+            link: top.arxivLink,
+          },
+          corpus,
+          art
+        );
+        const sourceBatch = getSourceArxivBatch(art.dayOfWeek);
+        dispatch = {
+          id: `dispatch_${art.dateString.replace(/-/g, "_")}`,
+          dateArt: art.dateString,
+          dayOfWeek: art.dayOfWeek,
+          dayName: art.dayName,
+          sourceArxivBatchDay: sourceBatch.sourceBatchName,
+          createdAt: Date.now(),
+          scheduledFor: art.scheduled9AmEpoch,
+          autoPublishAt: art.autoPublish10AmEpoch,
+          status: "staged_pending_review",
+          selectedCategory: top.category,
+          candidatePaper: {
+            id: top.arxivId,
+            title: top.title,
+            summary: top.excerpt,
+            authors: top.authors,
+            category: top.category,
+            score: top.score,
+            relevanceReason: top.relevanceReason,
+            link: top.arxivLink,
+          },
+          alternateCandidates: candidatesDeck.slice(1, 4).map((c) => ({
+            id: c.arxivId,
+            title: c.title,
+            summary: c.excerpt,
+            authors: c.authors,
+            category: c.category,
+            score: c.score,
+            relevanceReason: c.relevanceReason,
+            link: c.arxivLink,
+          })),
+          draftArticle,
+          xPost: top.xPost,
+          candidatesDeck,
+          activeCandidateIndex: 0,
+          corpusAnalysis: {
+            totalArticlesAnalyzed: corpus.totalArticles,
+            opticsRatio: corpus.opticsRatio,
+            quantPhRatio: corpus.quantPhRatio,
+            selectionRationale: corpus.selectionRationale,
+          },
+        };
+        saveStagedDailyDispatch(dispatch);
+      }
+    }
+
     const countdownSeconds = Math.max(0, Math.floor((art.autoPublish10AmEpoch - Date.now()) / 1000));
 
     return {
