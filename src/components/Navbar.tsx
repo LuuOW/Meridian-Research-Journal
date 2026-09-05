@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, Compass, Sun, Moon, Activity, Loader2, DollarSign, ChevronDown, Wrench, ArrowUpRight, FileText, Coins, Heart, QrCode } from "lucide-react";
+import { Sparkles, Compass, Sun, Moon, Activity, Loader2, ChevronDown, Wrench, ArrowUpRight, FileText, Coins, Heart, QrCode } from "lucide-react";
 import { GenerationJob } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
 
@@ -135,54 +135,73 @@ export const Navbar: React.FC<NavbarProps> = ({
             About
           </button>
           {isEditorMode && (
-            <div className="flex items-center gap-1.5 sm:gap-2 animate-fade-in">
-              {/* Grouped Editor Tools Dropdown */}
-              {(onOpenAdSenseRevenue || onOpenPipelineStatus) && (
+            <div className="flex items-center gap-2 sm:gap-2.5 animate-fade-in">
+              {/* Grouped Editor Tools Dropdown - Elevated Precision Console */}
+              {(onOpenPipelineStatus || onOpenDailyDispatch || onOpenXTest || onOpenResume) && (
                 <div className="relative" ref={toolsRef}>
                   <button
                     id="navbar-editor-tools-btn"
                     onClick={() => setIsToolsOpen(!isToolsOpen)}
-                    className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs font-mono font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer border active:scale-95 whitespace-nowrap ${
+                    className={`h-9 sm:h-10 px-3 sm:px-3.5 rounded-full text-xs font-mono font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer border select-none active:scale-95 whitespace-nowrap shadow-sm group ${
                       isToolsOpen
-                        ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 border-neutral-900 dark:border-white shadow-sm"
+                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 border-slate-900 dark:border-white shadow-md shadow-cyan-950/20"
                         : runningCount > 0
-                        ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 shadow-sm"
-                        : "bg-neutral-100 dark:bg-neutral-900/80 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-800"
+                        ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/25 shadow-sm shadow-cyan-500/10"
+                        : hasPendingDispatch
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/35 hover:bg-amber-500/20 shadow-sm shadow-amber-500/10"
+                        : "bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/90 hover:border-slate-300 dark:hover:border-slate-700"
                     }`}
-                    title="Editor Tools & Telemetry"
+                    title="Editor Tools & Autonomous Pipeline Console"
                     aria-expanded={isToolsOpen}
                   >
-                    {runningCount > 0 ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500 shrink-0" />
-                    ) : (
-                      <Wrench className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />
-                    )}
-                    <span className="hidden sm:inline">Tools</span>
+                    {/* Icon container */}
+                    <div className="flex items-center justify-center shrink-0">
+                      {runningCount > 0 ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500 shrink-0" />
+                      ) : hasPendingDispatch ? (
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 animate-pulse shrink-0" />
+                      ) : (
+                        <Wrench className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 group-hover:text-cyan-500 transition-colors shrink-0" />
+                      )}
+                    </div>
 
-                    {/* Quick Indicator Badge on Dropdown Button */}
+                    <span className="tracking-tight">Tools</span>
+
+                    {/* Contextual Live Status Pill */}
                     {runningCount > 0 ? (
-                      <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping inline-block" />
-                    ) : todayRevenueEstimate ? (
-                      <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
-                        {todayRevenueEstimate}
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 animate-pulse flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-ping inline-block" />
+                        {runningCount} active
                       </span>
-                    ) : null}
+                    ) : hasPendingDispatch ? (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse inline-block" />
+                        Review
+                      </span>
+                    ) : (
+                      <span className="w-2 h-2 rounded-full bg-emerald-500/90 shadow-[0_0_6px_rgba(16,185,129,0.7)] inline-block shrink-0" title="All engines operational" />
+                    )}
 
-                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isToolsOpen ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 text-slate-400 dark:text-slate-500 ${isToolsOpen ? "rotate-180 text-white dark:text-slate-950" : "group-hover:text-slate-700 dark:group-hover:text-slate-200"}`} />
                   </button>
 
-                  {/* Dropdown Menu Flyout */}
+                  {/* Dropdown Menu Flyout - Precision Console */}
                   {isToolsOpen && (
                     <div 
-                      className="absolute right-0 mt-2 w-72 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150"
+                      className="absolute right-0 mt-2.5 w-80 sm:w-84 rounded-2xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 shadow-2xl shadow-slate-900/15 dark:shadow-black/50 py-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
                       role="menu"
                     >
-                      <div className="px-3.5 py-1.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-neutral-400 dark:text-neutral-500">
-                          Editor Controls
+                      {/* Top Specular Accent Horizon */}
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-emerald-500 opacity-90" />
+
+                      {/* Header */}
+                      <div className="px-3.5 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-mono font-extrabold tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                          Editor Console
                         </span>
-                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                          Live Telemetry
+                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                          Autonomous Stack
                         </span>
                       </div>
 
@@ -194,72 +213,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsToolsOpen(false);
                             onOpenDailyDispatch();
                           }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer border-b border-neutral-100 dark:border-neutral-800/60"
+                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-800/60"
                           role="menuitem"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-cyan-500/30">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-amber-500/30 shadow-xs">
                               <Sparkles className="w-4 h-4" />
                             </div>
                             <div>
-                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                                 Daily Dispatch
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-extrabold bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 border border-cyan-500/20">
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30">
                                   9 AM ART
                                 </span>
                               </div>
-                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                                Autonomous review &amp; X share
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                Autonomous review &amp; candidate deck
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
                             {hasPendingDispatch ? (
-                              <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/50 rounded-md border border-amber-500/30 animate-pulse">
+                              <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 px-2.5 py-0.5 bg-amber-50 dark:bg-amber-950/60 rounded-md border border-amber-500/30 animate-pulse flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
                                 Review Staged
                               </span>
                             ) : (
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                Configured
+                              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                                09:00 Cadence
                               </span>
                             )}
-                            <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
                           </div>
-                        </button>
-                      )}
-
-                      {/* AdSense Revenue Option */}
-                      {onOpenAdSenseRevenue && (
-                        <button
-                          id="dropdown-adsense-btn"
-                          onClick={() => {
-                            setIsToolsOpen(false);
-                            onOpenAdSenseRevenue();
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer"
-                          role="menuitem"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                              <DollarSign className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                                AdSense Monetization
-                              </div>
-                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                                Revenue, RPM &amp; Telemetry
-                              </div>
-                            </div>
-                          </div>
-                          {todayRevenueEstimate && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs font-mono font-extrabold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/50 rounded-md border border-emerald-500/20">
-                                {todayRevenueEstimate}
-                              </span>
-                              <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                          )}
                         </button>
                       )}
 
@@ -271,11 +256,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsToolsOpen(false);
                             onOpenPipelineStatus();
                           }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer"
+                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer"
                           role="menuitem"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-cyan-500/30 shadow-xs">
                               {runningCount > 0 ? (
                                 <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
                               ) : (
@@ -283,13 +268,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                               )}
                             </div>
                             <div>
-                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                                 Pipeline Status
                                 {runningCount > 0 && (
                                   <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping inline-block" />
                                 )}
                               </div>
-                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                 Queue &amp; arXiv synthesis logs
                               </div>
                             </div>
@@ -300,15 +285,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 {runningCount} active
                               </span>
                             ) : totalActive > 0 ? (
-                              <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-md">
+                              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 px-2 py-0.5 bg-slate-100 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
                                 {totalActive} jobs
                               </span>
                             ) : (
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                Idle
+                              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 px-2 py-0.5 bg-emerald-500/10 rounded-md border border-emerald-500/20">
+                                Ready
                               </span>
                             )}
-                            <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
                           </div>
                         </button>
                       )}
@@ -321,20 +306,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsToolsOpen(false);
                             onOpenXTest();
                           }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer border-t border-neutral-100 dark:border-neutral-800/60"
+                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-t border-slate-100 dark:border-slate-800/60"
                           role="menuitem"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform font-bold text-xs">
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-black text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform font-bold text-xs border border-slate-700 shadow-xs">
                               𝕏
                             </div>
                             <div>
-                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                                X Context &amp; Live Test
+                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                                X Live Diagnostics
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               </div>
-                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                                OAuth 1.0a inspection &amp; test post
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                OAuth 2.0 User Context &amp; inspection
                               </div>
                             </div>
                           </div>
@@ -342,7 +327,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-2 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded-md border border-cyan-500/20">
                               @lk3mpe
                             </span>
-                            <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
                           </div>
                         </button>
                       )}
@@ -355,18 +340,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                             setIsToolsOpen(false);
                             onOpenResume();
                           }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer border-t border-neutral-100 dark:border-neutral-800/60"
+                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-t border-slate-100 dark:border-slate-800/60"
                           role="menuitem"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <div className="w-8 h-8 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-purple-500/20 shadow-xs">
                               <FileText className="w-4 h-4" />
                             </div>
                             <div>
-                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                                 Curriculum Vitae
                               </div>
-                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                 Downloadable PDF &amp; Markdown
                               </div>
                             </div>
@@ -375,62 +360,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <span className="text-[10px] font-mono font-bold text-purple-600 dark:text-purple-400 px-2 py-0.5 bg-purple-50 dark:bg-purple-950/50 rounded-md border border-purple-500/20">
                               Export
                             </span>
-                            <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
                           </div>
                         </button>
                       )}
+
+                      {/* Subtle Footer Bar */}
+                      <div className="px-3.5 pt-2 pb-0.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                        <span>Autonomous Synthesis Engine</span>
+                        <span>v2.4</span>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
-
-              {/* Daily Dispatch Quick Review Button (Editor Mode) */}
-              {onOpenDailyDispatch && (
-                <button
-                  id="navbar-daily-dispatch-quick-btn"
-                  onClick={onOpenDailyDispatch}
-                  className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-mono font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer border active:scale-95 whitespace-nowrap ${
-                    hasPendingDispatch
-                      ? "bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-cyan-500/15 text-amber-600 dark:text-amber-300 border-amber-500/40 hover:border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse"
-                      : "bg-neutral-100 dark:bg-neutral-900/80 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-800"
-                  }`}
-                  title="Meridian Daily Autonomous Editorial Dispatch (9:00 AM - 10:00 AM ART)"
-                >
-                  <Sparkles className={`w-3.5 h-3.5 ${hasPendingDispatch ? "text-amber-400 animate-spin" : "text-cyan-400"}`} />
-                  <span className="hidden md:inline">9 AM Dispatch</span>
-                  {hasPendingDispatch && (
-                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-amber-500 text-slate-950 uppercase tracking-tight">
-                      Review
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {/* Primary 1-Click Action: Generate Blog */}
-              <button
-                id="navbar-generate-blog-btn"
-                onClick={onOpenCreate}
-                className="px-3 sm:px-5 py-1.5 sm:py-2.5 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black rounded-full text-xs font-bold shadow-sm transition-all duration-200 flex items-center gap-1.5 group active:scale-95 cursor-pointer whitespace-nowrap"
-                title="Generate Blog from arXiv"
-              >
-                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white dark:text-black fill-white/20 group-hover:rotate-12 transition-transform shrink-0" />
-                <span className="hidden sm:inline">Generate Blog</span>
-                <span className="sm:hidden text-[11px]">Generate</span>
-              </button>
             </div>
           )}
 
-          {/* Global Light / Dark Theme Toggle Button */}
+          {/* Global Light / Dark Theme Toggle Button - Ergonomic & Tactile */}
           <button
             onClick={onToggleTheme}
-            className="p-2 sm:p-2.5 rounded-full text-neutral-400 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900/60 border border-transparent dark:border-neutral-900 transition-all duration-200 cursor-pointer active:scale-95 shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200/90 dark:border-slate-800/90 shadow-xs transition-all duration-200 cursor-pointer active:scale-95 shrink-0 group"
             title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
             aria-label="Toggle global theme"
           >
             {theme === "light" ? (
-              <Moon className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
+              <Moon className="w-4 h-4 text-slate-600 group-hover:text-slate-900 transition-transform group-hover:rotate-12 duration-200" />
             ) : (
-              <Sun className="w-4 h-4 text-neutral-400" />
+              <Sun className="w-4 h-4 text-amber-400 transition-transform group-hover:rotate-45 duration-200" />
             )}
           </button>
 
