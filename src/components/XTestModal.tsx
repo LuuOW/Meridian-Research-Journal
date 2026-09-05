@@ -116,9 +116,10 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
       });
       const stamp = Date.now().toString().slice(-4);
 
+      const methodLabel = data.authMethod || "OAuth 2.0 User Context";
       if (!customText) {
         setCustomText(
-          `Meridian Journal [Pipeline Verification • ${timeStr} ART #${stamp}] — OAuth 1.0a User Context live test for @${username}. Autonomous frontier physics & quantum optics: https://ask-meridian.uk #QuantumOptics #arXiv`
+          `Meridian Journal [Pipeline Verification • ${timeStr} ART #${stamp}] — ${methodLabel} live test for @${username}. Autonomous frontier physics & quantum optics: https://ask-meridian.uk #QuantumOptics #arXiv`
         );
       }
     } catch (err: any) {
@@ -183,8 +184,9 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
       hour12: false,
     });
     const stamp = Date.now().toString().slice(-4);
+    const methodLabel = status?.authMethod || "OAuth 2.0 User Context";
     setCustomText(
-      `Meridian Journal [Pipeline Verification • ${timeStr} ART #${stamp}] — OAuth 1.0a User Context live test for @${username}. Autonomous frontier physics & quantum optics: https://ask-meridian.uk #QuantumOptics #arXiv`
+      `Meridian Journal [Pipeline Verification • ${timeStr} ART #${stamp}] — ${methodLabel} live test for @${username}. Autonomous frontier physics & quantum optics: https://ask-meridian.uk #QuantumOptics #arXiv`
     );
   };
 
@@ -254,7 +256,9 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                   </span>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Autonomous OAuth 1.0a User Context pipeline inspection & test posting
+                  {status?.authMethod
+                    ? `Autonomous ${status.authMethod} pipeline inspection & test posting`
+                    : "Autonomous OAuth User Context pipeline inspection & test posting"}
                 </p>
               </div>
             </div>

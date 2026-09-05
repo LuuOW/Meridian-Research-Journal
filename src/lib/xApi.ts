@@ -1,10 +1,11 @@
 /**
  * MERIDIAN X (TWITTER) API v2 INTEGRATION ENGINE
  * 
- * Provides authenticated OAuth 1.0a User Context posting to Twitter/X API v2,
- * enabling autonomous, scheduled publication of companion posts to @ask_meridian.
+ * Supports both:
+ * 1. OAuth 2.0 User Context (Modern PKCE / User Access Token with Refresh Tokens)
+ * 2. OAuth 1.0a User Context (RFC 5849 HMAC-SHA1 cryptographic signing)
  * 
- * Compliant with X API v2 POST /2/tweets endpoint.
+ * Compliant with X API v2 POST /2/tweets and GET /2/users/me endpoints.
  */
 
 import crypto from "crypto";
@@ -14,6 +15,12 @@ export interface XApiCredentials {
   apiSecretKey: string;
   accessToken: string;
   accessTokenSecret: string;
+}
+
+export interface XOAuth2Tokens {
+  accessToken: string;
+  refreshToken?: string;
+  clientId?: string;
 }
 
 export interface XTweetResult {
@@ -58,6 +65,9 @@ export interface XConnectionStatus {
   };
 }
 
+let inMemoryOAuth2Token: string | null = null;
+let inMemoryRefreshToken: string | null = null;
+
 /**
  * RFC 3986 percent encoding for OAuth 1.0a
  */
@@ -68,7 +78,79 @@ export function percentEncode(str: string): string {
 }
 
 /**
- * Gets active X API credentials from process.env
+ * Gets OAuth 2.0 User Context tokens if configured
+ */
+export function getOAuth2Tokens(): XOAuth2Tokens | null {
+  const token = (
+    inMemoryOAuth2Token ||
+    process.env.X_OAUTH_ACCESS_TOKEN ||
+    (process.env.X_ACCESS_TOKEN && process.env.X_ACCESS_TOKEN.length > 60 ? process.env.X_ACCESS_TOKEN : "") ||
+    ""
+  ).trim();
+
+  if (!token) return null;
+
+  const refreshToken = (
+    inMemoryRefreshToken ||
+    process.env.X_OAUTH_REFRESH_TOKEN ||
+    ""
+  ).trim();
+
+  const clientId = (
+    process.env.X_OAUTH_2_0_CLIENT_ID ||
+    process.env.X_CLIENT_ID ||
+    ""
+  ).trim();
+
+  return {
+    accessToken: token,
+    refreshToken: refreshToken || undefined,
+    clientId: clientId || undefined,
+  };
+}
+
+/**
+ * Automatically refresh OAuth 2.0 User Access Token if expired
+ */
+export async function refreshOAuth2AccessToken(): Promise<string | null> {
+  const tokens = getOAuth2Tokens();
+  if (!tokens?.refreshToken || !tokens?.clientId) return null;
+
+  try {
+    const res = await fetch("https://api.twitter.com/2/oauth2/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: tokens.refreshToken,
+        client_id: tokens.clientId,
+      }).toString(),
+    });
+
+    if (res.ok) {
+      const data: any = await res.json();
+      if (data.access_token) {
+        inMemoryOAuth2Token = data.access_token;
+        if (data.refresh_token) {
+          inMemoryRefreshToken = data.refresh_token;
+        }
+        console.log("[OAuth 2.0 Refresh] Successfully refreshed X access token!");
+        return data.access_token;
+      }
+    } else {
+      const errText = await res.text();
+      console.warn("[OAuth 2.0 Refresh] Token refresh endpoint returned error:", errText);
+    }
+  } catch (err) {
+    console.warn("[OAuth 2.0 Refresh] Exception during token refresh:", err);
+  }
+  return null;
+}
+
+/**
+ * Gets active OAuth 1.0a credentials from process.env
  */
 export function getXCredentials(): XApiCredentials | null {
   const apiKey = (process.env.X_API_KEY || process.env.TWITTER_API_KEY || "").trim();
@@ -125,7 +207,7 @@ export function generateOAuth1Header(
 
   oauthParams.oauth_signature = signature;
 
-  // 5. Construct Authorization Header (excluding query params)
+  // 5. Construct Authorization Header
   const headerKeys = [
     "oauth_consumer_key",
     "oauth_nonce",
@@ -164,147 +246,63 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
     };
   }
 
-  const credentials = getXCredentials();
+  // 1. Check for OAuth 2.0 User Context first
+  const oauth2 = getOAuth2Tokens();
+  if (oauth2) {
+    const endpoint = "https://api.twitter.com/2/tweets";
+    try {
+      let currentToken = oauth2.accessToken;
+      let response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: cleanText }),
+      });
 
-  // If credentials are not configured in environment, provide clean simulation response
-  if (!credentials) {
-    console.log("[X API] Credentials not configured in environment. Using simulation mode for X post.");
-    return {
-      success: true,
-      mode: "unconfigured_simulation",
-      tweetId: `sim_${timestamp}`,
-      tweetUrl: `https://x.com/ask_meridian/status/sim_${timestamp}`,
-      text: cleanText,
-      intentUrl,
-      message: "X API credentials (X_API_KEY, X_ACCESS_TOKEN, etc.) not detected in AI Studio Secrets. Tweet saved and intent URL ready for manual sharing.",
-      timestamp,
-      diagnosisTitle: "Simulation Mode (No Keys)",
-      diagnosisDetail: "Configure X_API_KEY, X_API_SECRET_KEY, X_ACCESS_TOKEN, and X_ACCESS_TOKEN_SECRET in Settings to enable direct posting.",
-      troubleshootingSteps: [
-        "1. Open Settings in AI Studio.",
-        "2. Add X_API_KEY and X_API_SECRET_KEY (Consumer Keys).",
-        "3. Add X_ACCESS_TOKEN and X_ACCESS_TOKEN_SECRET (User Token with Read+Write permissions).",
-      ],
-    };
-  }
+      // If token expired (HTTP 401) and we have a refresh token, auto-refresh and retry
+      if (response.status === 401 && oauth2.refreshToken && oauth2.clientId) {
+        const refreshedToken = await refreshOAuth2AccessToken();
+        if (refreshedToken) {
+          currentToken = refreshedToken;
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${currentToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ text: cleanText }),
+          });
+        }
+      }
 
-  const endpoint = "https://api.twitter.com/2/tweets";
-  try {
-    const authHeader = generateOAuth1Header("POST", endpoint, credentials);
+      const httpStatus = response.status;
+      if (response.ok) {
+        const data: any = await response.json();
+        const tweetId = data?.data?.id;
+        const tweetUrl = tweetId ? `https://x.com/i/status/${tweetId}` : `https://x.com/ask_meridian`;
+        console.log(`[X API Success] Tweet successfully published via OAuth 2.0 User Context! ID: ${tweetId}`);
 
-    console.log(`[X API] Dispatching tweet to X API v2 (${cleanText.length} chars)...`);
+        return {
+          success: true,
+          mode: "live",
+          httpStatus,
+          tweetId,
+          tweetUrl,
+          text: cleanText,
+          intentUrl,
+          message: `Tweet published live to X! View status: ${tweetUrl}`,
+          timestamp,
+          rawResponse: data,
+          diagnosisTitle: "Tweet Published Successfully",
+          diagnosisDetail: `Live post confirmed with Twitter API v2. Tweet ID: ${tweetId}`,
+        };
+      }
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: authHeader,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text: cleanText }),
-    });
-
-    const httpStatus = response.status;
-
-    if (!response.ok) {
       const errorText = await response.text();
-
       let parsedJson: any = null;
-      try {
-        parsedJson = JSON.parse(errorText);
-      } catch {
-        // Not JSON
-      }
-
-      // 1. Check for OAuth 1.0a permission issues (Read-only vs Read+Write)
-      if (
-        httpStatus === 403 &&
-        (errorText.includes("oauth1-permissions") ||
-          errorText.includes("appropriate oauth1 app permissions") ||
-          errorText.includes("permissions"))
-      ) {
-        console.warn(
-          `[X API Advisory] HTTP 403 (Read-Only OAuth1 Scope): App credentials have Read-only permissions. "Read and Write" scope + token regeneration required. Intent URL generated for manual sharing: ${intentUrl}`
-        );
-        return {
-          success: false,
-          mode: "error",
-          httpStatus,
-          error: parsedJson?.detail || `X API returned HTTP 403: Read-only OAuth permissions`,
-          intentUrl,
-          timestamp,
-          rawResponse: parsedJson || errorText,
-          errorCode: "OAUTH1_PERMISSIONS_READ_ONLY",
-          diagnosisTitle: "X App Permissions: App is Read-Only (Need 'Read and Write' + Regenerated Token)",
-          diagnosisDetail:
-            "Your X Developer App currently has Read-only permissions, or your Access Token was created before changing the permission setting to 'Read and Write'.",
-          troubleshootingSteps: [
-            "1. Open https://developer.x.com and navigate to Projects & Apps -> Your App.",
-            "2. Under 'User authentication settings', click 'Edit' (or 'Set up').",
-            "3. Under 'App permissions', choose 'Read and Write' (or 'Read and write and Direct message').",
-            "4. Under 'Type of App', select 'Web App, Automated App or Bot'. Save the settings.",
-            "5. CRITICAL STEP: Go to the 'Keys and tokens' tab and click 'Regenerate' on 'Access Token and Secret'. (Old tokens retain previous Read-only permissions even after changing settings).",
-            "6. Copy the new Access Token and Secret into AI Studio Settings under X_ACCESS_TOKEN and X_ACCESS_TOKEN_SECRET.",
-          ],
-        };
-      }
-
-      console.error(`[X API Error] HTTP ${httpStatus}: ${errorText}`);
-
-      // 2. Check for Duplicate Tweet
-      if (httpStatus === 403 && (errorText.includes("duplicate") || errorText.includes("Status is a duplicate"))) {
-        return {
-          success: false,
-          mode: "error",
-          httpStatus,
-          error: "X rejected this post because duplicate tweet text was already posted recently.",
-          intentUrl,
-          timestamp,
-          rawResponse: parsedJson || errorText,
-          errorCode: "DUPLICATE_TWEET",
-          diagnosisTitle: "Duplicate Tweet Status",
-          diagnosisDetail: "Twitter prevents identical consecutive tweets. Modify the text or append a timestamp.",
-          troubleshootingSteps: [
-            "Add a timestamp or unique hash to the tweet text.",
-            "Click the 'X Test button' which automatically appends unique UTC seconds to bypass duplicate filters.",
-          ],
-        };
-      }
-
-      // 3. Check for Rate Limiting
-      if (httpStatus === 429) {
-        return {
-          success: false,
-          mode: "error",
-          httpStatus,
-          error: "X API rate limit reached (HTTP 429).",
-          intentUrl,
-          timestamp,
-          rawResponse: parsedJson || errorText,
-          errorCode: "RATE_LIMITED",
-          diagnosisTitle: "X API Rate Limited",
-          diagnosisDetail: "X endpoints enforce per-user and per-app request limits. Please wait ~15 minutes.",
-        };
-      }
-
-      // 4. Check for Unauthorized / Invalid credentials
-      if (httpStatus === 401) {
-        return {
-          success: false,
-          mode: "error",
-          httpStatus,
-          error: parsedJson?.detail || "Invalid or expired OAuth 1.0a credentials (HTTP 401).",
-          intentUrl,
-          timestamp,
-          rawResponse: parsedJson || errorText,
-          errorCode: "UNAUTHORIZED",
-          diagnosisTitle: "OAuth 1.0a Signature Verification Failed",
-          diagnosisDetail: "One or more of your Consumer Keys (API Key/Secret) or User Tokens (Access Token/Secret) are incorrect.",
-          troubleshootingSteps: [
-            "Verify that X_API_KEY and X_API_SECRET_KEY match your Developer App.",
-            "Verify that X_ACCESS_TOKEN and X_ACCESS_TOKEN_SECRET match the same app and user account.",
-          ],
-        };
-      }
+      try { parsedJson = JSON.parse(errorText); } catch {}
 
       return {
         success: false,
@@ -317,30 +315,78 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
         diagnosisTitle: `X API HTTP ${httpStatus} Error`,
         diagnosisDetail: errorText,
       };
+    } catch (err: any) {
+      console.error("[X API OAuth 2.0 Exception]", err);
     }
+  }
 
-    const data: any = await response.json();
-    const tweetId = data?.data?.id;
-    const tweetUrl = tweetId ? `https://x.com/i/status/${tweetId}` : `https://x.com/ask_meridian`;
-
-    console.log(`[X API Success] Tweet successfully published to X! ID: ${tweetId}`);
-
+  // 2. Fallback to OAuth 1.0a User Context
+  const credentials = getXCredentials();
+  if (!credentials) {
+    console.log("[X API] Neither OAuth 2.0 nor complete OAuth 1.0a configured. Simulation mode.");
     return {
       success: true,
-      mode: "live",
-      httpStatus,
-      tweetId,
-      tweetUrl,
+      mode: "unconfigured_simulation",
+      tweetId: `sim_${timestamp}`,
+      tweetUrl: `https://x.com/ask_meridian/status/sim_${timestamp}`,
       text: cleanText,
       intentUrl,
-      message: `Tweet published live to X! View status: ${tweetUrl}`,
+      message: "X API credentials not detected. Tweet saved and Web Intent ready.",
       timestamp,
-      rawResponse: data,
-      diagnosisTitle: "Tweet Published Successfully",
-      diagnosisDetail: `Live post confirmed with Twitter API v2. Tweet ID: ${tweetId}`,
+      diagnosisTitle: "Simulation Mode (No Keys)",
+      diagnosisDetail: "Configure X_OAUTH_ACCESS_TOKEN (OAuth 2.0) or OAuth 1.0a keys in Settings to enable direct posting.",
+    };
+  }
+
+  const endpoint = "https://api.twitter.com/2/tweets";
+  try {
+    const authHeader = generateOAuth1Header("POST", endpoint, credentials);
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text: cleanText }),
+    });
+
+    const httpStatus = response.status;
+    if (response.ok) {
+      const data: any = await response.json();
+      const tweetId = data?.data?.id;
+      const tweetUrl = tweetId ? `https://x.com/i/status/${tweetId}` : `https://x.com/ask_meridian`;
+      return {
+        success: true,
+        mode: "live",
+        httpStatus,
+        tweetId,
+        tweetUrl,
+        text: cleanText,
+        intentUrl,
+        message: `Tweet published live to X! View status: ${tweetUrl}`,
+        timestamp,
+        rawResponse: data,
+        diagnosisTitle: "Tweet Published Successfully",
+        diagnosisDetail: `Live post confirmed with Twitter API v2. Tweet ID: ${tweetId}`,
+      };
+    }
+
+    const errorText = await response.text();
+    let parsedJson: any = null;
+    try { parsedJson = JSON.parse(errorText); } catch {}
+
+    return {
+      success: false,
+      mode: "error",
+      httpStatus,
+      error: parsedJson?.detail || `X API returned HTTP ${httpStatus}: ${errorText}`,
+      intentUrl,
+      timestamp,
+      rawResponse: parsedJson || errorText,
+      diagnosisTitle: `X API HTTP ${httpStatus} Error`,
+      diagnosisDetail: errorText,
     };
   } catch (err: any) {
-    console.error("[X API Exception] Failed to post tweet:", err);
     return {
       success: false,
       mode: "error",
@@ -348,7 +394,7 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
       intentUrl,
       timestamp,
       diagnosisTitle: "Network / Fetch Exception",
-      diagnosisDetail: err.message || "Unknown communication failure with https://api.twitter.com/2/tweets",
+      diagnosisDetail: err.message || "Unknown communication failure",
     };
   }
 }
@@ -357,6 +403,76 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
  * Tests connection to X API v2 using current credentials
  */
 export async function testXConnection(): Promise<XConnectionStatus> {
+  const oauth2 = getOAuth2Tokens();
+
+  // 1. Prefer OAuth 2.0 User Context if configured
+  if (oauth2) {
+    const endpoint = "https://api.twitter.com/2/users/me";
+    try {
+      let currentToken = oauth2.accessToken;
+      let res = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
+
+      if (res.status === 401 && oauth2.refreshToken && oauth2.clientId) {
+        const refreshedToken = await refreshOAuth2AccessToken();
+        if (refreshedToken) {
+          currentToken = refreshedToken;
+          res = await fetch(endpoint, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${currentToken}`,
+            },
+          });
+        }
+      }
+
+      if (res.ok) {
+        const data: any = await res.json();
+        const accessLevel = (res.headers.get("x-access-level") || "").trim().toLowerCase();
+        const hasWritePermission = !accessLevel || accessLevel.includes("write");
+
+        return {
+          configured: true,
+          connected: true,
+          username: data?.data?.username,
+          name: data?.data?.name,
+          id: data?.data?.id,
+          missingKeys: [],
+          httpStatus: res.status,
+          authMethod: "OAuth 2.0 User Context",
+          accessLevel: accessLevel || "read-write",
+          hasWritePermission,
+          rawResponse: data,
+          keyPreviews: {
+            accessToken: `${currentToken.slice(0, 8)}...${currentToken.slice(-4)}`,
+            hasSecret: !!oauth2.refreshToken,
+            hasBearer: true,
+          },
+        };
+      } else {
+        const errBody = await res.text();
+        let parsed: any = null;
+        try { parsed = JSON.parse(errBody); } catch {}
+        return {
+          configured: true,
+          connected: false,
+          missingKeys: [],
+          httpStatus: res.status,
+          error: parsed?.detail || `OAuth 2.0 verification failed (HTTP ${res.status}): ${errBody}`,
+          authMethod: "OAuth 2.0 User Context",
+          rawResponse: parsed || errBody,
+        };
+      }
+    } catch (err: any) {
+      console.warn("[OAuth 2.0 Test Exception]", err);
+    }
+  }
+
+  // 2. Fallback to OAuth 1.0a
   const missingKeys: string[] = [];
   if (!process.env.X_API_KEY && !process.env.TWITTER_API_KEY) missingKeys.push("X_API_KEY");
   if (!process.env.X_API_SECRET_KEY && !process.env.TWITTER_API_SECRET_KEY) missingKeys.push("X_API_SECRET_KEY");
@@ -398,13 +514,10 @@ export async function testXConnection(): Promise<XConnectionStatus> {
     });
 
     const httpStatus = res.status;
-
     if (!res.ok) {
       const errBody = await res.text();
       let parsed: any = null;
-      try {
-        parsed = JSON.parse(errBody);
-      } catch {}
+      try { parsed = JSON.parse(errBody); } catch {}
       return {
         configured: true,
         connected: false,
@@ -420,9 +533,6 @@ export async function testXConnection(): Promise<XConnectionStatus> {
     const data: any = await res.json();
     const accessLevel = (res.headers.get("x-access-level") || "").trim().toLowerCase();
     const hasWritePermission = accessLevel.includes("write");
-    const writePermissionWarning = accessLevel === "read"
-      ? "OAuth 1.0a access token has Read-only permissions (x-access-level: read). Direct tweet posting requires 'Read and Write' permission. In X Developer Portal, change App permissions to 'Read and Write', then Regenerate your Access Token & Secret in the Keys and Tokens tab."
-      : undefined;
 
     return {
       configured: true,
@@ -435,7 +545,6 @@ export async function testXConnection(): Promise<XConnectionStatus> {
       authMethod: "OAuth 1.0a User Context",
       accessLevel: accessLevel || undefined,
       hasWritePermission: accessLevel ? hasWritePermission : undefined,
-      writePermissionWarning,
       rawResponse: data,
       keyPreviews,
     };
@@ -466,10 +575,11 @@ export async function executeTestTweet(customMessage?: string): Promise<XTweetRe
     hour12: false,
   });
   const uniqueStamp = Date.now().toString().slice(-4);
+  const authLabel = connection.authMethod || "OAuth 2.0 User Context";
 
   const testText =
     (customMessage && customMessage.trim()) ||
-    `Meridian Journal [X Integration Test • ${artTime} ART #${uniqueStamp}] — Verifying OAuth 1.0a User Context for @${username}. Autonomous frontier physics & quantum optics: https://ask-meridian.uk #QuantumOptics #arXiv`;
+    `Meridian Journal [Pipeline Verification • ${artTime} ART #${uniqueStamp}] — ${authLabel} live test for @${username}. Autonomous frontier physics & quantum optics: https://ask-meridian.uk #QuantumOptics #arXiv`;
 
   const result = await postTweetToX(testText);
   return {
