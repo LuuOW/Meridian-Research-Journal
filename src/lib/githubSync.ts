@@ -652,6 +652,7 @@ Sitemap: https://ask-meridian.uk/sitemap.xml
 
   const filesToSync = [
     { path: "custom_blogs.json", content: customBlogsJson },
+    { path: "public/custom_blogs.json", content: customBlogsJson },
     { path: "src/data.ts", content: dataTsContent },
     { path: "ads.txt", content: adsTxtContent },
     { path: "public/ads.txt", content: adsTxtContent },
