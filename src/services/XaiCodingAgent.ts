@@ -3,7 +3,13 @@
  * Uses XAI_API_KEY (Cloudflare secret) for code generation, review, and repair.
  */
 
-import { xaiChatCompletion, getXaiApiKey } from "../lib/xaiClient";
+import { IMicroservice, ServiceHealth } from "./types";
+import {
+  xaiChatCompletion,
+  XaiMessage,
+  getXaiApiKey,
+  XaiChatResult,
+} from "../lib/xaiClient";
 
 type CodingTask =
   | "generate"
@@ -27,25 +33,36 @@ export interface CodingAgentResponse {
   task: CodingTask;
   result: string;
   model: string;
-  usage?: any;
+  usage?: XaiChatResult["usage"];
   error?: string;
 }
 
 const SYSTEM_PROMPTS: Record<CodingTask, string> = {
-  generate: `You are Grok, a senior software engineer and coding agent built by xAI (SpaceXAI).\nWrite clean, production-ready code. Prefer TypeScript/React/Node patterns used in modern Vite + Clo[...]
+  generate: `You are Grok, a senior software engineer and coding agent built by xAI (SpaceXAI).
+Write clean, production-ready code. Prefer TypeScript/React/Node patterns used in modern Vite + Cloudflare Pages projects.
+Return ONLY the code unless the user asks for explanation. Use markdown code fences with the correct language tag.`,
 
-  review: `You are Grok, a strict senior code reviewer. Identify bugs, security issues, race conditions, performance problems, and style issues.\nBe concise and actionable. Structure the review as[...]
+  review: `You are Grok, a strict senior code reviewer. Identify bugs, security issues, race conditions, performance problems, and style issues.
+Be concise and actionable. Structure the review as:
+1. Critical
+2. Major
+3. Minor / style
+4. Suggested fixes (with code snippets).`,
 
-  fix: `You are Grok, a coding agent that repairs broken code. Given the code and a description of the bug or error, return the corrected version.\nExplain the root cause in 1-2 sentences, then pr[...]
+  fix: `You are Grok, a coding agent that repairs broken code. Given the code and a description of the bug or error, return the corrected version.
+Explain the root cause in 1-2 sentences, then provide the full fixed code in a markdown fence.`,
 
-  explain: `You are Grok, a clear technical teacher. Explain the provided code step-by-step for a competent engineer.\nHighlight invariants, edge cases, and any non-obvious design decisions.`,
+  explain: `You are Grok, a clear technical teacher. Explain the provided code step-by-step for a competent engineer.
+Highlight invariants, edge cases, and any non-obvious design decisions.`,
 
-  refactor: `You are Grok, a refactoring specialist. Improve readability, structure, and maintainability without changing external behaviour.\nReturn the refactored code and a short bullet list of[...]
+  refactor: `You are Grok, a refactoring specialist. Improve readability, structure, and maintainability without changing external behaviour.
+Return the refactored code and a short bullet list of what changed.`,
 
-  test: `You are Grok, a test engineer. Write thorough unit/integration tests (prefer Node test runner or Vitest style) for the given code.\nCover happy path, edge cases, and failure modes. Return[...]
+  test: `You are Grok, a test engineer. Write thorough unit/integration tests (prefer Node test runner or Vitest style) for the given code.
+Cover happy path, edge cases, and failure modes. Return only the test file content in a markdown fence.`,
 };
 
-export class XaiCodingAgent {
+export class XaiCodingAgent implements IMicroservice {
   public readonly serviceName = "XaiCodingAgent";
   public readonly version = "1.0.0";
 
@@ -63,7 +80,7 @@ export class XaiCodingAgent {
     return true;
   }
 
-  public async getHealth(): Promise<any> {
+  public async getHealth(): Promise<ServiceHealth> {
     this.lastHeartbeat = Date.now();
     const configured = !!getXaiApiKey();
     return {
@@ -80,7 +97,13 @@ export class XaiCodingAgent {
     };
   }
 
-  public async run(req: CodingAgentRequest, env?: Record<string, any>): Promise<CodingAgentResponse> {
+  /**
+   * Main entry: run a coding task against Grok.
+   */
+  public async run(
+    req: CodingAgentRequest,
+    env?: Record<string, any>
+  ): Promise<CodingAgentResponse> {
     this.lastHeartbeat = Date.now();
 
     try {
@@ -91,26 +114,30 @@ export class XaiCodingAgent {
       const task: CodingTask = req.task || "generate";
       const language = req.language || "typescript";
 
-      const messages = [
+      const messages: XaiMessage[] = [
         { role: "system", content: SYSTEM_PROMPTS[task] },
-      ] as any[];
+      ];
 
       let userContent = `Task: ${task}\nLanguage: ${language}\n\n`;
       if (req.context) {
         userContent += `### Repository / extra context\n${req.context}\n\n`;
       }
       if (req.code) {
-        userContent += `### Current code\n\n${req.code}\n\n`;
+        userContent += `### Current code\n\`\`\`${language}\n${req.code}\n\`\`\`\n\n`;
       }
       userContent += `### Instruction\n${req.instruction}`;
 
       messages.push({ role: "user", content: userContent });
 
-      const result = await xaiChatCompletion(messages, {
-        model: req.model,
-        temperature: task === "generate" || task === "refactor" ? 0.3 : 0.15,
-        max_tokens: 8192,
-      }, env);
+      const result = await xaiChatCompletion(
+        messages,
+        {
+          model: req.model,
+          temperature: task === "generate" || task === "refactor" ? 0.3 : 0.15,
+          max_tokens: 8192,
+        },
+        env
+      );
 
       const response: CodingAgentResponse = {
         success: true,
