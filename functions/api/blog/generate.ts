@@ -1,4 +1,4 @@
-import { CloudflareEnv, getExpectedPassword, jsonResponse } from "../_utils";
+import { CloudflareEnv, getExpectedPassword, isPasswordValid, jsonResponse } from "../_utils";
 
 export const onRequestPost = async (context: {
   request: Request;
@@ -14,9 +14,8 @@ export const onRequestPost = async (context: {
     };
 
     const { arxivInput, rawText, password, jobId } = body;
-    const expectedPassword = getExpectedPassword(env);
 
-    if (!password || password !== expectedPassword) {
+    if (!password || !isPasswordValid(password, env)) {
       return jsonResponse(
         { error: "Unauthorized: Incorrect editor password." },
         403

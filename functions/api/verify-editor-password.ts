@@ -1,4 +1,4 @@
-import { CloudflareEnv, getExpectedPassword, jsonResponse } from "./_utils";
+import { CloudflareEnv, getExpectedPassword, isPasswordValid, jsonResponse } from "./_utils";
 
 export const onRequestPost = async (context: {
   request: Request;
@@ -7,11 +7,9 @@ export const onRequestPost = async (context: {
   try {
     const { request, env } = context;
     const body = (await request.json().catch(() => ({}))) as { password?: string };
-    const inputPassword = body?.password?.trim() || "";
+    const inputPassword = body?.password || "";
 
-    const expectedPassword = getExpectedPassword(env);
-
-    if (inputPassword && inputPassword === expectedPassword) {
+    if (inputPassword && isPasswordValid(inputPassword, env)) {
       return jsonResponse({
         success: true,
         valid: true,
@@ -43,11 +41,24 @@ export const onRequestGet = async (context: {
   env: CloudflareEnv;
 }) => {
   const { env } = context;
-  const hasSecret = Boolean(env.EDITOR_PASSWORD || env.GENERATION_PASSWORD);
+  const rawEditorPwd = env.EDITOR_PASSWORD ? String(env.EDITOR_PASSWORD) : "";
+  const rawGenPwd = env.GENERATION_PASSWORD ? String(env.GENERATION_PASSWORD) : "";
 
   return jsonResponse({
     status: "ok",
     backend: "cloudflare-pages",
-    editorAuthConfigured: hasSecret,
+    editorAuthConfigured: Boolean(rawEditorPwd || rawGenPwd || env.ADMIN_PASSWORD || env.PASSWORD),
+    diagnostics: {
+      hasEditorPassword: Boolean(rawEditorPwd),
+      editorPasswordLength: rawEditorPwd.length,
+      editorPasswordHasQuotes: /^["'].*["']$/.test(rawEditorPwd.trim()),
+      hasGenerationPassword: Boolean(rawGenPwd),
+      generationPasswordLength: rawGenPwd.length,
+      hasGeminiApiKey: Boolean(env.GEMINI_API_KEY),
+      hasGithubToken: Boolean(env.GITHUB_TOKEN || env.GH_TOKEN),
+      hasXApiKey: Boolean(env.X_API_KEY || env.TWITTER_API_KEY),
+      hasBinanceApiKey: Boolean(env.BINANCE_API_KEY),
+    },
+    timestamp: new Date().toISOString(),
   });
 };

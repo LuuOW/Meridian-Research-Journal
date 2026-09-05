@@ -1,4 +1,4 @@
-import { CloudflareEnv, getExpectedPassword, jsonResponse } from "../_utils";
+import { CloudflareEnv, getExpectedPassword, isPasswordValid, jsonResponse } from "../_utils";
 
 export const onRequestDelete = async (context: {
   request: Request;
@@ -20,9 +20,7 @@ export const onRequestDelete = async (context: {
     const queryPassword = url.searchParams.get("password") || "";
     const password = (headerPassword || bodyPassword || queryPassword).trim();
 
-    const expectedPassword = getExpectedPassword(env);
-
-    if (!password || password !== expectedPassword) {
+    if (!password || !isPasswordValid(password, env)) {
       return jsonResponse(
         { error: "Unauthorized: Incorrect editor password." },
         403
