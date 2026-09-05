@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
   <url>
     <loc>https://ask-meridian.uk/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <lastmod>2026-09-05</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -122,7 +122,13 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/2609-02603v1-0885</loc>
-    <lastmod>2026-09-03</lastmod>
+    <lastmod>2026-09-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/2609-04165v1-4096</loc>
+    <lastmod>2026-09-04</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
