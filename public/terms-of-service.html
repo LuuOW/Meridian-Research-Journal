@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terms of Service | Meridian Research Journal</title>
+    <meta
+      name="description"
+      content="Terms of Service for Meridian Research Journal (https://ask-meridian.uk). Outlining acceptable use, arXiv preprint translations, WebAuthn passkey security, and developer API policies."
+    />
+    <link rel="canonical" href="https://ask-meridian.uk/terms-of-service" />
+
+    <!-- Open Graph / Meta -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ask-meridian.uk/terms-of-service" />
+    <meta property="og:title" content="Terms of Service | Meridian Research Journal" />
+    <meta
+      property="og:description"
+      content="Official terms of service and acceptable academic use guidelines for Meridian Research Journal."
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@ask_meridian" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg-color: #070a12;
+        --card-bg: rgba(15, 23, 42, 0.65);
+        --border-color: rgba(51, 65, 85, 0.6);
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent-cyan: #06b6d4;
+        --accent-emerald: #10b981;
+        --accent-blue: #38bdf8;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.7;
+        font-size: 15px;
+        -webkit-font-smoothing: antialiased;
+        padding: 2rem 1rem;
+      }
+
+      .container {
+        max-width: 860px;
+        margin: 0 auto;
+      }
+
+      header {
+        margin-bottom: 2.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .nav-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        text-decoration: none;
+        color: var(--text-primary);
+      }
+
+      .brand-title {
+        font-family: "Cinzel", Georgia, serif;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        font-size: 1.15rem;
+        background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.9rem;
+        border-radius: 9999px;
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 0.82rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+      }
+
+      .back-btn:hover {
+        background: rgba(51, 65, 85, 0.9);
+        color: #ffffff;
+        border-color: var(--accent-cyan);
+      }
+
+      h1 {
+        font-family: "Newsreader", Georgia, serif;
+        font-size: 2.5rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+        margin-bottom: 0.6rem;
+        color: #ffffff;
+      }
+
+      .effective-date {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        color: var(--accent-cyan);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 2rem;
+      }
+
+      .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .meta-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      .meta-value {
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        font-weight: 500;
+        word-break: break-all;
+      }
+
+      .meta-value a {
+        color: var(--accent-blue);
+        text-decoration: none;
+      }
+
+      .meta-value a:hover {
+        text-decoration: underline;
+      }
+
+      section {
+        margin-bottom: 2.2rem;
+      }
+
+      h2 {
+        font-family: "Newsreader", Georgia, serif;
+        font-size: 1.45rem;
+        font-weight: 600;
+        color: #ffffff;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      }
+
+      p {
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        font-weight: 400;
+      }
+
+      ul, ol {
+        margin-left: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--text-secondary);
+      }
+
+      li {
+        margin-bottom: 0.45rem;
+      }
+
+      strong {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      code {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85em;
+        background: rgba(30, 41, 59, 0.8);
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        color: var(--accent-cyan);
+      }
+
+      .highlight-box {
+        background: rgba(16, 185, 129, 0.06);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 10px;
+        padding: 1.1rem 1.25rem;
+        margin: 1.25rem 0;
+      }
+
+      .highlight-box p {
+        margin-bottom: 0;
+        color: #e2e8f0;
+      }
+
+      footer {
+        margin-top: 3.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+      }
+
+      .footer-links {
+        display: flex;
+        gap: 1.2rem;
+      }
+
+      .footer-links a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+
+      .footer-links a:hover {
+        color: var(--accent-cyan);
+      }
+
+      @media (max-width: 640px) {
+        body {
+          padding: 1.25rem 0.85rem;
+        }
+        h1 {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="nav-bar">
+          <a href="/" class="brand">
+            <span class="brand-title">MERIDIAN RESEARCH JOURNAL</span>
+          </a>
+          <a href="/" class="back-btn">&larr; Return to Journal</a>
+        </div>
+        <h1>Terms of Service</h1>
+        <div class="effective-date">Effective Date: September 4, 2026 &bull; Published by Meridian Research</div>
+      </header>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <span class="meta-label">Website URL</span>
+          <span class="meta-value"><a href="https://ask-meridian.uk">https://ask-meridian.uk</a></span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Organization</span>
+          <span class="meta-value">Meridian Research Journal</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Callback URI</span>
+          <span class="meta-value"><code>https://ask-meridian.uk/auth/callback</code></span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Editorial Contact</span>
+          <span class="meta-value"><a href="mailto:lucas.kempe@icloud.com">lucas.kempe@icloud.com</a></span>
+        </div>
+      </div>
+
+      <section>
+        <h2>1. Acceptance of Terms</h2>
+        <p>
+          Welcome to <strong>Meridian Research Journal</strong> (operated at <strong>https://ask-meridian.uk</strong>). By accessing or using our website, services, interactive derivations, or developer API integrations, you agree to be bound by these Terms of Service. If you do not agree with any part of these terms, you must discontinue use of the site immediately.
+        </p>
+      </section>
+
+      <section>
+        <h2>2. Scholarly Nature &amp; arXiv Fair Use</h2>
+        <p>
+          Meridian Research Journal publishes academic commentaries, mathematical derivations, interactive simulations, and voice syntheses based on open-access preprints published on <strong>arXiv.org</strong> (Cornell University) under physics, mathematics, and computer science classifications.
+        </p>
+        <ul>
+          <li><strong>Scholarly Attribution:</strong> Every translation prominently references the original arXiv identifier, author names, and canonical publication link.</li>
+          <li><strong>Intellectual Property of Preprints:</strong> Copyright in original arXiv preprints remains vested in their respective authors and publishing institutions. Meridian does not claim ownership over the underlying scientific discoveries.</li>
+          <li><strong>Original Synthesis &amp; Vector Graphics:</strong> Original editorial commentary, mathematical breakdown matrices, and procedural SVG banner diagrams generated by Meridian Research Journal are protected under intellectual property laws and licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>3. Acceptable Use Policy</h2>
+        <p>Users, automated agents, and API consumers agree not to:</p>
+        <ul>
+          <li>Conduct automated scraping, rate-limit bypassing, or distributed denial-of-service (DDoS) attacks against our servers.</li>
+          <li>Interfere with or tamper with WebAuthn / Passkey cryptographic handshakes or authorization challenges.</li>
+          <li>Misrepresent association with Meridian Research Journal or impersonate its editorial board.</li>
+          <li>Reverse-engineer or exploit proprietary server microservices for unauthorized commercial redistribution.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>4. Developer Integrations &amp; X (Twitter) API Terms</h2>
+        <div class="highlight-box">
+          <p>
+            <strong>Developer Compliance:</strong> Our platform integrates with the X Developer API v2 for automated morning publication dispatches (9:00 - 10:00 AM ART) and verified author social sharing.
+          </p>
+        </div>
+        <ul>
+          <li>
+            <strong>Designated Callback URI:</strong> All OAuth 1.0a and OAuth 2.0 user authentication flows terminate strictly at <code>https://ask-meridian.uk/auth/callback</code>.
+          </li>
+          <li>
+            <strong>Authorized Account Operations:</strong> Automated status updates and article threads are published exclusively to authorized channels (e.g., <code>@ask_meridian</code>) upon verified trigger conditions.
+          </li>
+          <li>
+            <strong>Compliance with Developer Agreement:</strong> We strictly adhere to X&apos;s Developer Agreement, Developer Policy, and content redistribution limits. No user data accessed via the X API is stored longer than necessary or sold to data brokers.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. WebAuthn Passkeys &amp; Editorial Accounts</h2>
+        <p>
+          Administrative access to the editorial pipeline and article generation consoles utilizes FIDO2 / WebAuthn passkey authentication.
+        </p>
+        <ul>
+          <li>Editorial users are responsible for maintaining physical custody of their passkey-enabled devices.</li>
+          <li>Meridian Research Journal reserves the right to revoke session tokens or registration challenges if suspicious geographic roaming or replay attacks are detected.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>6. Advertising &amp; Commercial Disclaimers</h2>
+        <p>
+          Meridian Research Journal participates in <strong>Google AdSense</strong> (<code>ca-pub-7734562716191044</code>). Advertisements are served automatically by Google according to its content network policies. We do not endorse the products, services, or claims advertised within third-party promotional units.
+        </p>
+      </section>
+
+      <section>
+        <h2>7. Disclaimer of Warranties</h2>
+        <p>
+          THE CONTENT AND SERVICES ON MERIDIAN RESEARCH JOURNAL ARE PROVIDED ON AN &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; BASIS WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+        </p>
+        <p>
+          While we strive for extreme mathematical precision and rigor, Meridian Research Journal does not warrant that scientific derivations, numerical simulations, or LaTeX formulas are error-free or suitable for critical engineering applications without independent verification.
+        </p>
+      </section>
+
+      <section>
+        <h2>8. Limitation of Liability</h2>
+        <p>
+          TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, MERIDIAN RESEARCH JOURNAL, ITS EDITORS, AND OPERATORS SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF YOUR ACCESS TO OR INABILITY TO ACCESS THIS PUBLICATION.
+        </p>
+      </section>
+
+      <section>
+        <h2>9. Governing Law &amp; Jurisdiction</h2>
+        <p>
+          These Terms of Service are governed by and construed in accordance with the laws of <strong>England and Wales, United Kingdom</strong>, without regard to its conflict of law provisions.
+        </p>
+      </section>
+
+      <section>
+        <h2>10. Contact Information</h2>
+        <p>
+          For editorial questions, licensing permissions, or legal notices, contact:
+        </p>
+        <p>
+          <strong>Meridian Research Journal</strong><br />
+          Editorial Director: Lucas Kempe<br />
+          Email: <a href="mailto:lucas.kempe@icloud.com" style="color:var(--accent-cyan);">lucas.kempe@icloud.com</a><br />
+          Website: <a href="https://ask-meridian.uk" style="color:var(--accent-cyan);">https://ask-meridian.uk</a>
+        </p>
+      </section>
+
+      <footer>
+        <div>&copy; 2026 Meridian Research Journal. All rights reserved.</div>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/privacy-policy">Privacy Policy</a>
+          <a href="/terms-of-service">Terms of Service</a>
+          <a href="/auth/callback">OAuth Callback</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

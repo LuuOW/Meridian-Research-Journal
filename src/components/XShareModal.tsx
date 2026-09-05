@@ -30,6 +30,8 @@ export const XShareModal: React.FC<XShareModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiHeadline, setAiHeadline] = useState<string | null>(null);
+  const [isPublishingDirectly, setIsPublishingDirectly] = useState(false);
+  const [publishResult, setPublishResult] = useState<any | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const [lightState, setLightState] = useState(getDefaultLightState());
@@ -143,6 +145,27 @@ export const XShareModal: React.FC<XShareModalProps> = ({
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy text: ", err);
+    }
+  };
+
+  const handleDirectPostToX = async () => {
+    setIsPublishingDirectly(true);
+    setPublishResult(null);
+    try {
+      const res = await fetch("/api/x/publish-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: draftText }),
+      });
+      const data = await res.json();
+      setPublishResult(data);
+    } catch (err: any) {
+      setPublishResult({
+        success: false,
+        error: err.message || "Network error posting to X API",
+      });
+    } finally {
+      setIsPublishingDirectly(false);
     }
   };
 
@@ -308,21 +331,71 @@ export const XShareModal: React.FC<XShareModalProps> = ({
                 </div>
               </div>
 
+              {publishResult && (
+                <div className={`p-3 rounded-xl text-xs space-y-1 relative z-10 ${
+                  publishResult.success
+                    ? "bg-emerald-950/50 border border-emerald-500/40 text-emerald-200"
+                    : "bg-red-950/50 border border-red-500/40 text-red-200"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold">
+                      {publishResult.success ? "Published to X (@lk3mpe)!" : "X Direct Dispatch Notice"}
+                    </span>
+                    {publishResult.tweetUrl && (
+                      <a
+                        href={publishResult.tweetUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-cyan-300 hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <span>View Tweet</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                  {!publishResult.success && (
+                    <p className="text-[11px] text-red-300">
+                      {publishResult.error || "Requires attention. Use Share on X Intent as fallback."}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-2.5 pt-1 relative z-10">
                 <button
+                  onClick={handleDirectPostToX}
+                  disabled={isPublishingDirectly || !draftText.trim()}
+                  className="flex-1 bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  {isPublishingDirectly ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Posting to @lk3mpe...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
+                      <span>Post Directly to @lk3mpe</span>
+                    </>
+                  )}
+                </button>
+
+                <button
                   onClick={handleCopy}
-                  className="flex-1 bg-white hover:bg-neutral-200 text-black font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+                  className="px-4 bg-white hover:bg-neutral-200 text-black font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer active:scale-95"
                 >
                   {copied ? (
                     <>
                       <Check className="w-4 h-4 text-emerald-600" />
-                      <span>Copied to Clipboard!</span>
+                      <span>Copied</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4 text-black" />
-                      <span>Copy Post</span>
+                      <span>Copy</span>
                     </>
                   )}
                 </button>
@@ -331,12 +404,9 @@ export const XShareModal: React.FC<XShareModalProps> = ({
                   href={tweetIntentUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 bg-black hover:bg-neutral-900 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md text-center cursor-pointer active:scale-95 border border-neutral-700/80 hover:border-cyan-500/40"
+                  className="px-4 bg-black hover:bg-neutral-900 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md text-center cursor-pointer active:scale-95 border border-neutral-700/80 hover:border-cyan-500/40"
                 >
-                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                  <span>Share on X</span>
+                  <span>Intent</span>
                   <ExternalLink className="w-3.5 h-3.5 text-neutral-400" />
                 </a>
               </div>

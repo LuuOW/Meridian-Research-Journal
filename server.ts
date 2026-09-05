@@ -38,7 +38,8 @@ import {
 } from "./src/lib/slugResolver";
 import {
   postTweetToX,
-  testXConnection
+  testXConnection,
+  executeTestTweet
 } from "./src/lib/xApi";
 import {
   getArtTime
@@ -154,6 +155,48 @@ app.get("/sitemap.xml", (req, res) => {
 app.get("/.nojekyll", (req, res) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.send("");
+});
+
+// Privacy Policy Serving Endpoints (Serves at https://ask-meridian.uk/privacy-policy)
+app.get(["/privacy-policy", "/privacy-policy.html"], (req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  const publicPath = path.join(process.cwd(), "public", "privacy-policy.html");
+  const rootPath = path.join(process.cwd(), "privacy-policy.html");
+  if (fs.existsSync(publicPath)) {
+    return res.sendFile(publicPath);
+  } else if (fs.existsSync(rootPath)) {
+    return res.sendFile(rootPath);
+  }
+  res.status(404).send("Privacy Policy not found");
+});
+
+// Terms of Service Serving Endpoints (Serves at https://ask-meridian.uk/terms-of-service)
+app.get(["/terms-of-service", "/terms-of-service.html"], (req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  const publicPath = path.join(process.cwd(), "public", "terms-of-service.html");
+  const rootPath = path.join(process.cwd(), "terms-of-service.html");
+  if (fs.existsSync(publicPath)) {
+    return res.sendFile(publicPath);
+  } else if (fs.existsSync(rootPath)) {
+    return res.sendFile(rootPath);
+  }
+  res.status(404).send("Terms of Service not found");
+});
+
+// Authorized OAuth Callback URI (Serves at https://ask-meridian.uk/auth/callback)
+app.get(["/auth/callback", "/auth/callback.html"], (req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  const publicPath = path.join(process.cwd(), "public", "auth", "callback.html");
+  const rootPath = path.join(process.cwd(), "auth", "callback.html");
+  if (fs.existsSync(publicPath)) {
+    return res.sendFile(publicPath);
+  } else if (fs.existsSync(rootPath)) {
+    return res.sendFile(rootPath);
+  }
+  res.status(404).send("OAuth callback handler not found");
 });
 
 app.use(express.json({ limit: "10mb" }));
@@ -3472,6 +3515,21 @@ app.post("/api/daily-dispatch/redraft", async (req, res) => {
   }
 });
 
+// Select candidate from Tinder-like candidate deck (all 4 from Sept 3 + live arXiv crawler)
+app.post("/api/daily-dispatch/select-candidate", async (req, res) => {
+  try {
+    const { candidateId } = req.body || {};
+    if (!candidateId) {
+      return res.status(400).json({ success: false, error: "candidateId is required" });
+    }
+    const updatedDispatch = await microservicesRegistry.getDailyScheduleDaemon().selectCandidate(candidateId);
+    res.json({ success: true, dispatch: updatedDispatch });
+  } catch (err: any) {
+    console.error("[API] Failed to select candidate:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Manually trigger 9:00 AM crawl & staging (for testing, demo, or forcing refresh)
 app.post("/api/daily-dispatch/trigger-crawl", async (req, res) => {
   try {
@@ -3480,6 +3538,18 @@ app.post("/api/daily-dispatch/trigger-crawl", async (req, res) => {
     res.json({ success: true, dispatch });
   } catch (err: any) {
     console.error("[API] Failed to trigger crawl:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Retry companion X post for published daily dispatch
+app.post("/api/daily-dispatch/retry-x-post", async (req, res) => {
+  try {
+    const { customTweetText } = req.body || {};
+    const result = await microservicesRegistry.getDailyScheduleDaemon().retryXPost(customTweetText);
+    res.json(result);
+  } catch (err: any) {
+    console.error("[API] Failed to retry daily dispatch X post:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -3502,6 +3572,17 @@ app.post("/api/x/publish-post", async (req, res) => {
       return res.status(400).json({ success: false, error: "Tweet text is required" });
     }
     const result = await postTweetToX(text);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Autonomous X Test endpoint: executes an authentic OAuth 1.0a test post to user account
+app.post("/api/x/test-post", async (req, res) => {
+  try {
+    const { customMessage } = req.body || {};
+    const result = await executeTestTweet(customMessage);
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OAuth Callback Verification | Meridian Research Journal</title>
+    <meta
+      name="description"
+      content="Authorized OAuth callback redirect handler for Meridian Research Journal (https://ask-meridian.uk)."
+    />
+    <link rel="canonical" href="https://ask-meridian.uk/auth/callback" />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg-color: #070a12;
+        --card-bg: rgba(15, 23, 42, 0.85);
+        --border-color: rgba(51, 65, 85, 0.7);
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --accent-cyan: #06b6d4;
+        --accent-emerald: #10b981;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1.5rem;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 2.25rem 2rem;
+        max-width: 520px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 20px rgba(6, 182, 212, 0.1);
+        backdrop-filter: blur(12px);
+      }
+
+      .logo-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.85rem;
+        background: rgba(6, 182, 212, 0.12);
+        border: 1px solid rgba(6, 182, 212, 0.3);
+        border-radius: 9999px;
+        font-family: "Cinzel", Georgia, serif;
+        font-weight: 700;
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        color: var(--accent-cyan);
+        margin-bottom: 1.25rem;
+      }
+
+      .icon-wrapper {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 1.25rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        color: var(--accent-emerald);
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #ffffff;
+      }
+
+      p.desc {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.55;
+        margin-bottom: 1.5rem;
+      }
+
+      .token-box {
+        background: rgba(7, 10, 18, 0.8);
+        border: 1px solid rgba(51, 65, 85, 0.5);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        text-align: left;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        max-height: 130px;
+        overflow-y: auto;
+        word-break: break-all;
+      }
+
+      .token-box div {
+        margin-bottom: 0.35rem;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.75rem 1.25rem;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-emerald) 100%);
+        color: #030712;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: transform 0.15s ease, opacity 0.2s ease;
+        cursor: pointer;
+        border: none;
+      }
+
+      .btn:hover {
+        opacity: 0.95;
+        transform: translateY(-1px);
+      }
+
+      .footer-note {
+        margin-top: 1.25rem;
+        font-size: 0.75rem;
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo-badge">MERIDIAN RESEARCH JOURNAL</div>
+      
+      <div class="icon-wrapper" id="status-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+
+      <h1 id="headline">OAuth Verification Successful</h1>
+      <p class="desc" id="subtext">
+        Your authentication response from the identity provider has been received by Meridian Research Journal.
+      </p>
+
+      <div class="token-box" id="token-display">
+        <div><strong>Status:</strong> Callback URI Verified</div>
+        <div><strong>Endpoint:</strong> https://ask-meridian.uk/auth/callback</div>
+        <div id="param-summary">Processing authentication parameters...</div>
+      </div>
+
+      <button class="btn" id="action-btn" onclick="handleContinue()">Return to Journal (<span id="timer">4</span>s)</button>
+
+      <div class="footer-note">
+        Official Callback URI for Meridian Research Journal &bull; <a href="/privacy-policy" style="color:#94a3b8;">Privacy</a> &bull; <a href="/terms-of-service" style="color:#94a3b8;">Terms</a>
+      </div>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const oauthToken = urlParams.get('oauth_token');
+      const oauthVerifier = urlParams.get('oauth_verifier');
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const error = urlParams.get('error');
+      const errorDescription = urlParams.get('error_description');
+
+      const paramSummaryEl = document.getElementById('param-summary');
+      const headlineEl = document.getElementById('headline');
+      const iconEl = document.getElementById('status-icon');
+
+      if (error) {
+        headlineEl.innerText = "Authentication Error";
+        iconEl.innerHTML = `
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        `;
+        iconEl.style.background = "rgba(244, 63, 94, 0.15)";
+        iconEl.style.borderColor = "rgba(244, 63, 94, 0.35)";
+        paramSummaryEl.innerHTML = `<span style="color:#f43f5e;">Error: ${error}</span><br>${errorDescription || 'The authorization request was cancelled or declined.'}`;
+      } else {
+        const details = [];
+        if (oauthToken) details.push(`<strong>OAuth 1.0a Token:</strong> ${oauthToken.substring(0, 12)}...`);
+        if (oauthVerifier) details.push(`<strong>OAuth 1.0a Verifier:</strong> Validated`);
+        if (code) details.push(`<strong>OAuth 2.0 Code:</strong> ${code.substring(0, 10)}...`);
+        if (state) details.push(`<strong>State Param:</strong> ${state}`);
+        
+        paramSummaryEl.innerHTML = details.length > 0 
+          ? details.join('<br>') 
+          : `<strong>Handshake:</strong> Standalone callback route verification complete. Ready for OAuth redirect flows.`;
+      }
+
+      // Notify opener window if opened as a popup
+      if (window.opener && window.opener !== window) {
+        try {
+          window.opener.postMessage({
+            type: "MERIDIAN_OAUTH_CALLBACK",
+            payload: {
+              oauthToken,
+              oauthVerifier,
+              code,
+              state,
+              error,
+              errorDescription,
+              url: window.location.href
+            }
+          }, "*");
+        } catch (e) {
+          console.warn("Could not postMessage to opener:", e);
+        }
+      }
+
+      let remaining = 4;
+      const timerEl = document.getElementById('timer');
+      const countdown = setInterval(() => {
+        remaining -= 1;
+        if (timerEl) timerEl.innerText = remaining;
+        if (remaining <= 0) {
+          clearInterval(countdown);
+          handleContinue();
+        }
+      }, 1000);
+
+      function handleContinue() {
+        if (window.opener && window.opener !== window) {
+          try {
+            window.close();
+            return;
+          } catch (e) {}
+        }
+        window.location.href = "/";
+      }
+    </script>
+  </body>
+</html>

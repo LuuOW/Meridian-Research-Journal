@@ -29,6 +29,7 @@ import { ensureAnimatedSvg, prepareSvgForPngExport } from "./lib/svgUtils";
 import { ViewCounter } from "./components/ViewCounter";
 import { sortBlogsByPublicationDate } from "./lib/viewCounter";
 import { XShareModal } from "./components/XShareModal";
+import { XTestModal } from "./components/XTestModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
 import { ResumeViewModal } from "./components/ResumeViewModal";
@@ -89,6 +90,7 @@ export default function App() {
     }
   }, [searchQuery, isSearching]);
   const [isXModalOpen, setIsXModalOpen] = useState(false);
+  const [isXTestModalOpen, setIsXTestModalOpen] = useState(false);
   const [isAdSenseModalOpen, setIsAdSenseModalOpen] = useState(false);
   const [isBinanceModalOpen, setIsBinanceModalOpen] = useState(false);
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
@@ -1191,6 +1193,7 @@ export default function App() {
         onOpenPipelineStatus={() => setIsPipelineModalOpen(true)}
         onOpenAdSenseRevenue={() => setIsAdSenseModalOpen(true)}
         onOpenDailyDispatch={() => setIsDailyEditorialModalOpen(true)}
+        onOpenXTest={() => setIsXTestModalOpen(true)}
         hasPendingDispatch={hasPendingDispatch}
         todayRevenueEstimate={formatCurrency(calculateCatalogRevenue(blogs).todayEstimate)}
         activeJobs={jobs}
@@ -1713,6 +1716,44 @@ export default function App() {
         </AnimatePresence>
       </main>
 
+      {/* PERSISTENT ACADEMIC & LEGAL FOOTER */}
+      <footer className="w-full border-t border-gray-200 dark:border-neutral-900 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md py-8 px-4 sm:px-6 lg:px-8 mt-16 transition-colors">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-400">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-serif font-bold text-neutral-900 dark:text-neutral-100">Meridian Research Journal</span>
+            <span className="text-neutral-300 dark:text-neutral-700">&bull;</span>
+            <a href="https://ask-meridian.uk" className="hover:text-cyan-500 transition-colors font-mono">ask-meridian.uk</a>
+            <span className="text-neutral-300 dark:text-neutral-700">&bull;</span>
+            <span>Quantum Optics, Computing &amp; AI</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 text-[11px] font-medium">
+            <a 
+              href="/privacy-policy" 
+              className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+            >
+              Privacy Policy
+            </a>
+            <span className="text-neutral-300 dark:text-neutral-700">&bull;</span>
+            <a 
+              href="/terms-of-service" 
+              className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+            >
+              Terms of Service
+            </a>
+            <span className="text-neutral-300 dark:text-neutral-700">&bull;</span>
+            <a 
+              href="/auth/callback" 
+              className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors font-mono"
+            >
+              Callback URI
+            </a>
+            <span className="text-neutral-300 dark:text-neutral-700">&bull;</span>
+            <span>&copy; {new Date().getFullYear()} Meridian</span>
+          </div>
+        </div>
+      </footer>
+
       {/* FLOATING AUDIO TTS VOICE PLAYER BAR */}
       {activeAudioBlog && (
         <AudioPlayer
@@ -1827,6 +1868,7 @@ export default function App() {
       <DailyEditorialPromptModal
         isOpen={isDailyEditorialModalOpen}
         onClose={() => setIsDailyEditorialModalOpen(false)}
+        onOpenXTest={() => setIsXTestModalOpen(true)}
         onArticlePublished={(newBlog) => {
           setBlogs((prev) => [newBlog, ...prev.filter((b) => b.id !== newBlog.id && b.slug !== newBlog.slug)]);
           setActiveBlog(newBlog);
@@ -1838,6 +1880,12 @@ export default function App() {
           if (match) setInitialArxivId(match[1]);
           setIsCreateOpen(true);
         }}
+      />
+
+      {/* X (TWITTER) TEST & DIAGNOSTICS MODAL */}
+      <XTestModal
+        isOpen={isXTestModalOpen}
+        onClose={() => setIsXTestModalOpen(false)}
       />
 
       {/* EDITOR PASSWORD MODAL */}

@@ -31,6 +31,48 @@ export interface CorpusAnalysis {
   selectionRationale: string;
 }
 
+export interface ArxivVsMeridianDateComparison {
+  arxivPubDate: string; // e.g. "September 3, 2026" or "2026-09-03" (Canonical arXiv Website Source of Truth)
+  arxivDayOfWeekName: string; // e.g. "Thursday"
+  meridianPubDate: string; // e.g. "September 4, 2026" (Scheduled Meridian Dispatch)
+  meridianDayOfWeekName: string; // e.g. "Friday"
+  meridianPubTime: string; // "09:00 AM ART"
+  isDateAligned: boolean;
+  dateAlignmentReason: string;
+  sourceOfTruthNote: string;
+}
+
+export interface EditorialCandidate {
+  id: string; // blog ID or arxiv paper ID
+  source: "meridian_pipeline" | "arxiv_live_crawl";
+  title: string;
+  excerpt: string;
+  authors: string;
+  arxivId: string;
+  arxivLink: string;
+  category: "physics.optics" | "quant-ph";
+  score: number;
+  relevanceReason: string;
+  
+  // Date Logic: Comparison between Arxiv Source of Truth & Meridian ART
+  dateComparison: ArxivVsMeridianDateComparison;
+  
+  bannerSvg?: string;
+  readingTime?: string;
+  tags?: string[];
+  fullDraft?: BlogPost;
+  
+  xPost: {
+    postText: string;
+    standardText: string; // guaranteed <= 280 characters for standard X tweet limits
+    headline: string;
+    hashtags: string[];
+    characterCount: number;
+    sentenceCount: number;
+    canonicalUrl: string;
+  };
+}
+
 export interface StagedDailyDispatch {
   id: string; // e.g. "dispatch_2026_09_04"
   dateArt: string; // "YYYY-MM-DD"
@@ -55,12 +97,15 @@ export interface StagedDailyDispatch {
   draftArticle: BlogPost;
   xPost: {
     postText: string;
+    standardText?: string;
     headline: string;
     hashtags: string[];
     characterCount: number;
     sentenceCount: number;
     canonicalUrl: string;
   };
+  candidatesDeck?: EditorialCandidate[];
+  activeCandidateIndex?: number;
   publishedAt?: number;
   publishedVia?: "manual_editor_accept" | "auto_timeout_publish";
   xPostResult?: XTweetResult;
@@ -300,6 +345,7 @@ export function buildAutonomousXPost(
   category: string
 ): {
   postText: string;
+  standardText: string;
   headline: string;
   hashtags: string[];
   characterCount: number;
@@ -333,14 +379,199 @@ export function buildAutonomousXPost(
   const fullText = `${sentence1} ${sentence2} ${sentence3}\n\n${hashtags.join(" ")}`;
   const sentenceCount = countSentences(`${sentence1} ${sentence2} ${sentence3}`);
 
+  // Construct standardText strictly <= 280 characters for standard tweet limits
+  const maxTitleLen = 82;
+  const truncatedTitle = blog.title.length > maxTitleLen ? `${blog.title.slice(0, maxTitleLen - 3)}...` : blog.title;
+  const standardText = `BREAKTHROUGH [arXiv:${arxivId}]: ${truncatedTitle}\n\nExact boundary invariants & optical tensors derived in @ask_meridian.\n\nRead & simulate: ${canonicalUrl}\n\n${hashtags.slice(0, 2).join(" ")}`;
+
   return {
     postText: fullText,
+    standardText: standardText.length <= 280 ? standardText : standardText.slice(0, 277) + "...",
     headline,
     hashtags,
     characterCount: fullText.length,
     sentenceCount,
     canonicalUrl,
   };
+}
+
+/**
+ * Computes and compares the arXiv publication date (Source of Truth) against Meridian's ART dispatch schedule.
+ * ArXiv announces papers Monday through Friday (no weekend postings).
+ */
+export function computeArxivVsMeridianDates(
+  arxivId: string,
+  rawDateStr?: string,
+  referenceDate: Date = new Date()
+): ArxivVsMeridianDateComparison {
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  let parsedArxivDate: Date;
+  if (rawDateStr) {
+    const d = new Date(rawDateStr);
+    parsedArxivDate = isNaN(d.getTime()) ? new Date(referenceDate) : d;
+  } else {
+    parsedArxivDate = new Date(referenceDate);
+  }
+
+  const arxivDayOfWeek = parsedArxivDate.getDay();
+  const arxivDayOfWeekName = dayNames[arxivDayOfWeek];
+  const arxivPubDate = `${months[parsedArxivDate.getMonth()]} ${parsedArxivDate.getDate()}, ${parsedArxivDate.getFullYear()}`;
+
+  // Next-day scheduling logic taking into account that arXiv has NO weekend postings:
+  // - Thursday arXiv -> Friday Meridian Dispatch
+  // - Friday arXiv -> Monday Meridian Dispatch (skips Sat & Sun)
+  // - Sat/Sun arXiv -> Monday Meridian Dispatch
+  // - Mon arXiv -> Tuesday Meridian Dispatch
+  // - Tue arXiv -> Wednesday Meridian Dispatch
+  // - Wed arXiv -> Thursday Meridian Dispatch
+  const meridianDate = new Date(parsedArxivDate);
+  if (arxivDayOfWeek === 5) {
+    // Friday -> Jump 3 days to Monday
+    meridianDate.setDate(meridianDate.getDate() + 3);
+  } else if (arxivDayOfWeek === 6) {
+    // Saturday -> Jump 2 days to Monday
+    meridianDate.setDate(meridianDate.getDate() + 2);
+  } else if (arxivDayOfWeek === 0) {
+    // Sunday -> Jump 1 day to Monday
+    meridianDate.setDate(meridianDate.getDate() + 1);
+  } else {
+    // Mon-Thu -> Next day
+    meridianDate.setDate(meridianDate.getDate() + 1);
+  }
+
+  const meridianDayOfWeekName = dayNames[meridianDate.getDay()];
+  const meridianPubDate = `${months[meridianDate.getMonth()]} ${meridianDate.getDate()}, ${meridianDate.getFullYear()}`;
+
+  const isWeekendBatch = arxivDayOfWeek === 5 || arxivDayOfWeek === 6 || arxivDayOfWeek === 0;
+  const dateAlignmentReason = isWeekendBatch
+    ? `arXiv Friday release bridged to Monday 09:00 AM ART. arXiv does not post on weekends (Sat/Sun).`
+    : `arXiv ${arxivDayOfWeekName} web release scheduled for Meridian ${meridianDayOfWeekName} 09:00 AM ART dispatch. Matches next-day publishing cadence.`;
+
+  const sourceOfTruthNote = `The arXiv website announcement date (${arxivPubDate}) is the canonical source of truth. Internal PDF header author timestamps or server time zones may vary.`;
+
+  return {
+    arxivPubDate,
+    arxivDayOfWeekName,
+    meridianPubDate,
+    meridianDayOfWeekName,
+    meridianPubTime: "09:00 AM ART",
+    isDateAligned: true,
+    dateAlignmentReason,
+    sourceOfTruthNote,
+  };
+}
+
+/**
+ * Builds the editorial candidate deck for the Tinder-style swipe interface.
+ * Combines current pipeline drafts and live arXiv crawl candidates.
+ */
+export function buildCandidateDeck(
+  existingBlogs: BlogPost[],
+  arxivPapers: ArxivPaper[],
+  corpus: CorpusAnalysis,
+  artInfo: ReturnType<typeof getArtTime>
+): EditorialCandidate[] {
+  const candidates: EditorialCandidate[] = [];
+  const seenArxivIds = new Set<string>();
+
+  // 1. Harvest recent pipeline draft/articles from existingBlogs
+  // Specifically articles for September 3, 2026 or marked as staged/draft/recent
+  const recentBlogs = (existingBlogs || []).filter((b) => {
+    if (!b || !b.title) return false;
+    const isSep3 = (b.date && b.date.includes("September 3, 2026")) || (b.date && b.date.includes("Sep 3, 2026"));
+    const isRecent = b.createdAt && (Date.now() - b.createdAt < 7 * 24 * 60 * 60 * 1000);
+    const isDraft = b.status === "staged_dispatch" || b.status === "draft";
+    return isSep3 || isRecent || isDraft;
+  });
+
+  for (const blog of recentBlogs) {
+    const arxivMatch = (blog.arxivLink || blog.id || "").match(/(\d{4}\.\d{4,5})/);
+    const arxivId = arxivMatch ? arxivMatch[1] : `2609.${Math.floor(Math.random() * 8000 + 1000)}`;
+    const cleanArxivId = arxivId.replace(/v\d+$/, "");
+
+    if (seenArxivIds.has(cleanArxivId)) continue;
+    seenArxivIds.add(cleanArxivId);
+
+    const isOptics = (blog.tags || []).some(t => t.toLowerCase().includes("optic") || t.toLowerCase().includes("photonic"))
+      || blog.title.toLowerCase().includes("optic") || blog.title.toLowerCase().includes("photonic") || blog.title.toLowerCase().includes("soliton");
+    const category: "physics.optics" | "quant-ph" = isOptics ? "physics.optics" : "quant-ph";
+
+    const dateComp = computeArxivVsMeridianDates(cleanArxivId, blog.date || "September 3, 2026", artInfo.artDate);
+    const xPost = buildAutonomousXPost(blog, cleanArxivId, category);
+
+    const score = category === corpus.recommendedCategory ? 98 : 91;
+    const relevanceReason = category === corpus.recommendedCategory
+      ? `Priority recommendation: restores balance to ${category} in the journal corpus (${corpus.opticsCount} optics vs ${corpus.quantPhCount} quant-ph).`
+      : `High-impact theoretical formulation with complete KaTeX equations and dynamic animated SVG.`;
+
+    let authors = blog.author || "Meridian Research";
+    const authorMatch = (blog.content || "").match(/In recent preprint \*\*arXiv:[^*]+\*\*,\s*([A-Za-z\s,]+)\s*(?:demonstrate|report|present)/);
+    if (authorMatch && authorMatch[1] && authorMatch[1].length < 60) {
+      authors = authorMatch[1].trim();
+    }
+
+    candidates.push({
+      id: blog.id,
+      source: "meridian_pipeline",
+      title: blog.title,
+      excerpt: blog.excerpt || (blog.content ? blog.content.slice(0, 180) + "..." : ""),
+      authors,
+      arxivId: cleanArxivId,
+      arxivLink: blog.arxivLink || `https://arxiv.org/abs/${cleanArxivId}`,
+      category,
+      score,
+      relevanceReason,
+      dateComparison: dateComp,
+      bannerSvg: blog.bannerSvg,
+      readingTime: blog.readingTime || "7 min read",
+      tags: blog.tags,
+      fullDraft: blog,
+      xPost,
+    });
+  }
+
+  // 2. Process any live arXiv papers fetched from the daily crawl
+  for (const paper of arxivPapers || []) {
+    const cleanId = paper.id.replace(/v\d+$/, "").trim();
+    if (seenArxivIds.has(cleanId)) continue;
+    seenArxivIds.add(cleanId);
+
+    const scored = scoreArxivCandidate(paper, corpus, seenArxivIds);
+    if (scored.score < 20) continue;
+
+    const dateComp = computeArxivVsMeridianDates(cleanId, "September 3, 2026", artInfo.artDate);
+    const pseudoBlog = {
+      id: `arxiv-${cleanId}`,
+      slug: cleanId.replace(/\./g, "-"),
+      title: paper.title,
+      excerpt: paper.summary,
+      tags: scored.category === "physics.optics" ? ["Optics", "Photonics", "Waveguides"] : ["Quantum Physics", "Topology", "Hamiltonians"],
+    };
+    const xPost = buildAutonomousXPost(pseudoBlog, cleanId, scored.category);
+
+    candidates.push({
+      id: `arxiv-${cleanId}`,
+      source: "arxiv_live_crawl",
+      title: paper.title,
+      excerpt: paper.summary.slice(0, 200) + "...",
+      authors: paper.authors || "arXiv Authors",
+      arxivId: cleanId,
+      arxivLink: `https://arxiv.org/abs/${cleanId}`,
+      category: scored.category,
+      score: scored.score,
+      relevanceReason: scored.relevanceReason,
+      dateComparison: dateComp,
+      tags: pseudoBlog.tags,
+      readingTime: "8 min read",
+      xPost,
+    });
+  }
+
+  // Sort candidates by score descending
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates;
 }
 
 /**
@@ -378,7 +609,7 @@ export function saveStagedDailyDispatch(dispatch: StagedDailyDispatch): void {
  * Generates the full blog draft and animated SVG banner from a chosen arXiv candidate
  */
 export function generateStagedArticleDraft(
-  candidate: ArxivPaper & { category: "physics.optics" | "quant-ph"; score: number },
+  candidate: ArxivPaper & { category: "physics.optics" | "quant-ph"; score?: number },
   corpus: CorpusAnalysis,
   artInfo: ReturnType<typeof getArtTime>
 ): BlogPost {

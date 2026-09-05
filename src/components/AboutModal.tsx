@@ -957,9 +957,15 @@ export const AboutModal: React.FC<AboutModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="relative z-20 p-4 bg-neutral-50 dark:bg-neutral-950/40 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500 px-6 shrink-0">
+          <div className="relative z-20 p-4 bg-neutral-50 dark:bg-neutral-950/40 border-t border-neutral-100 dark:border-neutral-800/80 flex flex-wrap items-center justify-between gap-2 text-[10px] text-neutral-400 dark:text-neutral-500 px-6 shrink-0">
             <span className="font-mono uppercase tracking-widest font-bold text-cyan-600 dark:text-cyan-400">Ver. 2.1 // Production Node</span>
-            <span>© {new Date().getFullYear()} Meridian. All rights reserved.</span>
+            <div className="flex items-center gap-3">
+              <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Privacy Policy</a>
+              <span>&bull;</span>
+              <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Terms of Service</a>
+              <span>&bull;</span>
+              <span>© {new Date().getFullYear()} Meridian. All rights reserved.</span>
+            </div>
           </div>
 
         </div>

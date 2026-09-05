@@ -17,6 +17,7 @@ interface NavbarProps {
   onOpenPipelineStatus?: () => void;
   onOpenAdSenseRevenue?: () => void;
   onOpenDailyDispatch?: () => void;
+  onOpenXTest?: () => void;
   hasPendingDispatch?: boolean;
   todayRevenueEstimate?: string;
   activeJobs?: GenerationJob[];
@@ -36,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPipelineStatus,
   onOpenAdSenseRevenue,
   onOpenDailyDispatch,
+  onOpenXTest,
   hasPendingDispatch = false,
   todayRevenueEstimate,
   activeJobs = []
@@ -306,6 +308,40 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 Idle
                               </span>
                             )}
+                            <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </button>
+                      )}
+
+                      {/* X (Twitter) Test & Diagnostics Option */}
+                      {onOpenXTest && (
+                        <button
+                          id="dropdown-x-test-btn"
+                          onClick={() => {
+                            setIsToolsOpen(false);
+                            onOpenXTest();
+                          }}
+                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-800/70 transition-colors group cursor-pointer border-t border-neutral-100 dark:border-neutral-800/60"
+                          role="menuitem"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform font-bold text-xs">
+                              𝕏
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                                X Context &amp; Live Test
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              </div>
+                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                                OAuth 1.0a inspection &amp; test post
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-2 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded-md border border-cyan-500/20">
+                              @lk3mpe
+                            </span>
                             <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         </button>
