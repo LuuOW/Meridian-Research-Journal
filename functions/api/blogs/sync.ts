@@ -20,8 +20,32 @@ export const onRequestPost = async (context: {
       );
     }
 
+    const clientBlogs = body.blogs || [];
+
+    let existingBlogs: any[] = [];
+    try {
+      const url = new URL(request.url);
+      const customBlogsUrl = new URL("/custom_blogs.json", url.origin);
+      const res = await fetch(customBlogsUrl.toString());
+      if (res.ok) {
+        const data = await res.json();
+        existingBlogs = Array.isArray(data) ? data : (data.blogs || []);
+      }
+    } catch {}
+
+    const mergedMap = new Map<string, any>();
+    existingBlogs.forEach((b: any) => {
+      if (b && b.id) mergedMap.set(b.id, b);
+    });
+    clientBlogs.forEach((b: any) => {
+      if (b && b.id) mergedMap.set(b.id, b);
+    });
+
+    const mergedBlogs = Array.from(mergedMap.values());
+
     return jsonResponse({
       success: true,
+      blogs: mergedBlogs,
       message: "Blogs synchronized successfully across tiers.",
       source: "cloudflare-backend",
       tiers: {
@@ -30,6 +54,6 @@ export const onRequestPost = async (context: {
       },
     });
   } catch (err: any) {
-    return jsonResponse({ error: err?.message || "Sync error" }, 500);
+    return jsonResponse({ error: err?.message || "Sync error", blogs: [] }, 500);
   }
 };

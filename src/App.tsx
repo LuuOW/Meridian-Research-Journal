@@ -701,7 +701,8 @@ export default function App() {
       const response = await fetch("/api/blogs");
       if (response.ok) {
         const data = await response.json();
-        serverBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+        const rawBlogs = Array.isArray(data) ? data : (Array.isArray(data?.blogs) ? data.blogs : []);
+        serverBlogs = rawBlogs.filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
       } else {
         console.warn(`Server API responded with code ${response.status}. Using local cache fallback.`);
         fetchError = true;
@@ -736,12 +737,16 @@ export default function App() {
         });
         if (response.ok) {
           const data = await response.json();
-          const syncedBlogs = (data.blogs || []).filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+          const rawSynced = Array.isArray(data) ? data : (Array.isArray(data?.blogs) ? data.blogs : []);
+          const syncedBlogs = rawSynced.filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
           
-          // Update state and local storage with the fully synced server list
-          const allBlogs = sortBlogsByPublicationDate(applyOverrides([...syncedBlogs, ...PRELOADED_BLOGS]));
+          // Use syncedBlogs if available, otherwise preserve mergedCustomBlogs
+          const activeCustom = syncedBlogs.length > 0 ? syncedBlogs : mergedCustomBlogs;
+          const allBlogs = sortBlogsByPublicationDate(applyOverrides([...activeCustom, ...PRELOADED_BLOGS]));
           setBlogs(allBlogs);
-          localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedBlogs));
+          if (activeCustom.length > 0) {
+            localStorage.setItem("meridian_blogs_saved", JSON.stringify(activeCustom));
+          }
 
           // Handle deep linking with resilient slug/ID matching
           const refreshedBlogId = getBlogIdFromUrl();

@@ -632,7 +632,7 @@ export async function syncAllBlogsToGitHub(
 
   console.log(`[GitHub Sync] Mirroring ${blogs.length} articles to GitHub (${config.repo}#${config.branch})... Reason: ${reason}`);
 
-  const commitMessage = `feat(blog): sync ${blogs.length} articles, sitemap.xml, robots.txt, and ads.txt (${reason}) [skip ci]`;
+  const commitMessage = `feat(blog): sync ${blogs.length} articles, sitemap.xml, robots.txt, and ads.txt (${reason})`;
   const adsTxtContent = "google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0\n";
   const nojekyllContent = "";
   const sitemapXmlContent = generateSitemapXml(blogs);

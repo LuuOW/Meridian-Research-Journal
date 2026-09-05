@@ -10,12 +10,13 @@ export const onRequestGet = async (context: {
     const customBlogsUrl = new URL("/custom_blogs.json", url.origin);
     const res = await fetch(customBlogsUrl.toString());
     if (res.ok) {
-      const blogs = await res.json();
-      return jsonResponse(blogs);
+      const data = await res.json();
+      const blogs = Array.isArray(data) ? data : (data.blogs || []);
+      return jsonResponse({ blogs, success: true });
     }
   } catch {}
 
-  return jsonResponse([]);
+  return jsonResponse({ blogs: [], success: true });
 };
 
 export const onRequestPost = async (context: {
