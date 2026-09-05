@@ -102,23 +102,41 @@ export class DailyScheduleDaemon implements IMicroservice {
       const art = getArtTime();
       let dispatch = loadStagedDailyDispatch();
 
-      // Skip automatic staging on weekends (Saturday=6, Sunday=0)
-      if (art.dayOfWeek === 0 || art.dayOfWeek === 6) {
-        console.log(`[${this.serviceName}] Weekend detected (${art.dayName}); skipping automatic staging.`);
-        // Still allow auto-publish if a dispatch was already staged earlier
-        if (dispatch && dispatch.status === "staged_pending_review") {
-          if (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now()) {
-            console.log(`[${this.serviceName}] 10:00 AM ART timeout reached on weekend. Auto-publishing unreviewed staged dispatch (${dispatch.id})...`);
-            await this.executePublish(dispatch, "auto_timeout_publish");
-          }
-        }
+      // Global safety switch to completely disable automatic staging/publishing
+      const autoDisabled = process.env.DISABLE_AUTO_PUBLICATION === "true";
+      if (autoDisabled) {
+        console.log(`[${this.serviceName}] Automatic publication disabled via DISABLE_AUTO_PUBLICATION; skipping schedule checks.`);
+        return;
+      }
 
+      // Load persisted blogs to check for existing manual publications for this Meridian date
+      const existingBlogs = this.persistenceService.readBlogs();
+      const hasBlogForDate = existingBlogs.some((b) => {
+        if (b.date === art.dateString) return true;
+        if (b.createdAt) {
+          const createdIso = new Date(b.createdAt).toISOString().slice(0, 10);
+          if (createdIso === art.dateString) return true;
+        }
+        return false;
+      });
+
+      if (hasBlogForDate) {
+        console.log(`[${this.serviceName}] Detected existing published article(s) for ${art.dateString}; skipping automatic staging to avoid duplicates.`);
+        // Also avoid auto-publishing any staged dispatch for the same date
+        return;
+      }
+
+      // Block automatic staging and auto-publishing on Friday (5), Saturday (6), Sunday (0)
+      // Rationale: arXiv publishes on Friday/weekend are released on Monday by Meridian
+      const nonPublishingDays = new Set([0, 5, 6]);
+      if (nonPublishingDays.has(art.dayOfWeek)) {
+        console.log(`[${this.serviceName}] Non-publishing day detected (${art.dayName}); skipping automatic staging and auto-publish.`);
         return;
       }
 
       // If no dispatch staged for today, or previous dispatch is from a previous date:
-      // Only auto-stage during the 9:00 AM ART review window (hour === 9). This avoids staging
-      // drafts after the 10:00 AM auto-publish cutoff which would be immediately auto-published.
+      // Only auto-stage during the 9:00 AM ART review window. This avoids staging drafts
+      // after the 10:00 AM auto-publish cutoff which would be immediately auto-published.
       if (!dispatch || dispatch.dateArt !== art.dateString) {
         if (art.isReviewWindow) {
           console.log(`[${this.serviceName}] 9:00 AM ART review window detected for date ${art.dateString}. Staging today's arXiv draft...`);
@@ -133,9 +151,15 @@ export class DailyScheduleDaemon implements IMicroservice {
 
       // Check if staged dispatch is waiting for review and current time has reached 10:00 AM ART
       if (dispatch && dispatch.status === "staged_pending_review") {
-        if (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now()) {
+        // Only auto-publish on Meridian publishing days (Mon-Thu). autoPublish10AmEpoch can be in the past
+        // but we must ensure we don't auto-publish on Friday/Sat/Sun.
+        if (!nonPublishingDays.has(art.dayOfWeek) && (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now())) {
           console.log(`[${this.serviceName}] 10:00 AM ART timeout reached. Auto-publishing unreviewed staged dispatch (${dispatch.id})...`);
           await this.executePublish(dispatch, "auto_timeout_publish");
+        } else {
+          if (nonPublishingDays.has(art.dayOfWeek)) {
+            console.log(`[${this.serviceName}] Auto-publish deferred because today (${art.dayName}) is a non-publishing day.`);
+          }
         }
       }
     } catch (err) {
@@ -152,20 +176,43 @@ export class DailyScheduleDaemon implements IMicroservice {
   public async stageTodayDispatch(forceCategory?: "physics.optics" | "quant-ph"): Promise<StagedDailyDispatch> {
     const art = getArtTime();
 
+    // Global safety switch
+    const autoDisabled = process.env.DISABLE_AUTO_PUBLICATION === "true";
+    if (autoDisabled && !forceCategory) {
+      console.log(`[${this.serviceName}] stageTodayDispatch aborted: automatic publication disabled via DISABLE_AUTO_PUBLICATION.`);
+      throw new Error("Staging skipped: auto publication disabled");
+    }
+
     // Defensive: do not stage if past 10:00 AM ART (auto-publish cutoff)
     if (art.isPast10AmArt && !forceCategory) {
       console.log(`[${this.serviceName}] stageTodayDispatch called after 10:00 AM ART; skipping staging to prevent immediate auto-publish.`);
       throw new Error("Staging skipped: past 10:00 AM ART");
     }
 
-    // Defensive: skip staging on weekends unless explicitly forced (forceCategory used for manual/testing)
-    if ((art.dayOfWeek === 0 || art.dayOfWeek === 6) && !forceCategory) {
-      console.log(`[${this.serviceName}] stageTodayDispatch called on weekend (${art.dayName}); skipping staging.`);
-      throw new Error("Staging skipped: weekend");
+    // Defensive: skip staging on weekends and Friday unless explicitly forced
+    const nonPublishingDays = new Set([0, 5, 6]);
+    if (nonPublishingDays.has(art.dayOfWeek) && !forceCategory) {
+      console.log(`[${this.serviceName}] stageTodayDispatch called on non-publishing day (${art.dayName}); skipping staging.`);
+      throw new Error("Staging skipped: non-publishing day");
     }
 
     const sourceBatch = getSourceArxivBatch(art.dayOfWeek);
     const existingBlogs = this.persistenceService.readBlogs();
+
+    // Prevent staging if a manual article already exists for this Meridian date
+    const hasBlogForDate = existingBlogs.some((b) => {
+      if (b.date === art.dateString) return true;
+      if (b.createdAt) {
+        const createdIso = new Date(b.createdAt).toISOString().slice(0, 10);
+        if (createdIso === art.dateString) return true;
+      }
+      return false;
+    });
+
+    if (hasBlogForDate && !forceCategory) {
+      console.log(`[${this.serviceName}] Found existing manual article(s) for ${art.dateString}; aborting automatic staging to avoid duplicates.`);
+      throw new Error("Staging skipped: existing article for date");
+    }
 
     console.log(`[${this.serviceName}] Analyzing corpus (${existingBlogs.length} articles) for ${art.dayName} dispatch...`);
     const corpus = analyzeCorpusHistory(existingBlogs);
