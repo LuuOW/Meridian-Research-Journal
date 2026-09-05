@@ -5,7 +5,7 @@
 
 import { xaiChatCompletion, getXaiApiKey } from "../lib/xaiClient";
 
-export type CodingTask =
+type CodingTask =
   | "generate"
   | "review"
   | "fix"
@@ -32,17 +32,17 @@ export interface CodingAgentResponse {
 }
 
 const SYSTEM_PROMPTS: Record<CodingTask, string> = {
-  generate: `You are Grok, a senior software engineer and coding agent built by xAI (SpaceXAI).\nWrite clean, production-ready code. Prefer TypeScript/React/Node patterns used in modern Vite + Cloudflare Pages projects.\nReturn ONLY the code unless the user asks for explanation. Use markdown code fences with the correct language tag.`,
+  generate: `You are Grok, a senior software engineer and coding agent built by xAI (SpaceXAI).\nWrite clean, production-ready code. Prefer TypeScript/React/Node patterns used in modern Vite + Clo[...]
 
-  review: `You are Grok, a strict senior code reviewer. Identify bugs, security issues, race conditions, performance problems, and style issues.\nBe concise and actionable. Structure the review as:\n1. Critical\n2. Major\n3. Minor / style\n4. Suggested fixes (with code snippets).`,
+  review: `You are Grok, a strict senior code reviewer. Identify bugs, security issues, race conditions, performance problems, and style issues.\nBe concise and actionable. Structure the review as[...]
 
-  fix: `You are Grok, a coding agent that repairs broken code. Given the code and a description of the bug or error, return the corrected version.\nExplain the root cause in 1-2 sentences, then provide the full fixed code in a markdown fence.`,
+  fix: `You are Grok, a coding agent that repairs broken code. Given the code and a description of the bug or error, return the corrected version.\nExplain the root cause in 1-2 sentences, then pr[...]
 
   explain: `You are Grok, a clear technical teacher. Explain the provided code step-by-step for a competent engineer.\nHighlight invariants, edge cases, and any non-obvious design decisions.`,
 
-  refactor: `You are Grok, a refactoring specialist. Improve readability, structure, and maintainability without changing external behaviour.\nReturn the refactored code and a short bullet list of what changed.`,
+  refactor: `You are Grok, a refactoring specialist. Improve readability, structure, and maintainability without changing external behaviour.\nReturn the refactored code and a short bullet list of[...]
 
-  test: `You are Grok, a test engineer. Write thorough unit/integration tests (prefer Node test runner or Vitest style) for the given code.\nCover happy path, edge cases, and failure modes. Return only the test file content in a markdown fence.`,
+  test: `You are Grok, a test engineer. Write thorough unit/integration tests (prefer Node test runner or Vitest style) for the given code.\nCover happy path, edge cases, and failure modes. Return[...]
 };
 
 export class XaiCodingAgent {
