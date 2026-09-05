@@ -877,7 +877,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "id": "generated-1786640599012",
     "slug": "architecting-actively-tunable-metasurfaces-a-self-consistent-temporal-coupled-mode-theory-paradigm-for-quantum-confined-stark-effects-9012",
     "date": "August 13, 2026",
-    "views": 1676
+    "views": 1675
   },
   {
     "title": "Architecting Quantum Advantage: Diffractive Neural Networks for Ultimate Imaging Precision at the Quantum Limit",
