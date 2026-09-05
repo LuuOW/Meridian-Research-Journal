@@ -24,6 +24,7 @@ export interface CloudflareEnv {
   SMTP_PASS?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
+  XAI_API_KEY?: string;
   [key: string]: any;
 }
 
