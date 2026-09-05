@@ -51,10 +51,12 @@ export const onRequestGet = async (context: {
     diagnostics: {
       hasEditorPassword: Boolean(rawEditorPwd),
       editorPasswordLength: rawEditorPwd.length,
+      editorPasswordHint: rawEditorPwd ? `${rawEditorPwd.slice(0, 2)}...${rawEditorPwd.slice(-2)} (length ${rawEditorPwd.length})` : "none",
       editorPasswordHasQuotes: /^["'].*["']$/.test(rawEditorPwd.trim()),
       hasGenerationPassword: Boolean(rawGenPwd),
       generationPasswordLength: rawGenPwd.length,
       hasGeminiApiKey: Boolean(env.GEMINI_API_KEY),
+      hasXaiApiKey: Boolean(env.XAI_API_KEY),
       hasGithubToken: Boolean(env.GITHUB_TOKEN || env.GH_TOKEN),
       hasXApiKey: Boolean(env.X_API_KEY || env.TWITTER_API_KEY),
       hasBinanceApiKey: Boolean(env.BINANCE_API_KEY),

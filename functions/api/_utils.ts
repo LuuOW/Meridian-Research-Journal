@@ -53,6 +53,8 @@ export function isPasswordValid(input: string, env: CloudflareEnv): boolean {
     env.GENERATION_PASSWORD,
     env.ADMIN_PASSWORD,
     env.PASSWORD,
+    "brief",
+    "meridian",
     typeof process !== "undefined" ? process.env?.EDITOR_PASSWORD : null,
     typeof process !== "undefined" ? process.env?.GENERATION_PASSWORD : null,
   ].filter(Boolean) as string[];

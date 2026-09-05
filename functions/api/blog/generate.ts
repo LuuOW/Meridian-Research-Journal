@@ -48,6 +48,7 @@ export const onRequestPost = async (context: {
     let provider = "procedural";
 
     const geminiKey = env.GEMINI_API_KEY || (typeof process !== "undefined" ? process.env?.GEMINI_API_KEY : "");
+    const xaiKey = env.XAI_API_KEY || (typeof process !== "undefined" ? process.env?.XAI_API_KEY : "");
 
     if (geminiKey) {
       try {
@@ -83,6 +84,49 @@ Respond strictly in JSON format with two keys:
         }
       } catch (geminiErr) {
         console.warn("[Cloudflare Backend] Gemini call fallback:", geminiErr);
+      }
+    }
+
+    if (!generatedContent && xaiKey) {
+      try {
+        const prompt = `You are a world-class academic science blogger writing for Ask Meridian (https://ask-meridian.uk).
+Translate this paper/topic into an in-depth, rigorous scholarly article with LaTeX math, structured sections, and deep insights.
+Paper / Topic: ${inputClean}
+Full Text / Context: ${(rawText || "").slice(0, 3000)}
+
+Respond strictly in JSON format with two keys:
+"title": "A captivating, scientifically rigorous, publication-ready title",
+"excerpt": "A two-sentence scholarly abstract",
+"content": "The full markdown article with LaTeX formulas ($...$ and $$...$$), structured headers (## Introduction, ## Mathematical Formulation, ## Empirical Results, ## Horizon), and thorough analysis."`;
+
+        const xaiResp = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${xaiKey}`,
+          },
+          body: JSON.stringify({
+            model: "grok-2-latest",
+            messages: [
+              { role: "system", content: "You are an expert academic research writer. Always output valid JSON." },
+              { role: "user", content: prompt },
+            ],
+            response_format: { type: "json_object" },
+          }),
+        });
+
+        if (xaiResp.ok) {
+          const data = (await xaiResp.json()) as any;
+          const contentStr = data?.choices?.[0]?.message?.content;
+          if (contentStr) {
+            const parsed = JSON.parse(contentStr);
+            if (parsed.title) generatedTitle = parsed.title;
+            if (parsed.content) generatedContent = parsed.content;
+            provider = "xai";
+          }
+        }
+      } catch (xaiErr) {
+        console.warn("[Cloudflare Backend] xAI call fallback:", xaiErr);
       }
     }
 
