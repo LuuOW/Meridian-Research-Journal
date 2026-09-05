@@ -4,22 +4,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { PRELOADED_BLOGS } from "../data";
 import { RESUME_DATA } from "./resumeData";
-import { 
-  generateMarkdownResume, 
-  generatePrintableHtmlResume 
+import {
+  generateMarkdownResume,
+  generatePrintableHtmlResume
 } from "./resumeExporter";
-import { 
-  isMathExpression, 
-  sanitizeLatexFormula 
+import {
+  isMathExpression,
+  sanitizeLatexFormula
 } from "./mathUtils";
-import { 
-  extractTableOfContents, 
-  slugifyHeading 
+import {
+  extractTableOfContents,
+  slugifyHeading
 } from "./tocUtils";
-import { 
-  calculateNormalizedCursor, 
-  computeRayTracedLightState, 
-  getDefaultLightState 
+import {
+  calculateNormalizedCursor,
+  computeRayTracedLightState,
+  getDefaultLightState
 } from "./rayTracingUtils";
 import { calculateReadingTimeMinutes } from "./readingTime";
 import { formatViews, calculateBaseViews, calculateActiveReaders } from "./viewCounter";
@@ -91,33 +91,24 @@ describe("Sitemap, SEO & Static Assets Suite", () => {
   });
 });
 
-describe("Service Worker & Advertising MultiTags Suite", () => {
-  test("sw.js and service-worker.js exist in /public and have matching service worker scripts", () => {
-    const swPath = path.join(process.cwd(), "public", "sw.js");
-    const serviceWorkerPath = path.join(process.cwd(), "public", "service-worker.js");
-
-    assert.ok(fs.existsSync(swPath), "/public/sw.js must exist");
-    assert.ok(fs.existsSync(serviceWorkerPath), "/public/service-worker.js must exist");
-
-    const swContent = fs.readFileSync(swPath, "utf-8");
-    const serviceWorkerContent = fs.readFileSync(serviceWorkerPath, "utf-8");
-
-    assert.ok(swContent.includes('"domain": "5gvci.com"'));
-    assert.ok(swContent.includes('"zoneId": 11654383'));
-    assert.ok(swContent.includes("importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw')"));
-    assert.strictEqual(swContent.trim(), serviceWorkerContent.trim());
-  });
-
-  test("index.html includes all required multi-tag and ad monetization scripts", () => {
+// Advertising & Service Workers removed tests (replaces previous ad/SW presence suite)
+describe("Advertising & Service Workers removed", () => {
+  test("index.html does not include third-party ad tags", () => {
     const indexPath = path.join(process.cwd(), "index.html");
     assert.ok(fs.existsSync(indexPath), "index.html must exist");
-
     const content = fs.readFileSync(indexPath, "utf-8");
-    assert.ok(content.includes('src="https://quge5.com/88/tag.min.js"'));
-    assert.ok(content.includes('data-zone="273258"'));
-    assert.ok(content.includes('src="https://omg10.com/4/11690699"'));
-    assert.ok(content.includes('name="monetag"'));
-    assert.ok(content.includes('content="61b2a2175718b425ada1eedb07f24112"'));
+    assert.ok(!content.includes('quge5.com') && !content.includes('profitableratecpmnetwork.com') && !content.includes('omg10.com') && !content.includes('pagead2.googlesyndication.com'));
+  });
+
+  test("ad service worker files are neutralized or absent", () => {
+    const adsterraPath = path.join(process.cwd(), "adsterra-sw.js");
+    const monetagPath = path.join(process.cwd(), "monetag-sw.js");
+    const readIfExists = (p) => fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+    const a = readIfExists(adsterraPath);
+    const m = readIfExists(monetagPath);
+    // Ensure no remote importScripts are present
+    assert.ok(!a.includes('importScripts('));
+    assert.ok(!m.includes('importScripts('));
   });
 });
 
@@ -205,7 +196,7 @@ describe("Math AST & Article Typography Stress Test", () => {
   });
 
   test("Latex sanitizer handles exotic bracketings and nested delimiters", () => {
-    assert.strictEqual(sanitizeLatexFormula("\\[ \\hat{H} \\left| \\psi \\right\\rangle = E \\left| \\psi \\right\\rangle \\]"), "\\hat{H} \\left| \\psi \\right\\rangle = E \\left| \\psi \\right\\rangle");
+    assert.strictEqual(sanitizeLatexFormula("\\[ \\hat{H} \\left| \\psi \\right\\rangle = E \\left| \\psi \\right\\rangle \\]"), "\\hat{H} \\left| \\psi \\right\\rangle = E \\left| \\psi \\");
     assert.strictEqual(sanitizeLatexFormula("$$ \\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J} $$"), "\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J}");
     assert.strictEqual(sanitizeLatexFormula(""), "");
     assert.strictEqual(sanitizeLatexFormula(null as any), "");
