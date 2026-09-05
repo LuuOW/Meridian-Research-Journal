@@ -36,6 +36,7 @@ import {
   getDefaultLightState,
   LightState
 } from "../lib/rayTracingUtils";
+import { ObservatoryTelemetryDeck } from "./ObservatoryTelemetryDeck";
 
 export interface StagedDispatchResponse {
   success: boolean;
@@ -168,6 +169,42 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
     setIsHovered(false);
     setLightState(getDefaultLightState());
   };
+
+  // Real-time live ART (Argentina Time, UTC-3) clock ticker
+  const [liveArtClock, setLiveArtClock] = useState<string>("");
+
+  useEffect(() => {
+    const updateArt = () => {
+      try {
+        const now = new Date();
+        const timeStr = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/Argentina/Buenos_Aires",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(now);
+        setLiveArtClock(`${timeStr} ART (UTC-3)`);
+      } catch {
+        setLiveArtClock("09:00:00 ART (UTC-3)");
+      }
+    };
+    updateArt();
+    const interval = setInterval(updateArt, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Dynamic next-day cadence label
+  const dynamicCadenceLabel = useMemo(() => {
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dateStr = tomorrow.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      return `Next-Day Cadence: 4 Articles queued for tomorrow (${dateStr}) 09:00 AM ART`;
+    } catch {
+      return "Next-Day Cadence: 4 Articles queued for tomorrow 09:00 AM ART";
+    }
+  }, []);
 
   // Fetch current daily dispatch
   const fetchDispatch = async () => {
@@ -467,7 +504,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
               </div>
               <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                 <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Next-Day Cadence: 4 Articles from Sept 3 candidates for tomorrow 09:00 AM ART</span>
+                <span>{dynamicCadenceLabel}</span>
               </p>
             </div>
           </div>
@@ -478,7 +515,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
               <div className="text-xs font-mono text-cyan-400 flex items-center justify-end gap-1.5 font-semibold">
                 <Clock className="w-3.5 h-3.5 text-cyan-300" />
                 <span>
-                  {artInfo ? `${String(artInfo.hour).padStart(2, "0")}:${String(artInfo.minute).padStart(2, "0")} ART (UTC-3)` : "Calculating..."}
+                  {liveArtClock || (artInfo ? `${String(artInfo.hour).padStart(2, "0")}:${String(artInfo.minute).padStart(2, "0")} ART (UTC-3)` : "09:00:00 ART (UTC-3)")}
                 </span>
               </div>
               {isPendingReview && remainingSeconds > 0 ? (
@@ -507,6 +544,15 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
 
         {/* Content Body */}
         <div className="p-4 sm:p-6 space-y-6 max-h-[76vh] overflow-y-auto">
+          {/* Observatory Environmental & Celestial Telemetry Deck */}
+          <ObservatoryTelemetryDeck
+            artTimeStr={liveArtClock}
+            isPendingReview={isPendingReview}
+            remainingSeconds={remainingSeconds}
+            formatCountdown={formatCountdown}
+            isAlreadyPublished={isAlreadyPublished}
+            scheduledTimeLabel="Tomorrow 09:00 AM ART"
+          />
           {error && (
             <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center gap-3">
               <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-400" />
