@@ -23,6 +23,7 @@ export interface XTestModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (tweetUrl: string) => void;
+  theme?: "light" | "dark";
 }
 
 export interface XStatusResponse {
@@ -68,7 +69,7 @@ export interface XTestResult {
   rawResponse?: any;
 }
 
-export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSuccess, theme = "dark" }) => {
   const [status, setStatus] = useState<XStatusResponse | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [testResult, setTestResult] = useState<XTestResult | null>(null);
@@ -80,6 +81,7 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
 
   const modalRef = useRef<HTMLDivElement>(null);
   const [lightState, setLightState] = useState(getDefaultLightState());
+  const isLight = theme === "light";
 
   // Raytraced optics
   useEffect(() => {
@@ -213,7 +215,7 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/85 backdrop-blur-md"
+          className="fixed inset-0 bg-black/60 dark:bg-black/85 backdrop-blur-md"
         />
 
         {/* Modal Container */}
@@ -222,7 +224,11 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative w-full max-w-2xl bg-slate-950 text-slate-100 rounded-3xl border border-cyan-500/40 shadow-2xl shadow-cyan-950/60 p-5 sm:p-7 z-10 space-y-5 my-8 overflow-hidden font-sans"
+          className={`relative w-full max-w-2xl rounded-3xl border p-5 sm:p-7 z-10 space-y-5 my-8 overflow-hidden font-sans transition-colors duration-200 ${
+            isLight
+              ? "bg-white text-slate-900 border-slate-200 shadow-2xl shadow-slate-900/15"
+              : "bg-slate-950 text-slate-100 border-cyan-500/40 shadow-2xl shadow-cyan-950/60"
+          }`}
           style={{
             transform: `perspective(1200px) rotateX(${lightState.pitch}deg) rotateY(${lightState.yaw}deg)`,
           }}
@@ -231,7 +237,9 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
           <div
             className="absolute inset-0 pointer-events-none opacity-25"
             style={{
-              background: `radial-gradient(circle 350px at ${lightState.lightX}% ${lightState.lightY}%, rgba(6, 182, 212, 0.4), transparent 70%)`,
+              background: isLight
+                ? `radial-gradient(circle 350px at ${lightState.lightX}% ${lightState.lightY}%, rgba(6, 182, 212, 0.2), transparent 70%)`
+                : `radial-gradient(circle 350px at ${lightState.lightX}% ${lightState.lightY}%, rgba(6, 182, 212, 0.4), transparent 70%)`,
             }}
           />
 
@@ -239,23 +247,47 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-400 via-purple-400 to-emerald-400" />
 
           {/* Header */}
-          <div className="flex items-start justify-between gap-3 relative z-10 border-b border-slate-800/80 pb-4">
+          <div
+            className={`flex items-start justify-between gap-3 relative z-10 border-b pb-4 ${
+              isLight ? "border-slate-200" : "border-slate-800/80"
+            }`}
+          >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-black border border-slate-700 flex items-center justify-center shadow-md shrink-0">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-md shrink-0 border ${
+                  isLight
+                    ? "bg-slate-900 border-slate-700 text-white"
+                    : "bg-black border-slate-700 text-white"
+                }`}
+              >
                 <svg className="w-5 h-5 fill-current text-white" viewBox="0 0 24 24">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg sm:text-xl font-bold font-serif italic text-white flex items-center gap-2">
-                    X Context Test & Inspection
+                  <h2
+                    className={`text-lg sm:text-xl font-bold font-serif italic flex items-center gap-2 ${
+                      isLight ? "text-slate-900" : "text-white"
+                    }`}
+                  >
+                    X Context Test &amp; Inspection
                   </h2>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold uppercase border ${
+                      isLight
+                        ? "bg-cyan-50 text-cyan-700 border-cyan-300"
+                        : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                    }`}
+                  >
                     Live Diagnostics
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p
+                  className={`text-xs ${
+                    isLight ? "text-slate-600" : "text-slate-400"
+                  }`}
+                >
                   {status?.authMethod
                     ? `Autonomous ${status.authMethod} pipeline inspection & test posting`
                     : "Autonomous OAuth User Context pipeline inspection & test posting"}
@@ -265,21 +297,41 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              className={`p-1.5 rounded-xl transition-colors ${
+                isLight
+                  ? "hover:bg-slate-100 text-slate-500 hover:text-slate-800"
+                  : "hover:bg-slate-800 text-slate-400 hover:text-white"
+              }`}
             >
               <CloseIcon className="w-5 h-5" />
             </button>
           </div>
 
           {/* Account Status Card */}
-          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div
+            className={`p-4 rounded-2xl border relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              isLight
+                ? "bg-slate-50/90 border-slate-200"
+                : "bg-slate-900/90 border-slate-800"
+            }`}
+          >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold text-sm shrink-0">
+              <div
+                className={`w-10 h-10 rounded-full border flex items-center justify-center font-bold text-sm shrink-0 ${
+                  isLight
+                    ? "bg-cyan-50 border-cyan-300 text-cyan-700"
+                    : "bg-cyan-950/80 border-cyan-500/40 text-cyan-300"
+                }`}
+              >
                 {status?.username ? `@${status.username.slice(0, 2).toUpperCase()}` : "X"}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">
+                  <span
+                    className={`text-sm font-bold ${
+                      isLight ? "text-slate-900" : "text-white"
+                    }`}
+                  >
                     {status?.name || (status?.connected ? "Verified Account" : "Account Verification")}
                   </span>
                   {status?.username && (
@@ -287,21 +339,37 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                       href={`https://x.com/${status.username}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-mono text-cyan-400 hover:underline flex items-center gap-0.5"
+                      className={`text-xs font-mono hover:underline flex items-center gap-0.5 ${
+                        isLight ? "text-cyan-700" : "text-cyan-400"
+                      }`}
                     >
                       @{status.username}
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 flex-wrap">
+                <div
+                  className={`flex items-center gap-2 text-xs mt-0.5 flex-wrap ${
+                    isLight ? "text-slate-600" : "text-slate-400"
+                  }`}
+                >
                   <span className="flex items-center gap-1">
                     <span
                       className={`w-2 h-2 rounded-full ${
-                        status?.connected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                        status?.connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
                       }`}
                     />
-                    <strong className={status?.connected ? "text-emerald-300" : "text-amber-300"}>
+                    <strong
+                      className={
+                        status?.connected
+                          ? isLight
+                            ? "text-emerald-700"
+                            : "text-emerald-300"
+                          : isLight
+                          ? "text-amber-700"
+                          : "text-amber-300"
+                      }
+                    >
                       {status?.connected ? "Connected & Authenticated" : "Verification in Progress"}
                     </strong>
                   </span>
@@ -309,7 +377,11 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
                         status.accessLevel.includes("write")
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          ? isLight
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                            : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          : isLight
+                          ? "bg-amber-50 text-amber-700 border border-amber-300"
                           : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                       }`}
                     >
@@ -317,7 +389,11 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                     </span>
                   )}
                   {status?.id && (
-                    <span className="hidden sm:inline text-slate-500 font-mono">
+                    <span
+                      className={`hidden sm:inline font-mono ${
+                        isLight ? "text-slate-500" : "text-slate-500"
+                      }`}
+                    >
                       (ID: {status.id})
                     </span>
                   )}
@@ -329,9 +405,13 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
               <button
                 onClick={fetchStatus}
                 disabled={loadingStatus}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 border ${
+                  isLight
+                    ? "bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-xs"
+                    : "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700"
+                }`}
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingStatus ? "animate-spin text-cyan-400" : ""}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingStatus ? "animate-spin text-cyan-500" : ""}`} />
                 <span>Verify Status</span>
               </button>
             </div>
@@ -339,39 +419,69 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
 
           {/* Read-Only Permission Warning Banner (if access level is read or write permission is false) */}
           {status?.hasWritePermission === false && (
-            <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs space-y-2 relative z-10">
+            <div
+              className={`p-4 rounded-2xl border text-xs space-y-2 relative z-10 ${
+                isLight
+                  ? "bg-amber-50 border-amber-300 text-amber-800"
+                  : "bg-amber-500/15 border-amber-500/40 text-amber-200"
+              }`}
+            >
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 font-bold text-amber-300">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                <div
+                  className={`flex items-center gap-2 font-bold ${
+                    isLight ? "text-amber-900" : "text-amber-300"
+                  }`}
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
                   <span>Read-Only OAuth1 Permissions Detected</span>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 font-mono text-[10px] text-amber-300 font-bold">
+                <span
+                  className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold border ${
+                    isLight
+                      ? "bg-amber-100 border-amber-300 text-amber-800"
+                      : "bg-amber-500/20 border-amber-500/30 text-amber-300"
+                  }`}
+                >
                   x-access-level: read
                 </span>
               </div>
-              <p className="text-[11px] text-amber-200/90 leading-relaxed">
+              <p
+                className={`text-[11px] leading-relaxed ${
+                  isLight ? "text-amber-900/90" : "text-amber-200/90"
+                }`}
+              >
                 Your X Developer App is currently in <strong>Read-only</strong> mode. Twitter/X will reject tweet creation with HTTP 403 until the App permissions are set to &quot;Read and Write&quot; and your Access Token is regenerated.
               </p>
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/30 space-y-1.5 text-[11px] text-slate-300">
-                <div className="font-semibold text-amber-300 text-[10px] uppercase tracking-wider">
+              <div
+                className={`p-3 rounded-xl border space-y-1.5 text-[11px] ${
+                  isLight
+                    ? "bg-white border-amber-200 text-slate-700"
+                    : "bg-slate-950/80 border-amber-500/30 text-slate-300"
+                }`}
+              >
+                <div
+                  className={`font-semibold text-[10px] uppercase tracking-wider ${
+                    isLight ? "text-amber-800" : "text-amber-300"
+                  }`}
+                >
                   How to Fix in 60 Seconds:
                 </div>
-                <ol className="space-y-1 pl-1 text-[11px] text-slate-300">
+                <ol className="space-y-1 pl-1 text-[11px]">
                   <li className="flex items-start gap-1.5">
-                    <span className="text-cyan-400 font-mono font-bold shrink-0">1.</span>
-                    <span>Open <a href="https://developer.x.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline font-semibold">X Developer Portal</a> &rarr; Projects &amp; Apps &rarr; Your App.</span>
+                    <span className="text-cyan-600 dark:text-cyan-400 font-mono font-bold shrink-0">1.</span>
+                    <span>Open <a href="https://developer.x.com" target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 hover:underline font-semibold">X Developer Portal</a> &rarr; Projects &amp; Apps &rarr; Your App.</span>
                   </li>
                   <li className="flex items-start gap-1.5">
-                    <span className="text-cyan-400 font-mono font-bold shrink-0">2.</span>
+                    <span className="text-cyan-600 dark:text-cyan-400 font-mono font-bold shrink-0">2.</span>
                     <span>Under &quot;User authentication settings&quot;, click <strong>Edit</strong> &rarr; Select <strong>Read and Write</strong> (and Bot/Automated App) &rarr; Save.</span>
                   </li>
                   <li className="flex items-start gap-1.5">
-                    <span className="text-amber-400 font-mono font-bold shrink-0">3.</span>
-                    <span><strong className="text-amber-300">CRITICAL:</strong> Go to the <strong>Keys and tokens</strong> tab and click <strong>Regenerate</strong> on <em>Access Token and Secret</em> (old tokens stay Read-only).</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-mono font-bold shrink-0">3.</span>
+                    <span><strong className={isLight ? "text-amber-900" : "text-amber-300"}>CRITICAL:</strong> Go to the <strong>Keys and tokens</strong> tab and click <strong>Regenerate</strong> on <em>Access Token and Secret</em> (old tokens stay Read-only).</span>
                   </li>
                   <li className="flex items-start gap-1.5">
-                    <span className="text-cyan-400 font-mono font-bold shrink-0">4.</span>
-                    <span>Copy the newly regenerated values into AI Studio Settings under <code className="text-cyan-300 font-mono">X_ACCESS_TOKEN</code> and <code className="text-cyan-300 font-mono">X_ACCESS_TOKEN_SECRET</code>.</span>
+                    <span className="text-cyan-600 dark:text-cyan-400 font-mono font-bold shrink-0">4.</span>
+                    <span>Copy the newly regenerated values into AI Studio Settings under <code className="font-mono text-cyan-700 dark:text-cyan-300">X_ACCESS_TOKEN</code> and <code className="font-mono text-cyan-700 dark:text-cyan-300">X_ACCESS_TOKEN_SECRET</code>.</span>
                   </li>
                 </ol>
               </div>
@@ -381,8 +491,12 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
           {/* Test Post Dispatch Area */}
           <div className="space-y-3 relative z-10">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <label
+                className={`text-xs font-bold flex items-center gap-1.5 ${
+                  isLight ? "text-slate-800" : "text-slate-300"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
                 <span>Test Tweet Payload</span>
               </label>
 
@@ -390,15 +504,19 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                 <button
                   type="button"
                   onClick={handleResetDefaultText}
-                  className="text-[11px] text-cyan-400 hover:text-cyan-300 font-mono underline cursor-pointer"
+                  className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 font-mono underline cursor-pointer"
                 >
                   Reset Text
                 </button>
                 <span
-                  className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
+                  className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md border ${
                     isOverLimit
-                      ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                      : "bg-slate-900 text-slate-400 border border-slate-800"
+                      ? isLight
+                        ? "bg-red-50 text-red-700 border-red-300"
+                        : "bg-red-500/20 text-red-400 border-red-500/30"
+                      : isLight
+                      ? "bg-slate-100 text-slate-700 border-slate-200"
+                      : "bg-slate-900 text-slate-400 border-slate-800"
                   }`}
                 >
                   {charCount} / 280
@@ -412,9 +530,15 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                 onChange={(e) => setCustomText(e.target.value)}
                 rows={4}
                 disabled={isPosting}
-                className={`w-full rounded-2xl bg-slate-900/90 text-slate-100 text-xs p-3.5 border outline-none transition-all resize-none leading-relaxed font-sans ${
+                className={`w-full rounded-2xl text-xs p-3.5 border outline-none transition-all resize-none leading-relaxed font-sans ${
+                  isLight
+                    ? "bg-slate-50 text-slate-900 focus:bg-white placeholder:text-slate-400"
+                    : "bg-slate-900/90 text-slate-100 placeholder:text-slate-500"
+                } ${
                   isOverLimit
                     ? "border-red-500 focus:ring-1 focus:ring-red-500"
+                    : isLight
+                    ? "border-slate-300 focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600/30"
                     : "border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30"
                 }`}
                 placeholder="Enter test tweet content..."
@@ -445,10 +569,14 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                 href={`https://x.com/intent/tweet?text=${encodeURIComponent(customText)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition-colors shrink-0 cursor-pointer"
+                className={`w-full sm:w-auto px-4 py-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                  isLight
+                    ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800"
+                    : "bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-200"
+                }`}
                 title="Open directly in browser Twitter window"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                <ExternalLink className={`w-3.5 h-3.5 ${isLight ? "text-slate-600" : "text-slate-400"}`} />
                 <span>Web Intent</span>
               </a>
             </div>
@@ -463,21 +591,37 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
             >
               {testResult.success ? (
                 /* Success Banner */
-                <div className="p-4 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 space-y-2.5">
+                <div
+                  className={`p-4 rounded-2xl border space-y-2.5 ${
+                    isLight
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                      : "bg-emerald-950/50 border-emerald-500/40 text-emerald-200"
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Check className="w-5 h-5 text-emerald-400" />
-                      <strong className="text-sm font-bold text-white">
+                      <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <strong className={`text-sm font-bold ${isLight ? "text-emerald-950" : "text-white"}`}>
                         Test Tweet Posted Successfully!
                       </strong>
                     </div>
                     {testResult.httpStatus && (
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-300">
+                      <span
+                        className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold ${
+                          isLight
+                            ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                            : "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
+                        }`}
+                      >
                         HTTP {testResult.httpStatus}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-emerald-300/90 leading-relaxed">
+                  <p
+                    className={`text-xs leading-relaxed ${
+                      isLight ? "text-emerald-800" : "text-emerald-300/90"
+                    }`}
+                  >
                     Live publication confirmed via OAuth 1.0a User Context. Your X account is
                     fully authorized for autonomous daily dispatches!
                   </p>
@@ -492,7 +636,7 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                         <span>View Live Tweet on X</span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
-                      <span className="text-[11px] font-mono text-emerald-400/80">
+                      <span className={`text-[11px] font-mono ${isLight ? "text-emerald-700" : "text-emerald-400/80"}`}>
                         ID: {testResult.tweetId}
                       </span>
                     </div>
@@ -500,15 +644,21 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                 </div>
               ) : (
                 /* Diagnostic & Remediation Card */
-                <div className="p-4 sm:p-5 rounded-2xl bg-red-950/40 border border-red-500/40 text-red-200 space-y-3">
+                <div
+                  className={`p-4 sm:p-5 rounded-2xl border space-y-3 ${
+                    isLight
+                      ? "bg-red-50 border-red-300 text-red-900"
+                      : "bg-red-950/40 border-red-500/40 text-red-200"
+                  }`}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+                      <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0" />
                       <div>
-                        <strong className="text-sm font-bold text-white block">
+                        <strong className={`text-sm font-bold block ${isLight ? "text-red-950" : "text-white"}`}>
                           {testResult.diagnosisTitle || "X API Request Failed"}
                         </strong>
-                        <span className="text-[11px] font-mono text-red-300/80">
+                        <span className={`text-[11px] font-mono ${isLight ? "text-red-700" : "text-red-300/80"}`}>
                           {testResult.errorCode || "API_ERROR"} • HTTP {testResult.httpStatus || 500}
                         </span>
                       </div>
@@ -518,21 +668,35 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                       href={`https://x.com/intent/tweet?text=${encodeURIComponent(customText)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 text-xs font-bold inline-flex items-center gap-1 transition-colors shrink-0"
+                      className={`px-3 py-1 rounded-lg border text-xs font-bold inline-flex items-center gap-1 transition-colors shrink-0 ${
+                        isLight
+                          ? "bg-red-100 hover:bg-red-200 text-red-800 border-red-300"
+                          : "bg-red-500/20 hover:bg-red-500/30 text-red-300 border-red-500/30"
+                      }`}
                     >
                       <span>Share via Intent</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
 
-                  <p className="text-xs text-red-300 leading-relaxed">
+                  <p className={`text-xs leading-relaxed ${isLight ? "text-red-800" : "text-red-300"}`}>
                     {testResult.diagnosisDetail || testResult.error}
                   </p>
 
                   {/* Step by Step Troubleshooting Guide */}
                   {testResult.troubleshootingSteps && testResult.troubleshootingSteps.length > 0 && (
-                    <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 text-slate-300 text-xs">
-                      <div className="flex items-center justify-between font-bold text-amber-300 text-[11px] uppercase tracking-wider">
+                    <div
+                      className={`p-3.5 rounded-xl border space-y-2 text-xs ${
+                        isLight
+                          ? "bg-white border-red-200 text-slate-800"
+                          : "bg-slate-950/80 border-slate-800 text-slate-300"
+                      }`}
+                    >
+                      <div
+                        className={`flex items-center justify-between font-bold text-[11px] uppercase tracking-wider ${
+                          isLight ? "text-amber-800" : "text-amber-300"
+                        }`}
+                      >
                         <span className="flex items-center gap-1.5">
                           <HelpCircle className="w-3.5 h-3.5" />
                           Recommended Solution Steps
@@ -541,16 +705,16 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
                           href="https://developer.x.com/en/portal/dashboard"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-cyan-400 hover:underline inline-flex items-center gap-1 normal-case"
+                          className="text-cyan-600 dark:text-cyan-400 hover:underline inline-flex items-center gap-1 normal-case"
                         >
                           Developer Portal
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
-                      <ol className="space-y-1.5 text-[11px] leading-relaxed pl-1 text-slate-300">
+                      <ol className="space-y-1.5 text-[11px] leading-relaxed pl-1">
                         {testResult.troubleshootingSteps.map((step, idx) => (
                           <li key={idx} className="flex items-start gap-1.5">
-                            <span className="text-cyan-400 font-mono font-bold shrink-0">{idx + 1}.</span>
+                            <span className="text-cyan-600 dark:text-cyan-400 font-mono font-bold shrink-0">{idx + 1}.</span>
                             <span>{step.replace(/^\d+\.\s*/, "")}</span>
                           </li>
                         ))}
@@ -563,14 +727,20 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
           )}
 
           {/* Collapsible Inspectors: Keys & Protocol Telemetry */}
-          <div className="pt-2 border-t border-slate-800/80 space-y-2 relative z-10">
+          <div
+            className={`pt-2 border-t space-y-2 relative z-10 ${
+              isLight ? "border-slate-200" : "border-slate-800/80"
+            }`}
+          >
             <div className="flex items-center justify-between text-xs">
               <button
                 type="button"
                 onClick={() => setShowEnvInspector(!showEnvInspector)}
-                className="text-slate-400 hover:text-slate-200 flex items-center gap-1.5 font-mono cursor-pointer"
+                className={`flex items-center gap-1.5 font-mono cursor-pointer transition-colors ${
+                  isLight ? "text-slate-600 hover:text-slate-900" : "text-slate-400 hover:text-slate-200"
+                }`}
               >
-                <Key className="w-3.5 h-3.5 text-cyan-400" />
+                <Key className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                 <span>Environment Credentials Status</span>
                 {showEnvInspector ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </button>
@@ -578,9 +748,11 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
               <button
                 type="button"
                 onClick={() => setShowRawJson(!showRawJson)}
-                className="text-slate-400 hover:text-slate-200 flex items-center gap-1.5 font-mono cursor-pointer"
+                className={`flex items-center gap-1.5 font-mono cursor-pointer transition-colors ${
+                  isLight ? "text-slate-600 hover:text-slate-900" : "text-slate-400 hover:text-slate-200"
+                }`}
               >
-                <Terminal className="w-3.5 h-3.5 text-purple-400" />
+                <Terminal className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                 <span>Raw Response Logs</span>
                 {showRawJson ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </button>
@@ -588,40 +760,66 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
 
             {/* Environment Key Inspector */}
             {showEnvInspector && (
-              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2 text-xs font-mono">
+              <div
+                className={`p-3.5 rounded-xl border space-y-2 text-xs font-mono ${
+                  isLight
+                    ? "bg-slate-50 border-slate-200 text-slate-800"
+                    : "bg-slate-900/90 border-slate-800 text-slate-200"
+                }`}
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400">X_API_KEY:</span>
-                    <span className="text-emerald-400 font-semibold">
+                  <div
+                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                      isLight ? "bg-white border-slate-200" : "bg-slate-950 border-slate-800"
+                    }`}
+                  >
+                    <span className={isLight ? "text-slate-500" : "text-slate-400"}>X_API_KEY:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
                       {status?.keyPreviews?.apiKey || "Configured"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400">X_API_SECRET_KEY:</span>
-                    <span className="text-emerald-400 font-semibold">
+                  <div
+                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                      isLight ? "bg-white border-slate-200" : "bg-slate-950 border-slate-800"
+                    }`}
+                  >
+                    <span className={isLight ? "text-slate-500" : "text-slate-400"}>X_API_SECRET_KEY:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
                       {status?.keyPreviews?.hasSecret ? "Configured (Hidden)" : "Missing"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400">X_ACCESS_TOKEN:</span>
-                    <span className="text-emerald-400 font-semibold">
+                  <div
+                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                      isLight ? "bg-white border-slate-200" : "bg-slate-950 border-slate-800"
+                    }`}
+                  >
+                    <span className={isLight ? "text-slate-500" : "text-slate-400"}>X_ACCESS_TOKEN:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
                       {status?.keyPreviews?.accessToken || "Configured"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400">X_ACCESS_TOKEN_SECRET:</span>
-                    <span className="text-emerald-400 font-semibold">
+                  <div
+                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                      isLight ? "bg-white border-slate-200" : "bg-slate-950 border-slate-800"
+                    }`}
+                  >
+                    <span className={isLight ? "text-slate-500" : "text-slate-400"}>X_ACCESS_TOKEN_SECRET:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
                       {status?.keyPreviews?.hasTokenSecret ? "Configured (Hidden)" : "Missing"}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                <div
+                  className={`flex items-center justify-between text-[10px] pt-1 ${
+                    isLight ? "text-slate-500" : "text-slate-400"
+                  }`}
+                >
                   <span className="flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-cyan-400" />
+                    <ShieldCheck className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                     Protocol: OAuth 1.0a User Context (RFC 5849 / HMAC-SHA1)
                   </span>
                   <span className="flex items-center gap-1">
-                    <Cpu className="w-3 h-3 text-purple-400" />
+                    <Cpu className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                     Target: @{status?.username || "lk3mpe"}
                   </span>
                 </div>
@@ -630,18 +828,32 @@ export const XTestModal: React.FC<XTestModalProps> = ({ isOpen, onClose, onSucce
 
             {/* Raw JSON Inspector */}
             {showRawJson && (
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+              <div
+                className={`p-3 rounded-xl border space-y-2 ${
+                  isLight
+                    ? "bg-slate-50 border-slate-200"
+                    : "bg-slate-950 border-slate-800"
+                }`}
+              >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-slate-400">Debug Payload &amp; Response</span>
+                  <span className={`text-[10px] font-mono ${isLight ? "text-slate-600" : "text-slate-400"}`}>
+                    Debug Payload &amp; Response
+                  </span>
                   <button
                     onClick={handleCopyRaw}
-                    className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-mono"
+                    className="text-[10px] text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 font-mono cursor-pointer"
                   >
-                    {copiedRaw ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    {copiedRaw ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
                     <span>{copiedRaw ? "Copied" : "Copy JSON"}</span>
                   </button>
                 </div>
-                <pre className="text-[10px] font-mono text-slate-300 max-h-44 overflow-y-auto p-2 bg-black/60 rounded-lg border border-slate-900 whitespace-pre-wrap break-all">
+                <pre
+                  className={`text-[10px] font-mono max-h-44 overflow-y-auto p-2.5 rounded-lg border whitespace-pre-wrap break-all ${
+                    isLight
+                      ? "bg-slate-900 text-emerald-300 border-slate-800"
+                      : "bg-black/60 text-emerald-400 border-slate-900"
+                  }`}
+                >
                   {JSON.stringify({ status, testResult }, null, 2)}
                 </pre>
               </div>

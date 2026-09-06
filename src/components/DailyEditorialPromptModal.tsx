@@ -120,6 +120,7 @@ interface DailyEditorialPromptModalProps {
   onArticlePublished?: (newBlog: BlogPost) => void;
   onOpenInEditor?: (draft: BlogPost) => void;
   onOpenXTest?: () => void;
+  theme?: "light" | "dark";
 }
 
 export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps> = ({
@@ -128,7 +129,9 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
   onArticlePublished,
   onOpenInEditor,
   onOpenXTest,
+  theme = "dark",
 }) => {
+  const isLight = theme === "light";
   const [data, setData] = useState<StagedDispatchResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
@@ -464,12 +467,20 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-xl overflow-y-auto">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto ${
+        isLight ? "bg-slate-900/40 backdrop-blur-md" : "bg-black/90 backdrop-blur-xl"
+      }`}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative w-full max-w-5xl bg-slate-950 border border-cyan-500/40 rounded-3xl shadow-[0_25px_80px_-15px_rgba(6,182,212,0.25)] overflow-hidden my-6"
+        className={`relative w-full max-w-5xl rounded-3xl overflow-hidden my-6 border transition-colors ${
+          isLight
+            ? "bg-white border-slate-200 text-slate-900 shadow-2xl shadow-slate-900/15"
+            : "bg-slate-950 border-cyan-500/40 text-slate-100 shadow-[0_25px_80px_-15px_rgba(6,182,212,0.25)]"
+        }`}
       >
         {/* Dynamic Raytraced Refractive Rim Shader (Top Edge) */}
         <div
@@ -481,9 +492,21 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
         />
 
         {/* Top Header Banner */}
-        <div className="relative bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950/70 px-6 py-4 sm:py-5 border-b border-cyan-500/20 flex flex-wrap items-center justify-between gap-4">
+        <div
+          className={`relative px-6 py-4 sm:py-5 border-b flex flex-wrap items-center justify-between gap-4 transition-colors ${
+            isLight
+              ? "bg-gradient-to-r from-slate-50 via-cyan-50/40 to-emerald-50/30 border-slate-200"
+              : "bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950/70 border-cyan-500/20"
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-2xl bg-cyan-500/10 border border-cyan-400/40 flex items-center justify-center text-cyan-400 overflow-hidden shadow-inner">
+            <div
+              className={`relative w-11 h-11 rounded-2xl border flex items-center justify-center overflow-hidden shadow-inner ${
+                isLight
+                  ? "bg-cyan-50 border-cyan-300 text-cyan-700"
+                  : "bg-cyan-500/10 border-cyan-400/40 text-cyan-400"
+              }`}
+            >
               <Sparkles className="w-5 h-5 animate-pulse" />
               {/* Raytracing Beam Glint */}
               <div
@@ -495,15 +518,29 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-bold text-white tracking-wide flex items-center gap-2">
+                <h2
+                  className={`text-base sm:text-lg font-bold tracking-wide flex items-center gap-2 ${
+                    isLight ? "text-slate-900" : "text-white"
+                  }`}
+                >
                   Daily Autonomous Editorial Pipeline
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 font-mono">
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full border font-mono ${
+                      isLight
+                        ? "bg-cyan-100 text-cyan-800 border-cyan-300"
+                        : "bg-cyan-500/20 text-cyan-300 border-cyan-400/30"
+                    }`}
+                  >
                     Candidate Deck
                   </span>
                 </h2>
               </div>
-              <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+              <p
+                className={`text-xs flex items-center gap-1.5 mt-0.5 ${
+                  isLight ? "text-slate-600" : "text-slate-400"
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                 <span>{dynamicCadenceLabel}</span>
               </p>
             </div>
@@ -512,29 +549,54 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
           {/* ART Clock & Timeout Badge */}
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <div className="text-xs font-mono text-cyan-400 flex items-center justify-end gap-1.5 font-semibold">
-                <Clock className="w-3.5 h-3.5 text-cyan-300" />
+              <div
+                className={`text-xs font-mono flex items-center justify-end gap-1.5 font-semibold ${
+                  isLight ? "text-cyan-800" : "text-cyan-400"
+                }`}
+              >
+                <Clock className={`w-3.5 h-3.5 ${isLight ? "text-cyan-700" : "text-cyan-300"}`} />
                 <span>
                   {liveArtClock || (artInfo ? `${String(artInfo.hour).padStart(2, "0")}:${String(artInfo.minute).padStart(2, "0")} ART (UTC-3)` : "09:00:00 ART (UTC-3)")}
                 </span>
               </div>
               {isPendingReview && remainingSeconds > 0 ? (
-                <div className="text-xs text-amber-400 font-medium flex items-center justify-end gap-1 mt-0.5">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                  Auto-publish in <span className="font-mono font-bold text-amber-300">{formatCountdown(remainingSeconds)}</span>
+                <div
+                  className={`text-xs font-medium flex items-center justify-end gap-1 mt-0.5 ${
+                    isLight ? "text-amber-800" : "text-amber-400"
+                  }`}
+                >
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                  Auto-publish in{" "}
+                  <span
+                    className={`font-mono font-bold ${
+                      isLight ? "text-amber-900" : "text-amber-300"
+                    }`}
+                  >
+                    {formatCountdown(remainingSeconds)}
+                  </span>
                 </div>
               ) : isAlreadyPublished ? (
-                <div className="text-xs text-emerald-400 font-medium flex items-center justify-end gap-1 mt-0.5">
-                  <CheckCircle className="w-3.5 h-3.5" /> Published & Dispatched
+                <div
+                  className={`text-xs font-medium flex items-center justify-end gap-1 mt-0.5 ${
+                    isLight ? "text-emerald-700" : "text-emerald-400"
+                  }`}
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> Published &amp; Dispatched
                 </div>
               ) : (
-                <div className="text-xs text-slate-400">Review Window Idle</div>
+                <div className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}>
+                  Review Window Idle
+                </div>
               )}
             </div>
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 border border-slate-700/50 transition-colors"
+              className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/80 border-slate-700/50"
+              }`}
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -543,7 +605,11 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
         </div>
 
         {/* Content Body */}
-        <div className="p-4 sm:p-6 space-y-6 max-h-[76vh] overflow-y-auto">
+        <div
+          className={`p-4 sm:p-6 space-y-6 max-h-[76vh] overflow-y-auto ${
+            isLight ? "bg-white" : "bg-slate-950"
+          }`}
+        >
           {/* Observatory Environmental & Celestial Telemetry Deck */}
           <ObservatoryTelemetryDeck
             artTimeStr={liveArtClock}
@@ -552,10 +618,17 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
             formatCountdown={formatCountdown}
             isAlreadyPublished={isAlreadyPublished}
             scheduledTimeLabel="Tomorrow 09:00 AM ART"
+            theme={theme}
           />
           {error && (
-            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-400" />
+            <div
+              className={`p-4 rounded-2xl border text-sm flex items-center gap-3 ${
+                isLight
+                  ? "bg-red-50 border-red-200 text-red-800"
+                  : "bg-red-500/10 border-red-500/30 text-red-300"
+              }`}
+            >
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-500" />
               <span>{error}</span>
             </div>
           )}
@@ -634,24 +707,34 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
 
           {loading ? (
             <div className="py-20 text-center space-y-3">
-              <RefreshCw className="w-9 h-9 text-cyan-400 animate-spin mx-auto" />
-              <p className="text-sm text-slate-400">Loading daily staged dispatch and candidate deck...</p>
+              <RefreshCw className="w-9 h-9 text-cyan-500 animate-spin mx-auto" />
+              <p className={`text-sm ${isLight ? "text-slate-600" : "text-slate-400"}`}>
+                Loading daily staged dispatch and candidate deck...
+              </p>
             </div>
           ) : !dispatch && candidatesDeck.length === 0 ? (
             <div className="py-14 text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto shadow-lg">
+              <div
+                className={`w-14 h-14 rounded-2xl border flex items-center justify-center mx-auto shadow-lg ${
+                  isLight
+                    ? "bg-cyan-50 border-cyan-300 text-cyan-700"
+                    : "bg-slate-900 border-cyan-500/30 text-cyan-400"
+                }`}
+              >
                 <Clock className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-white">No Staged Dispatch for Today Yet</h3>
-                <p className="text-sm text-slate-400 max-w-md mx-auto mt-1 leading-relaxed">
+                <h3 className={`text-base font-semibold ${isLight ? "text-slate-900" : "text-white"}`}>
+                  No Staged Dispatch for Today Yet
+                </h3>
+                <p className={`text-sm max-w-md mx-auto mt-1 leading-relaxed ${isLight ? "text-slate-600" : "text-slate-400"}`}>
                   The automated arXiv crawler triggers at 9:00 AM ART (UTC-3). You can initialize the 4 September 3 candidates or crawl arXiv now.
                 </p>
               </div>
               <button
                 onClick={handleManualCrawl}
                 disabled={actionLoading}
-                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-lg shadow-cyan-500/20"
+                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-lg shadow-cyan-500/20 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
                 {actionLoading ? "Crawling arXiv & Staging..." : "Initialize 9:00 AM Candidate Deck Now"}
@@ -661,7 +744,13 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
             <>
               {/* DATE INTEGRITY COMPARISON ACCORDION / BADGE */}
               {currentCandidate?.dateComparison && (
-                <div className="relative rounded-2xl p-4 bg-slate-900/90 border border-cyan-500/30 overflow-hidden shadow-inner">
+                <div
+                  className={`relative rounded-2xl p-4 border overflow-hidden shadow-inner ${
+                    isLight
+                      ? "bg-slate-50 border-slate-200 text-slate-900"
+                      : "bg-slate-900/90 border-cyan-500/30 text-slate-100"
+                  }`}
+                >
                   {/* Subtle Raytracing Caustic background */}
                   <div
                     className="absolute inset-0 pointer-events-none opacity-20"
@@ -673,44 +762,80 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                   <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-mono text-xs font-bold flex items-center gap-1.5">
-                          <Compass className="w-3 h-3 text-cyan-300" />
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full border font-mono text-xs font-bold flex items-center gap-1.5 ${
+                            isLight
+                              ? "bg-cyan-100 border-cyan-300 text-cyan-800"
+                              : "bg-cyan-500/20 border-cyan-400/40 text-cyan-300"
+                          }`}
+                        >
+                          <Compass className={`w-3 h-3 ${isLight ? "text-cyan-700" : "text-cyan-300"}`} />
                           Source of Truth Date Verification
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[11px] font-semibold flex items-center gap-1">
-                          <Check className="w-3 h-3 text-emerald-400" />
+                        <span
+                          className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold flex items-center gap-1 ${
+                            isLight
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                              : "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
+                          }`}
+                        >
+                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                           Dates Aligned
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300">
+                      <p className={`text-xs ${isLight ? "text-slate-700" : "text-slate-300"}`}>
                         {currentCandidate.dateComparison.dateAlignmentReason}
                       </p>
                     </div>
 
                     {/* Side-by-side date cards */}
                     <div className="flex items-center gap-3 w-full md:w-auto">
-                      <div className="flex-1 md:flex-none p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-center min-w-[150px]">
-                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold flex items-center justify-center gap-1">
+                      <div
+                        className={`flex-1 md:flex-none p-2.5 rounded-xl border text-center min-w-[150px] ${
+                          isLight
+                            ? "bg-white border-slate-200 text-slate-900"
+                            : "bg-slate-950/80 border-slate-800 text-white"
+                        }`}
+                      >
+                        <div
+                          className={`text-[10px] uppercase tracking-wider font-semibold flex items-center justify-center gap-1 ${
+                            isLight ? "text-slate-500" : "text-slate-400"
+                          }`}
+                        >
                           <span>arXiv Announcement</span>
                         </div>
-                        <div className="text-xs font-bold text-white mt-0.5">
+                        <div className={`text-xs font-bold mt-0.5 ${isLight ? "text-slate-900" : "text-white"}`}>
                           {currentCandidate.dateComparison.arxivPubDate}
                         </div>
-                        <div className="text-[10px] text-cyan-400 font-mono">
+                        <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono">
                           {currentCandidate.dateComparison.arxivDayOfWeekName} (Web Canonical)
                         </div>
                       </div>
 
-                      <ArrowRight className="w-4 h-4 text-cyan-400 flex-shrink-0 hidden sm:block" />
+                      <ArrowRight className="w-4 h-4 text-cyan-500 flex-shrink-0 hidden sm:block" />
 
-                      <div className="flex-1 md:flex-none p-2.5 rounded-xl bg-cyan-950/30 border border-cyan-500/40 text-center min-w-[150px]">
-                        <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center justify-center gap-1">
+                      <div
+                        className={`flex-1 md:flex-none p-2.5 rounded-xl border text-center min-w-[150px] ${
+                          isLight
+                            ? "bg-cyan-50/80 border-cyan-200"
+                            : "bg-cyan-950/30 border-cyan-500/40"
+                        }`}
+                      >
+                        <div
+                          className={`text-[10px] uppercase tracking-wider font-semibold flex items-center justify-center gap-1 ${
+                            isLight ? "text-cyan-800" : "text-cyan-300"
+                          }`}
+                        >
                           <span>Meridian Scheduled</span>
                         </div>
-                        <div className="text-xs font-bold text-cyan-100 mt-0.5">
+                        <div
+                          className={`text-xs font-bold mt-0.5 ${
+                            isLight ? "text-cyan-950" : "text-cyan-100"
+                          }`}
+                        >
                           {currentCandidate.dateComparison.meridianPubDate}
                         </div>
-                        <div className="text-[10px] text-emerald-400 font-mono">
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
                           {currentCandidate.dateComparison.meridianPubTime}
                         </div>
                       </div>
@@ -718,11 +843,19 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                   </div>
 
                   {/* Clarification on arXiv vs internal PDF dates */}
-                  <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-start gap-2 text-[11px] text-slate-400">
-                    <Info className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                  <div
+                    className={`mt-3 pt-2.5 border-t flex items-start gap-2 text-[11px] ${
+                      isLight
+                        ? "border-slate-200 text-slate-600"
+                        : "border-slate-800/80 text-slate-400"
+                    }`}
+                  >
+                    <Info className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 flex-shrink-0 mt-0.5" />
                     <span>
                       {currentCandidate.dateComparison.sourceOfTruthNote}{" "}
-                      <strong className="text-slate-300">arXiv announcement schedule operates Monday–Friday only (no weekend releases).</strong>
+                      <strong className={isLight ? "text-slate-800" : "text-slate-300"}>
+                        arXiv announcement schedule operates Monday–Friday only (no weekend releases).
+                      </strong>
                     </span>
                   </div>
                 </div>
@@ -732,19 +865,31 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Flame className="w-4 h-4 text-amber-400 animate-bounce" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    <Flame className="w-4 h-4 text-amber-500 animate-bounce" />
+                    <span
+                      className={`text-xs font-bold uppercase tracking-wider ${
+                        isLight ? "text-slate-900" : "text-white"
+                      }`}
+                    >
                       Candidate Deck: Swipe to Choose Tomorrow's Dispatch
                     </span>
                   </div>
 
                   {/* Filter Pill Toggle between 09.3 batch (4) and All candidates */}
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <div
+                    className={`flex items-center gap-1 p-1 rounded-xl border ${
+                      isLight ? "bg-slate-100 border-slate-200" : "bg-slate-950 border-slate-800"
+                    }`}
+                  >
                     <button
                       onClick={() => setDeckFilter("sep3")}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         deckFilter === "sep3"
-                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                          ? isLight
+                            ? "bg-white text-cyan-900 border border-slate-300 shadow-xs"
+                            : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                          : isLight
+                          ? "text-slate-600 hover:text-slate-900"
                           : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
@@ -752,9 +897,13 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                     </button>
                     <button
                       onClick={() => setDeckFilter("all")}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         deckFilter === "all"
-                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                          ? isLight
+                            ? "bg-white text-cyan-900 border border-slate-300 shadow-xs"
+                            : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                          : isLight
+                          ? "text-slate-600 hover:text-slate-900"
                           : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
@@ -763,13 +912,37 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                <div
+                  className={`flex items-center justify-between text-xs px-1 ${
+                    isLight ? "text-slate-600" : "text-slate-400"
+                  }`}
+                >
                   <span>
-                    Keyboard shortcut: <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">←</kbd> Pass &nbsp;|&nbsp; <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">→</kbd> Select
+                    Keyboard shortcut:{" "}
+                    <kbd
+                      className={`px-1.5 py-0.5 rounded font-mono text-[10px] border ${
+                        isLight
+                          ? "bg-slate-200 text-slate-800 border-slate-300"
+                          : "bg-slate-800 text-slate-300 border-slate-700"
+                      }`}
+                    >
+                      ←
+                    </kbd>{" "}
+                    Pass &nbsp;|&nbsp;{" "}
+                    <kbd
+                      className={`px-1.5 py-0.5 rounded font-mono text-[10px] border ${
+                        isLight
+                          ? "bg-slate-200 text-slate-800 border-slate-300"
+                          : "bg-slate-800 text-slate-300 border-slate-700"
+                      }`}
+                    >
+                      →
+                    </kbd>{" "}
+                    Select
                   </span>
                   <span className="font-mono">
-                    Candidate <strong className="text-cyan-400">{safeDeckIndex + 1}</strong> of{" "}
-                    <strong className="text-white">{displayedDeck.length}</strong>
+                    Candidate <strong className="text-cyan-600 dark:text-cyan-400">{safeDeckIndex + 1}</strong> of{" "}
+                    <strong className={isLight ? "text-slate-900" : "text-white"}>{displayedDeck.length}</strong>
                   </span>
                 </div>
 
@@ -781,7 +954,11 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                     return (
                       <div
                         key={`bg-${bgCandidate.id || bgCandidate.arxivId}-${depth}`}
-                        className="absolute inset-x-4 sm:inset-x-8 top-4 rounded-3xl bg-slate-900/60 border border-slate-800 pointer-events-none transition-all duration-300"
+                        className={`absolute inset-x-4 sm:inset-x-8 top-4 rounded-3xl pointer-events-none transition-all duration-300 border ${
+                          isLight
+                            ? "bg-slate-100 border-slate-200"
+                            : "bg-slate-900/60 border-slate-800"
+                        }`}
                         style={{
                           transform: `translateY(${depth * 14}px) scale(${1 - depth * 0.05})`,
                           opacity: 0.6 / depth,
@@ -789,8 +966,16 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                         }}
                       >
                         <div className="p-6 opacity-30">
-                          <div className="h-4 w-1/3 bg-slate-700 rounded mb-3" />
-                          <div className="h-6 w-3/4 bg-slate-700 rounded" />
+                          <div
+                            className={`h-4 w-1/3 rounded mb-3 ${
+                              isLight ? "bg-slate-300" : "bg-slate-700"
+                            }`}
+                          />
+                          <div
+                            className={`h-6 w-3/4 rounded ${
+                              isLight ? "bg-slate-300" : "bg-slate-700"
+                            }`}
+                          />
                         </div>
                       </div>
                     );
@@ -818,11 +1003,17 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                       onDragEnd={handleDragEnd}
                       onMouseMove={handleMouseMove}
                       onMouseLeave={handleMouseLeave}
-                      className={`absolute inset-x-0 top-0 bottom-0 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 p-5 sm:p-6 flex flex-col justify-between cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl transition-all ${
+                      className={`absolute inset-x-0 top-0 bottom-0 rounded-3xl p-5 sm:p-6 flex flex-col justify-between cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl transition-all ${
+                        isLight
+                          ? "bg-white border-slate-300 text-slate-900"
+                          : "bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 text-slate-100"
+                      } ${
                         data?.dispatch?.candidatePaper?.id &&
                         (currentCandidate.arxivId.includes(data.dispatch.candidatePaper.id) ||
                           data.dispatch.candidatePaper.id.includes(currentCandidate.arxivId))
                           ? "border-2 border-emerald-500 ring-2 ring-emerald-500/20"
+                          : isLight
+                          ? "border border-slate-300"
                           : "border border-cyan-500/50"
                       }`}
                     >
@@ -866,18 +1057,30 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                       <div className="relative z-10 space-y-2">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full border text-xs font-mono font-bold ${
+                                isLight
+                                  ? "bg-cyan-100 text-cyan-800 border-cyan-300"
+                                  : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                              }`}
+                            >
                               arXiv:{currentCandidate.arxivId}
                             </span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                              currentCandidate.category === "physics.optics"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                            }`}>
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                currentCandidate.category === "physics.optics"
+                                  ? isLight
+                                    ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                    : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                  : isLight
+                                  ? "bg-purple-100 text-purple-800 border border-purple-300"
+                                  : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                              }`}
+                            >
                               {currentCandidate.category}
                             </span>
-                            <span className="text-[11px] text-slate-400 font-mono">
-                              Match Score: <strong className="text-white">{currentCandidate.score}/100</strong>
+                            <span className={`text-[11px] font-mono ${isLight ? "text-slate-600" : "text-slate-400"}`}>
+                              Match Score: <strong className={isLight ? "text-slate-900" : "text-white"}>{currentCandidate.score}/100</strong>
                             </span>
                           </div>
 
@@ -885,13 +1088,25 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                             {data?.dispatch?.candidatePaper?.id &&
                             (currentCandidate.arxivId.includes(data.dispatch.candidatePaper.id) ||
                               data.dispatch.candidatePaper.id.includes(currentCandidate.arxivId)) ? (
-                              <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 shadow-sm">
-                                <Check className="w-3 h-3 text-emerald-400" />
+                              <span
+                                className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 shadow-sm border ${
+                                  isLight
+                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                    : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                }`}
+                              >
+                                <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                 Active Selection
                               </span>
                             ) : currentCandidate.dateComparison?.arxivPubDate?.includes("September 3") ||
                               currentCandidate.source === "meridian_pipeline" ? (
-                              <span className="px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold tracking-wider uppercase">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase border ${
+                                  isLight
+                                    ? "bg-cyan-100 text-cyan-800 border-cyan-300"
+                                    : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                                }`}
+                              >
                                 September 3 Batch
                               </span>
                             ) : null}
@@ -900,7 +1115,11 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                               target="_blank"
                               rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors"
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                isLight
+                                  ? "text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
+                                  : "text-slate-400 hover:text-cyan-300 hover:bg-slate-800"
+                              }`}
                               title="Open in arXiv"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -909,17 +1128,27 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                         </div>
 
                         {/* Title */}
-                        <h3 className="text-base sm:text-lg font-bold text-white leading-snug hover:text-cyan-200 transition-colors">
+                        <h3
+                          className={`text-base sm:text-lg font-bold leading-snug transition-colors ${
+                            isLight
+                              ? "text-slate-900 hover:text-cyan-700"
+                              : "text-white hover:text-cyan-200"
+                          }`}
+                        >
                           {currentCandidate.title}
                         </h3>
 
                         {/* Authors & Announcement date */}
-                        <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 gap-1">
+                        <div
+                          className={`flex flex-wrap items-center justify-between text-xs gap-1 ${
+                            isLight ? "text-slate-600" : "text-slate-400"
+                          }`}
+                        >
                           <p>
-                            <strong className="text-slate-300">Authors:</strong> {currentCandidate.authors}
+                            <strong className={isLight ? "text-slate-800" : "text-slate-300"}>Authors:</strong> {currentCandidate.authors}
                           </p>
                           {currentCandidate.dateComparison?.arxivPubDate && (
-                            <span className="font-mono text-cyan-400 text-[11px]">
+                            <span className="font-mono text-cyan-600 dark:text-cyan-400 text-[11px]">
                               Released: {currentCandidate.dateComparison.arxivPubDate}
                             </span>
                           )}
@@ -929,32 +1158,59 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                       {/* Card Content Middle: SVG banner & Excerpt */}
                       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-12 gap-3 my-2 items-center">
                         {currentCandidate.bannerSvg ? (
-                          <div className="sm:col-span-4 h-28 rounded-xl overflow-hidden border border-slate-700 bg-slate-950 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full shadow-inner">
+                          <div
+                            className={`sm:col-span-4 h-28 rounded-xl overflow-hidden border flex items-center justify-center [&>svg]:w-full [&>svg]:h-full shadow-inner ${
+                              isLight
+                                ? "border-slate-200 bg-slate-50"
+                                : "border-slate-700 bg-slate-950"
+                            }`}
+                          >
                             <div dangerouslySetInnerHTML={{ __html: currentCandidate.bannerSvg }} />
                           </div>
                         ) : (
-                          <div className="sm:col-span-4 h-28 rounded-xl border border-dashed border-slate-700 bg-slate-950/60 flex flex-col items-center justify-center text-slate-500 text-xs p-2 text-center">
-                            <Layers className="w-5 h-5 text-cyan-400 mb-1" />
-                            <span>Generative KaTeX & SVG Ready</span>
+                          <div
+                            className={`sm:col-span-4 h-28 rounded-xl border border-dashed flex flex-col items-center justify-center text-xs p-2 text-center ${
+                              isLight
+                                ? "border-slate-300 bg-slate-50 text-slate-600"
+                                : "border-slate-700 bg-slate-950/60 text-slate-500"
+                            }`}
+                          >
+                            <Layers className="w-5 h-5 text-cyan-500 mb-1" />
+                            <span>Generative KaTeX &amp; SVG Ready</span>
                           </div>
                         )}
 
                         <div className="sm:col-span-8 space-y-1.5">
-                          <p className="text-xs text-slate-300 leading-relaxed line-clamp-3">
+                          <p
+                            className={`text-xs leading-relaxed line-clamp-3 ${
+                              isLight ? "text-slate-700" : "text-slate-300"
+                            }`}
+                          >
                             {currentCandidate.excerpt}
                           </p>
-                          <div className="flex items-center gap-2 text-[11px] text-cyan-400 pt-1">
-                            <Zap className="w-3 h-3 text-cyan-300" />
+                          <div className="flex items-center gap-2 text-[11px] text-cyan-600 dark:text-cyan-400 pt-1">
+                            <Zap className="w-3 h-3 text-cyan-500" />
                             <span>{currentCandidate.relevanceReason}</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Card Content Bottom: Quick Tinder Action Controls */}
-                      <div className="relative z-10 pt-3 border-t border-slate-800/90 flex flex-wrap items-center justify-between gap-2">
+                      <div
+                        className={`relative z-10 pt-3 border-t flex flex-wrap items-center justify-between gap-2 ${
+                          isLight ? "border-slate-200" : "border-slate-800/90"
+                        }`}
+                      >
                         <div className="flex items-center gap-1.5">
                           {currentCandidate.tags?.slice(0, 3).map((tag, tIdx) => (
-                            <span key={tIdx} className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-mono">
+                            <span
+                              key={tIdx}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                                isLight
+                                  ? "bg-slate-100 text-slate-700 border-slate-200"
+                                  : "bg-slate-800 text-slate-400 border-slate-700"
+                              }`}
+                            >
                               #{tag}
                             </span>
                           ))}
@@ -966,7 +1222,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                               e.stopPropagation();
                               onOpenInEditor(currentCandidate.fullDraft!);
                             }}
-                            className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
+                            className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                           >
                             <FileText className="w-3.5 h-3.5" />
                             <span>Inspect Markdown</span>
@@ -985,9 +1241,13 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                     <button
                       onClick={() => handleSwipe("left")}
                       disabled={actionLoading || displayedDeck.length <= 1}
-                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold inline-flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40"
+                      className={`px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40 cursor-pointer border ${
+                        isLight
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300"
+                          : "bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700"
+                      }`}
                     >
-                      <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
+                      <ArrowLeft className="w-3.5 h-3.5 text-amber-500" />
                       <span>Pass / Next</span>
                     </button>
 
@@ -996,9 +1256,13 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                         if (currentCandidate) handleSelectCandidate(currentCandidate);
                       }}
                       disabled={actionLoading || !currentCandidate}
-                      className="px-4 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold inline-flex items-center gap-2 transition-all active:scale-95"
+                      className={`px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all active:scale-95 cursor-pointer border ${
+                        isLight
+                          ? "bg-cyan-50 hover:bg-cyan-100 text-cyan-900 border-cyan-300"
+                          : "bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border-cyan-500/40"
+                      }`}
                     >
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <span>Choose This Article</span>
                     </button>
                   </div>
@@ -1012,9 +1276,11 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                           setCurrentDeckIndex(idx);
                           dragX.set(0);
                         }}
-                        className={`h-2 rounded-full transition-all duration-300 ${
+                        className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
                           idx === safeDeckIndex
-                            ? "w-7 bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+                            ? "w-7 bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+                            : isLight
+                            ? "w-2 bg-slate-300 hover:bg-slate-400"
                             : "w-2 bg-slate-700 hover:bg-slate-500"
                         }`}
                         title={`Candidate ${idx + 1}: ${c.title}`}
@@ -1027,7 +1293,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                     <button
                       onClick={() => handleSwipe("right")}
                       disabled={actionLoading || !currentCandidate}
-                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-emerald-950/40 transition-all active:scale-95 disabled:opacity-40"
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-emerald-950/40 transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
                     >
                       <span>Swipe Right (Select)</span>
                       <ArrowRight className="w-3.5 h-3.5 text-white" />
@@ -1037,15 +1303,31 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
               </div>
 
               {/* SECTION: X (TWITTER) AUTONOMOUS COMPANION POST EDITOR */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 space-y-3 shadow-inner">
+              <div
+                className={`p-4 sm:p-5 rounded-2xl border space-y-3 shadow-inner ${
+                  isLight
+                    ? "bg-slate-50 border-slate-200 text-slate-900"
+                    : "bg-slate-900/90 border-cyan-500/30 text-slate-100"
+                }`}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-black shadow-sm">
+                    <div
+                      className={`w-7 h-7 rounded-xl border flex items-center justify-center text-xs font-black shadow-sm ${
+                        isLight
+                          ? "bg-cyan-100 text-cyan-800 border-cyan-300"
+                          : "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                      }`}
+                    >
                       𝕏
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-white">X Companion Thread Post</span>
-                      <span className="text-[11px] text-cyan-400 ml-1.5 font-mono">@lk3mpe</span>
+                      <span className={`text-xs font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
+                        X Companion Thread Post
+                      </span>
+                      <span className="text-[11px] text-cyan-600 dark:text-cyan-400 ml-1.5 font-mono">
+                        @lk3mpe
+                      </span>
                     </div>
                   </div>
 
@@ -1055,21 +1337,33 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                       <button
                         type="button"
                         onClick={onOpenXTest}
-                        className="px-2.5 py-1 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className={`px-2.5 py-1 rounded-md border text-[11px] font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+                          isLight
+                            ? "bg-cyan-100 hover:bg-cyan-200 text-cyan-800 border-cyan-300"
+                            : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                        }`}
                         title="Run test tweet and inspect OAuth 1.0a permissions"
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         <span>X Test &amp; Inspect</span>
                       </button>
                     )}
 
                     {/* Mode Toggle: Standard 280-char vs Full 3-Sentence */}
-                    <div className="flex rounded-lg bg-slate-950 p-0.5 border border-slate-800">
+                    <div
+                      className={`flex rounded-lg p-0.5 border ${
+                        isLight ? "bg-white border-slate-300" : "bg-slate-950 border-slate-800"
+                      }`}
+                    >
                       <button
                         onClick={() => setTweetMode("full")}
-                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                           tweetMode === "full"
-                            ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                            ? isLight
+                              ? "bg-cyan-100 text-cyan-800 border border-cyan-300"
+                              : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                            : isLight
+                            ? "text-slate-600 hover:text-slate-900"
                             : "text-slate-400 hover:text-slate-200"
                         }`}
                       >
@@ -1077,9 +1371,13 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                       </button>
                       <button
                         onClick={() => setTweetMode("standard")}
-                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                           tweetMode === "standard"
-                            ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                            ? isLight
+                              ? "bg-cyan-100 text-cyan-800 border border-cyan-300"
+                              : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                            : isLight
+                            ? "text-slate-600 hover:text-slate-900"
                             : "text-slate-400 hover:text-slate-200"
                         }`}
                       >
@@ -1087,11 +1385,17 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                       </button>
                     </div>
 
-                    <span className={`px-2.5 py-1 rounded-md font-mono text-[11px] font-bold ${
-                      tweetText.length > 280 && tweetMode === "standard"
-                        ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                        : "bg-slate-950 text-slate-300 border border-slate-800"
-                    }`}>
+                    <span
+                      className={`px-2.5 py-1 rounded-md font-mono text-[11px] font-bold border ${
+                        tweetText.length > 280 && tweetMode === "standard"
+                          ? isLight
+                            ? "bg-red-100 text-red-800 border-red-300"
+                            : "bg-red-500/20 text-red-300 border border-red-500/30"
+                          : isLight
+                          ? "bg-white text-slate-700 border-slate-300"
+                          : "bg-slate-950 text-slate-300 border border-slate-800"
+                      }`}
+                    >
                       {tweetText.length} chars
                     </span>
                   </div>
@@ -1104,17 +1408,25 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                     onChange={(e) => setTweetText(e.target.value)}
                     disabled={actionLoading || isAlreadyPublished}
                     rows={4}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700/80 text-slate-200 text-xs font-sans leading-relaxed focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 disabled:opacity-60 resize-y shadow-inner"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-sans leading-relaxed focus:outline-none transition-all disabled:opacity-60 resize-y shadow-inner ${
+                      isLight
+                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600/30"
+                        : "bg-slate-950 border-slate-700/80 text-slate-200 placeholder:text-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+                    }`}
                     placeholder="Drafted companion post for X..."
                   />
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 gap-2">
-                  <div className="flex items-center gap-1.5 text-slate-400">
-                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                <div
+                  className={`flex flex-wrap items-center justify-between text-[11px] gap-2 ${
+                    isLight ? "text-slate-600" : "text-slate-400"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                     <span>OAuth 1.0a User Context Ready</span>
                   </div>
-                  <span className="font-mono text-cyan-400 truncate max-w-xs sm:max-w-md">
+                  <span className="font-mono text-cyan-600 dark:text-cyan-400 truncate max-w-xs sm:max-w-md">
                     {dispatch?.xPost.canonicalUrl || (currentCandidate ? currentCandidate.xPost.canonicalUrl : "")}
                   </span>
                 </div>
@@ -1124,12 +1436,20 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-slate-950 px-6 py-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div
+          className={`px-6 py-4 border-t flex flex-wrap items-center justify-between gap-3 transition-colors ${
+            isLight ? "bg-slate-50 border-slate-200" : "bg-slate-950 border-slate-800"
+          }`}
+        >
           <div className="flex items-center gap-2">
             <button
               onClick={handleManualCrawl}
               disabled={actionLoading}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-300 text-xs font-medium inline-flex items-center gap-1.5 border border-slate-800 transition-colors"
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                isLight
+                  ? "bg-white hover:bg-slate-100 text-slate-700 border-slate-200"
+                  : "bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-300 border-slate-800"
+              }`}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${actionLoading ? "animate-spin" : ""}`} />
               <span>Refresh arXiv Crawl</span>
@@ -1139,7 +1459,11 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-200 text-xs font-medium"
+              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
             >
               Close
             </button>
@@ -1148,23 +1472,29 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
               <button
                 onClick={handleAcceptAndPublish}
                 disabled={actionLoading}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs inline-flex items-center gap-2 shadow-lg shadow-cyan-500/25 transition-all transform active:scale-95 disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs inline-flex items-center gap-2 shadow-lg shadow-cyan-500/25 transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 {actionLoading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Publishing & Dispatching to X...</span>
+                    <span>Publishing &amp; Dispatching to X...</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Accept & Share Selected to X Now</span>
+                    <span>Accept &amp; Share Selected to X Now</span>
                   </>
                 )}
               </button>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
-                <div className="px-3 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold inline-flex items-center gap-1.5">
+                <div
+                  className={`px-3 py-2 rounded-xl border text-xs font-bold inline-flex items-center gap-1.5 ${
+                    isLight
+                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                      : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                  }`}
+                >
                   <Check className="w-3.5 h-3.5" />
                   <span>Article Published Live</span>
                 </div>
@@ -1174,7 +1504,11 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                     href={dispatch.xPostResult.tweetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+                    className={`px-3.5 py-2 rounded-xl border text-xs font-bold inline-flex items-center gap-1.5 transition-colors ${
+                      isLight
+                        ? "bg-cyan-100 hover:bg-cyan-200 text-cyan-800 border-cyan-300"
+                        : "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/30"
+                    }`}
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>View Tweet on X</span>
@@ -1197,11 +1531,15 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                   <button
                     onClick={handleRetryXPost}
                     disabled={actionLoading}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs inline-flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+                    className={`px-4 py-2 rounded-xl font-semibold text-xs inline-flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer border ${
+                      isLight
+                        ? "bg-slate-200 hover:bg-slate-300 text-slate-800 border-slate-300"
+                        : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                    }`}
                   >
                     {actionLoading ? (
                       <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-500" />
                         <span>Retrying Post...</span>
                       </>
                     ) : (

@@ -14,8 +14,6 @@ import { BinanceTreasuryMicroservice } from "./BinanceTreasuryMicroservice";
 import { DailyScheduleDaemon } from "./DailyScheduleDaemon";
 import { XaiCodingAgent } from "./XaiCodingAgent";
 
-const xaiAgent = new XaiCodingAgent();
-
 export class MicroserviceRegistry {
   private static instance: MicroserviceRegistry;
 
@@ -25,6 +23,7 @@ export class MicroserviceRegistry {
   public readonly dispatch: DispatchMicroservice;
   public readonly binance: BinanceTreasuryMicroservice;
   public readonly dailySchedule: DailyScheduleDaemon;
+  public readonly xai: XaiCodingAgent;
 
   private services: Map<string, IMicroservice> = new Map();
   private eventListeners: Map<string, Array<(payload: any) => void>> = new Map();
@@ -36,6 +35,7 @@ export class MicroserviceRegistry {
     this.dispatch = new DispatchMicroservice(this.persistence);
     this.binance = new BinanceTreasuryMicroservice();
     this.dailySchedule = new DailyScheduleDaemon(this.persistence);
+    this.xai = new XaiCodingAgent();
 
     this.registerService(this.persistence);
     this.registerService(this.auth);
@@ -43,6 +43,7 @@ export class MicroserviceRegistry {
     this.registerService(this.dispatch);
     this.registerService(this.binance);
     this.registerService(this.dailySchedule);
+    this.registerService(this.xai);
   }
 
   public static getInstance(): MicroserviceRegistry {
@@ -106,6 +107,14 @@ export class MicroserviceRegistry {
 
   public getDailyScheduleDaemon(): DailyScheduleDaemon {
     return this.getDailySchedule();
+  }
+
+  public getXai(): XaiCodingAgent {
+    return this.getService<XaiCodingAgent>("XaiCodingAgent")!;
+  }
+
+  public getXaiService(): XaiCodingAgent {
+    return this.getXai();
   }
 
   public async initializeAll(): Promise<{ initialized: string[]; failed: string[] }> {

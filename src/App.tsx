@@ -35,6 +35,8 @@ import { AboutModal } from "./components/AboutModal";
 import { ResumeViewModal } from "./components/ResumeViewModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { DailyEditorialPromptModal } from "./components/DailyEditorialPromptModal";
+import { XaiCodingAgentModal } from "./components/XaiCodingAgentModal";
+import { XaiFloatingButton } from "./components/XaiFloatingButton";
 import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
 import { SearchFilterBar } from "./components/SearchFilterBar";
@@ -98,6 +100,7 @@ export default function App() {
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
   const [isDailyEditorialModalOpen, setIsDailyEditorialModalOpen] = useState(false);
+  const [isXaiAgentModalOpen, setIsXaiAgentModalOpen] = useState(false);
   const [hasPendingDispatch, setHasPendingDispatch] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>(() => {
     try {
@@ -1199,6 +1202,7 @@ export default function App() {
         onOpenAdSenseRevenue={() => setIsAdSenseModalOpen(true)}
         onOpenDailyDispatch={() => setIsDailyEditorialModalOpen(true)}
         onOpenXTest={() => setIsXTestModalOpen(true)}
+        onOpenXaiAgent={() => setIsXaiAgentModalOpen(true)}
         hasPendingDispatch={hasPendingDispatch}
         todayRevenueEstimate={formatCurrency(calculateCatalogRevenue(blogs).todayEstimate)}
         activeJobs={jobs}
@@ -1874,6 +1878,7 @@ export default function App() {
         isOpen={isDailyEditorialModalOpen}
         onClose={() => setIsDailyEditorialModalOpen(false)}
         onOpenXTest={() => setIsXTestModalOpen(true)}
+        theme={theme}
         onArticlePublished={(newBlog) => {
           setBlogs((prev) => [newBlog, ...prev.filter((b) => b.id !== newBlog.id && b.slug !== newBlog.slug)]);
           setActiveBlog(newBlog);
@@ -1891,6 +1896,20 @@ export default function App() {
       <XTestModal
         isOpen={isXTestModalOpen}
         onClose={() => setIsXTestModalOpen(false)}
+        theme={theme}
+      />
+
+      {/* XAI CODING AGENT & SELF-HEALING MODAL */}
+      <XaiCodingAgentModal
+        isOpen={isXaiAgentModalOpen}
+        onClose={() => setIsXaiAgentModalOpen(false)}
+        theme={theme}
+      />
+
+      {/* FLOATING XAI CODING AGENT ACTION BUTTON */}
+      <XaiFloatingButton
+        onClick={() => setIsXaiAgentModalOpen(true)}
+        theme={theme}
       />
 
       {/* EDITOR PASSWORD MODAL */}

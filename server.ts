@@ -3589,6 +3589,52 @@ app.post("/api/x/test-post", async (req, res) => {
   }
 });
 
+// xAI Coding Agent Autonomous Microservice Endpoints
+app.get("/api/xai/status", (req, res) => {
+  try {
+    const xai = microservicesRegistry.getXai();
+    const status = xai.getStatus();
+    res.json({ success: true, status });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get("/api/xai/tasks", (req, res) => {
+  try {
+    const xai = microservicesRegistry.getXai();
+    const tasks = xai.getTasks();
+    res.json({ success: true, tasks });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/xai/task", async (req, res) => {
+  try {
+    const { title, description, category, targetFiles, codeSnippet } = req.body || {};
+    if (!title) {
+      return res.status(400).json({ success: false, error: "Task title is required" });
+    }
+    const xai = microservicesRegistry.getXai();
+    const task = await xai.runTask({ title, description: description || "", category, targetFiles, codeSnippet });
+    res.json({ success: true, task });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/xai/heal", async (req, res) => {
+  try {
+    const { errorLog } = req.body || {};
+    const xai = microservicesRegistry.getXai();
+    const task = await xai.selfHealBuildError(errorLog || "General build failure");
+    res.json({ success: true, task });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Setup Vite or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
