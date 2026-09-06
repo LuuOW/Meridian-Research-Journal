@@ -1899,18 +1899,20 @@ export default function App() {
         theme={theme}
       />
 
-      {/* XAI CODING AGENT & SELF-HEALING MODAL */}
+      {/* XAI CODING AGENT & SELF-HEALING MODAL (Restricted to Editor Mode) */}
       <XaiCodingAgentModal
-        isOpen={isXaiAgentModalOpen}
+        isOpen={isEditorMode && isXaiAgentModalOpen}
         onClose={() => setIsXaiAgentModalOpen(false)}
         theme={theme}
       />
 
-      {/* FLOATING XAI CODING AGENT ACTION BUTTON */}
-      <XaiFloatingButton
-        onClick={() => setIsXaiAgentModalOpen(true)}
-        theme={theme}
-      />
+      {/* FLOATING XAI CODING AGENT ACTION BUTTON (Restricted to Editor Mode) */}
+      {isEditorMode && (
+        <XaiFloatingButton
+          onClick={() => setIsXaiAgentModalOpen(true)}
+          theme={theme}
+        />
+      )}
 
       {/* EDITOR PASSWORD MODAL */}
       <EditorPasswordModal
