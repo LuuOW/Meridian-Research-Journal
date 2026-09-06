@@ -12,7 +12,7 @@ import { ArxivPipelineMicroservice } from "./ArxivPipelineMicroservice";
 import { DispatchMicroservice } from "./DispatchMicroservice";
 import { BinanceTreasuryMicroservice } from "./BinanceTreasuryMicroservice";
 import { DailyScheduleDaemon } from "./DailyScheduleDaemon";
-import { XaiCodingAgent } from "./XaiCodingAgent";
+import { XaiCodingAgent } from "./XaiCodingAgent.ts";
 
 export class MicroserviceRegistry {
   private static instance: MicroserviceRegistry;
