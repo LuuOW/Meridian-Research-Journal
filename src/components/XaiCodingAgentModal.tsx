@@ -1,29 +1,47 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Cpu,
-  Sparkles,
   Terminal,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Code2,
-  FileCode,
-  Play,
-  RotateCcw,
-  X,
-  ChevronRight,
-  ShieldCheck,
-  Zap,
-  Layers,
-  Wrench,
-  AlertTriangle,
+  Sparkles,
   Send,
   Loader2,
+  Check,
   Copy,
-  Check
+  X,
+  FileCode,
+  GitBranch,
+  GitCommit,
+  GitPullRequest,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  RotateCcw,
+  Eye,
+  Maximize2,
+  ChevronDown,
+  ChevronUp,
+  Cpu,
+  Layers,
+  Code2,
+  ShieldCheck,
+  CheckCheck,
+  Key
 } from "lucide-react";
-import type { CodingTask, XaiAgentStatus } from "../services/XaiCodingAgent";
+import type { CodingTask, XaiAgentStatus, GitChangeSummary, CodeSnippetItem } from "../services/XaiCodingAgent";
+import { SecretsManagementSheet } from "./SecretsManagementSheet";
+
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: number;
+  gitSummary?: GitChangeSummary;
+  snippets?: CodeSnippetItem[];
+  fullDiff?: string;
+  taskId?: string;
+  status?: "pending_approval" | "accepted" | "declined";
+  expandedDiff?: boolean;
+}
 
 interface XaiCodingAgentModalProps {
   isOpen: boolean;
@@ -31,789 +49,916 @@ interface XaiCodingAgentModalProps {
   theme?: "light" | "dark";
 }
 
+// Tokenizer & Syntax Colorizer for code snippets and unified diffs
+export const HighlightedCode: React.FC<{
+  code: string;
+  isDiff?: boolean;
+  maxHeight?: string;
+}> = ({ code, isDiff = false, maxHeight = "320px" }) => {
+  const lines = code.split("\n");
+
+  return (
+    <div
+      className="font-mono text-[12px] leading-relaxed overflow-x-auto overflow-y-auto select-text rounded-lg bg-slate-950 p-3.5 border border-slate-800/80 shadow-inner"
+      style={{ maxHeight }}
+    >
+      <table className="w-full border-collapse">
+        <tbody>
+          {lines.map((line, idx) => {
+            const lineNum = idx + 1;
+            const isAdd = isDiff && (line.startsWith("+") && !line.startsWith("+++"));
+            const isDel = isDiff && (line.startsWith("-") && !line.startsWith("---"));
+            const isMeta = isDiff && (line.startsWith("@@") || line.startsWith("---") || line.startsWith("+++"));
+
+            return (
+              <tr
+                key={idx}
+                className={`group transition-colors ${
+                  isAdd
+                    ? "bg-emerald-950/40 text-emerald-300"
+                    : isDel
+                    ? "bg-rose-950/40 text-rose-300 line-through opacity-80"
+                    : isMeta
+                    ? "bg-indigo-950/30 text-indigo-300 font-semibold"
+                    : "text-slate-300 hover:bg-slate-900/60"
+                }`}
+              >
+                <td className="w-10 pr-3 text-right select-none text-[10px] text-slate-600 font-mono align-top py-0.5 border-r border-slate-800/60 group-hover:text-slate-400">
+                  {lineNum}
+                </td>
+                <td className="pl-3.5 whitespace-pre font-mono align-top py-0.5">
+                  {renderFormattedLine(line, isAdd, isDel, isMeta)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// Formats a single line with syntax colors for keywords, strings, comments, types
+function renderFormattedLine(
+  line: string,
+  isAdd: boolean,
+  isDel: boolean,
+  isMeta: boolean
+): React.ReactNode {
+  if (isMeta) {
+    return <span className="text-cyan-400 font-bold">{line}</span>;
+  }
+  if (isAdd) {
+    return <span className="text-emerald-300 font-medium">{line}</span>;
+  }
+  if (isDel) {
+    return <span className="text-rose-400">{line}</span>;
+  }
+
+  // Simple syntax color highlights for TS/JS
+  if (line.trim().startsWith("//") || line.trim().startsWith("/*") || line.trim().startsWith("*")) {
+    return <span className="text-zinc-500 italic">{line}</span>;
+  }
+
+  const keywordRegex = /\b(import|export|from|const|let|var|function|return|if|else|switch|case|break|try|catch|throw|finally|class|interface|type|extends|implements|async|await|new|public|private|protected|readonly|typeof|instanceof|default)\b/g;
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = keywordRegex.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(line.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <span key={match.index} className="text-purple-400 font-bold">
+        {match[0]}
+      </span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < line.length) {
+    parts.push(line.slice(lastIndex));
+  }
+
+  return <>{parts}</>;
+}
+
 export const XaiCodingAgentModal: React.FC<XaiCodingAgentModalProps> = ({
   isOpen,
   onClose,
   theme = "dark",
 }) => {
+  const isLight = theme === "light";
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    {
+      id: "msg-welcome",
+      role: "assistant",
+      content:
+        "Hello! I am your xAI Grok Autonomous Coding Agent. What would you like to modify, refactor, or build in the codebase?",
+      timestamp: Date.now(),
+    },
+  ]);
+  const [inputPrompt, setInputPrompt] = useState("");
+  const [targetFile, setTargetFile] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<XaiAgentStatus | null>(null);
-  const [tasks, setTasks] = useState<CodingTask[]>([]);
-  const [selectedTask, setSelectedTask] = useState<CodingTask | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"runner" | "tasks" | "heal">("runner");
+  const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null);
+  const [isSecretsSheetOpen, setIsSecretsSheetOpen] = useState(false);
+  const [secretsStats, setSecretsStats] = useState<{ configured: number; total: number } | null>(null);
 
-  // Runner Form state
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskDescription, setTaskDescription] = useState("");
-  const [taskCategory, setTaskCategory] = useState<CodingTask["category"]>("bugfix");
-  const [targetFiles, setTargetFiles] = useState("src/services/XaiCodingAgent.ts");
-  const [codeSnippet, setCodeSnippet] = useState("");
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Dedicated Review Window Modal state
+  const [reviewModalData, setReviewModalData] = useState<{
+    isOpen: boolean;
+    taskId: string;
+    gitSummary: GitChangeSummary;
+    snippets: CodeSnippetItem[];
+    fullDiff: string;
+  } | null>(null);
 
-  // Error healing state
-  const [errorLogInput, setErrorLogInput] = useState(
-    `2026-09-05T18:10:51.819993Z ✘ [ERROR] Unexpected "type"\n    src/services/XaiCodingAgent:14:7:\n      14 │ export type CodingTask =\n         ╵        ~~~~`
-  );
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchStatusAndTasks = async () => {
-    try {
-      const [statusRes, tasksRes] = await Promise.all([
-        fetch("/api/xai/status"),
-        fetch("/api/xai/tasks"),
-      ]);
-
-      if (statusRes.ok) {
-        const data = await statusRes.json();
-        if (data.status) setStatus(data.status);
-      }
-
-      if (tasksRes.ok) {
-        const data = await tasksRes.json();
-        if (data.tasks) {
-          setTasks(data.tasks);
-          if (!selectedTask && data.tasks.length > 0) {
-            setSelectedTask(data.tasks[0]);
-          }
+  const loadSecretsStats = () => {
+    fetch("/api/xai/secrets")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && typeof data.configuredCount === "number") {
+          setSecretsStats({
+            configured: data.configuredCount,
+            total: data.totalCount,
+          });
         }
-      }
-    } catch (err) {
-      console.warn("Could not fetch xAI status:", err);
-    }
+      })
+      .catch(() => {});
   };
 
+  // Auto scroll chat to bottom
   useEffect(() => {
     if (isOpen) {
-      fetchStatusAndTasks();
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
+  }, [messages, isProcessing, isOpen]);
+
+  // Fetch status and secrets on open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    fetch("/api/xai/status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.status) setStatus(data.status);
+      })
+      .catch(() => {});
+
+    loadSecretsStats();
   }, [isOpen]);
 
-  const handleRunTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!taskTitle.trim()) return;
+  const handleSendPrompt = async (promptToSend?: string) => {
+    const text = (promptToSend || inputPrompt).trim();
+    if (!text || isProcessing) return;
 
-    setLoading(true);
+    const userMsgId = `user-${Date.now()}`;
+    const userMsg: ChatMessage = {
+      id: userMsgId,
+      role: "user",
+      content: text,
+      timestamp: Date.now(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInputPrompt("");
+    setIsProcessing(true);
+
     try {
-      const res = await fetch("/api/xai/task", {
+      const res = await fetch("/api/xai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: taskTitle,
-          description: taskDescription,
-          category: taskCategory,
-          targetFiles: targetFiles.split(",").map((s) => s.trim()).filter(Boolean),
-          codeSnippet: codeSnippet || undefined,
+          prompt: text,
+          targetFiles: targetFile ? [targetFile] : undefined,
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.task) {
-          setTasks((prev) => [data.task, ...prev]);
-          setSelectedTask(data.task);
-          setActiveTab("tasks");
-          setTaskTitle("");
-          setTaskDescription("");
-          setCodeSnippet("");
-        }
+      if (!res.ok) {
+        throw new Error(`Agent returned status ${res.status}`);
       }
-    } catch (err) {
-      console.error("Task execution error:", err);
+
+      const data = await res.json();
+      const assistantMsg: ChatMessage = {
+        id: `assist-${Date.now()}`,
+        role: "assistant",
+        content: data.assistantMessage || "I've applied the changes you asked for. Here is what has been modified:",
+        timestamp: Date.now(),
+        gitSummary: data.gitSummary,
+        snippets: data.snippets,
+        fullDiff: data.fullDiff,
+        taskId: data.taskId,
+        status: "pending_approval",
+        expandedDiff: false,
+      };
+
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      // Automatically open the Review Window for confirmation
+      if (data.gitSummary && data.snippets) {
+        setReviewModalData({
+          isOpen: true,
+          taskId: data.taskId,
+          gitSummary: data.gitSummary,
+          snippets: data.snippets,
+          fullDiff: data.fullDiff,
+        });
+      }
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          role: "system",
+          content: `⚠️ Failed to execute prompt: ${err.message || "Unknown error"}. Please retry.`,
+          timestamp: Date.now(),
+        },
+      ]);
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
   };
 
-  const handleRunSelfHealing = async () => {
-    if (!errorLogInput.trim()) return;
-    setLoading(true);
+  const handleDecision = async (taskId: string, decision: "accepted" | "declined") => {
     try {
-      const res = await fetch("/api/xai/heal", {
+      const res = await fetch("/api/xai/decide", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ errorLog: errorLogInput }),
+        body: JSON.stringify({ taskId, decision }),
       });
 
       if (res.ok) {
-        const data = await res.json();
-        if (data.task) {
-          setTasks((prev) => [data.task, ...prev]);
-          setSelectedTask(data.task);
-          setActiveTab("tasks");
-        }
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.taskId === taskId
+              ? {
+                  ...msg,
+                  status: decision,
+                }
+              : msg
+          )
+        );
+
+        const confirmationMsg: ChatMessage = {
+          id: `sys-${Date.now()}`,
+          role: "system",
+          content:
+            decision === "accepted"
+              ? "✅ Changes accepted! The modifications have been staged and merged into your active branch."
+              : "❌ Changes declined. The proposed diff was discarded and no files were modified.",
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, confirmationMsg]);
       }
-    } catch (err) {
-      console.error("Self-healing error:", err);
+    } catch (e) {
+      console.error("Failed to submit decision:", e);
     } finally {
-      setLoading(false);
+      setReviewModalData(null);
     }
   };
 
-  const handleCopy = (text: string, id: string) => {
+  const toggleExpandDiff = (msgId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, expandedDiff: !m.expandedDiff } : m))
+    );
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    setCopiedSnippetId(id);
+    setTimeout(() => setCopiedSnippetId(null), 2000);
   };
 
   if (!isOpen) return null;
 
-  const isLight = theme === "light";
-
   return (
-    <div
-      id="xai-coding-agent-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={onClose}
-    >
+    <AnimatePresence>
       <div
-        className={`w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl border transition-colors duration-200 ${
-          isLight
-            ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/20"
-            : "bg-slate-950 border-cyan-500/30 text-white shadow-cyan-950/40"
-        }`}
-        onClick={(e) => e.stopPropagation()}
+        id="xai-coding-agent-modal-backdrop"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md overflow-hidden"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
       >
-        {/* Header Horizon */}
-        <div
-          className={`px-5 py-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+        <motion.div
+          id="xai-coding-agent-modal-container"
+          initial={{ opacity: 0, scale: 0.96, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 15 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className={`relative flex flex-col w-full max-w-4xl h-[88vh] rounded-2xl shadow-2xl border overflow-hidden ${
             isLight
-              ? "bg-gradient-to-r from-slate-50 via-cyan-50/50 to-emerald-50/40 border-slate-200"
-              : "bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950/60 border-slate-800"
+              ? "bg-white text-slate-900 border-slate-200"
+              : "bg-slate-950 text-slate-100 border-slate-800"
           }`}
         >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-md font-mono font-black text-sm border ${
-                isLight
-                  ? "bg-gradient-to-tr from-cyan-600 to-emerald-600 text-white border-cyan-500/40 shadow-cyan-500/20"
-                  : "bg-gradient-to-tr from-cyan-500 to-emerald-500 text-slate-950 border-cyan-400 shadow-cyan-500/30"
-              }`}
-            >
-              <Terminal className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2
-                  className={`text-base sm:text-lg font-bold tracking-tight ${
-                    isLight ? "text-slate-900" : "text-white"
-                  }`}
-                >
-                  xAI Coding Agent
-                </h2>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border flex items-center gap-1 ${
-                    isLight
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                      : "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Autonomous Stack
+          {/* HEADER BAR */}
+          <div
+            className={`flex items-center justify-between px-5 py-3.5 border-b select-none ${
+              isLight
+                ? "bg-slate-50 border-slate-200"
+                : "bg-slate-900/90 border-slate-800/80"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white shadow-md">
+                <Terminal className="w-4 h-4" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
                 </span>
               </div>
-              <p
-                className={`text-xs ${
-                  isLight ? "text-slate-600" : "text-slate-400"
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold tracking-tight font-mono">
+                    xAI Grok Coding Agent
+                  </h3>
+                  <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    Live
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-mono">
+                  Autonomous Code Generation, AST Refactoring &amp; Git Patching
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSecretsSheetOpen(true)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all border cursor-pointer ${
+                  isLight
+                    ? "text-slate-700 hover:text-slate-900 border-slate-300 bg-white hover:bg-slate-50"
+                    : "text-slate-200 hover:text-white border-slate-700 bg-slate-900 hover:bg-slate-800"
                 }`}
+                title="Manage Environment Secrets & Credentials"
               >
-                Grok AI autonomous engineering, self-healing compiler diagnostics &amp; refactoring
-              </p>
+                <Key className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Secrets</span>
+                {secretsStats && (
+                  <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-slate-800 text-slate-300 font-bold border border-slate-700">
+                    {secretsStats.configured}/{secretsStats.total}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMessages([
+                    {
+                      id: "msg-welcome-reset",
+                      role: "assistant",
+                      content:
+                        "Chat cleared. Ready for your next coding task or repository refactoring prompt.",
+                      timestamp: Date.now(),
+                    },
+                  ]);
+                }}
+                className={`p-1.5 rounded-lg text-xs font-mono transition-colors border ${
+                  isLight
+                    ? "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-100"
+                    : "text-slate-400 hover:text-white border-slate-800 hover:bg-slate-800/70"
+                }`}
+                title="Clear Chat History"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`p-1.5 rounded-lg transition-colors border ${
+                  isLight
+                    ? "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-100"
+                    : "text-slate-400 hover:text-white border-slate-800 hover:bg-slate-800/70"
+                }`}
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
-            {status && (
-              <span
-                className={`text-[11px] font-mono px-2.5 py-1 rounded-xl border hidden sm:flex items-center gap-1.5 ${
-                  isLight
-                    ? "bg-slate-100 text-slate-700 border-slate-200"
-                    : "bg-slate-900 text-cyan-300 border-slate-800"
+          {/* CHAT CONVERSATION FEED */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex gap-3 ${
+                  msg.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
-                <Cpu className="w-3.5 h-3.5 text-cyan-500" />
-                <span>{status.model}</span>
-              </span>
+                {/* Assistant Avatar */}
+                {msg.role !== "user" && (
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-1 bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white font-mono text-xs shadow">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                )}
+
+                {/* Message Bubble Container */}
+                <div
+                  className={`flex flex-col max-w-[85%] sm:max-w-[78%] ${
+                    msg.role === "user" ? "items-end" : "items-start"
+                  }`}
+                >
+                  {/* User Bubble */}
+                  {msg.role === "user" && (
+                    <div className="px-4 py-2.5 rounded-2xl rounded-tr-xs bg-cyan-600 text-white shadow-md text-sm font-sans leading-relaxed">
+                      {msg.content}
+                    </div>
+                  )}
+
+                  {/* System Notification Bubble */}
+                  {msg.role === "system" && (
+                    <div className="px-4 py-2 rounded-xl text-xs font-mono bg-slate-800/70 text-slate-300 border border-slate-700/60 shadow-sm">
+                      {msg.content}
+                    </div>
+                  )}
+
+                  {/* Assistant Message with Code, Git Summary & Prompts */}
+                  {msg.role === "assistant" && (
+                    <div
+                      className={`p-4 rounded-2xl rounded-tl-xs border shadow-sm space-y-3.5 w-full ${
+                        isLight
+                          ? "bg-slate-50/90 text-slate-900 border-slate-200"
+                          : "bg-slate-900/80 text-slate-100 border-slate-800/90"
+                      }`}
+                    >
+                      {/* Main Assistant Statement */}
+                      <p className="text-sm font-sans leading-relaxed text-slate-200">
+                        {msg.content}
+                      </p>
+
+                      {/* SECRETS MANAGEMENT ACTION SHORTCUT */}
+                      {(msg.content.toLowerCase().includes("secret") ||
+                        msg.content.toLowerCase().includes("environment variable") ||
+                        msg.content.toLowerCase().includes(".env") ||
+                        msg.content.toLowerCase().includes("credential")) && (
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setIsSecretsSheetOpen(true)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 transition-all cursor-pointer shadow-sm"
+                          >
+                            <Key className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Open Environment Secrets Sheet</span>
+                            {secretsStats && (
+                              <span className="ml-1 px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 text-[10px]">
+                                {secretsStats.configured}/{secretsStats.total}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* GIT CHANGES & MODIFIED FILES SUMMARY BAR */}
+                      {msg.gitSummary && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3.5 space-y-3 shadow-inner">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                            <div className="flex items-center gap-2 font-mono text-xs">
+                              <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
+                              <span className="text-cyan-400 font-semibold">
+                                {msg.gitSummary.gitBranch}
+                              </span>
+                              <span className="text-slate-600">·</span>
+                              <span className="text-slate-400">commit</span>
+                              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-bold">
+                                {msg.gitSummary.commitHash}
+                              </span>
+                            </div>
+
+                            {/* Lines of Code Changes Summary Badges */}
+                            <div className="flex items-center gap-2 font-mono text-xs">
+                              <span className="px-2 py-0.5 rounded-md font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                +{msg.gitSummary.linesAdded} lines
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                                -{msg.gitSummary.linesDeleted} lines
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Files Modified Tags */}
+                          <div>
+                            <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider font-semibold block mb-1.5">
+                              Files Modified:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {msg.gitSummary.filesModified.map((f, i) => (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono bg-slate-900 border border-slate-700 text-slate-200"
+                                >
+                                  <FileCode className="w-3 h-3 text-cyan-400" />
+                                  <span>{f}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Impact description */}
+                          <p className="text-xs text-slate-400 italic">
+                            {msg.gitSummary.impactSummary}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* CODE SNIPPETS WITH SPECIAL SYNTAX COLORING */}
+                      {msg.snippets && msg.snippets.length > 0 && (
+                        <div className="space-y-3">
+                          {msg.snippets.map((snippet, sIdx) => (
+                            <div
+                              key={sIdx}
+                              className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden shadow-md"
+                            >
+                              <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900/90 border-b border-slate-800 text-xs font-mono">
+                                <div className="flex items-center gap-2 text-slate-300">
+                                  <FileCode className="w-3.5 h-3.5 text-cyan-400" />
+                                  <span className="font-semibold text-cyan-300">
+                                    {snippet.fileName}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    copyToClipboard(snippet.code, `${msg.id}-${sIdx}`)
+                                  }
+                                  className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 transition-colors"
+                                >
+                                  {copiedSnippetId === `${msg.id}-${sIdx}` ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-emerald-400" />
+                                      <span className="text-emerald-400">Copied</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3 h-3" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <HighlightedCode code={snippet.code} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* CLICK OR TAP TO SEE ALL THE CHANGES BANNER */}
+                      {msg.fullDiff && (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandDiff(msg.id)}
+                            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-mono font-semibold transition-all border bg-slate-950/60 hover:bg-slate-900 border-cyan-500/30 text-cyan-400 hover:text-cyan-300"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>(Click or tap to see all the changes)</span>
+                            </span>
+                            {msg.expandedDiff ? (
+                              <ChevronUp className="w-4 h-4" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4" />
+                            )}
+                          </button>
+
+                          {/* EXPANDED FULL UNIFIED DIFF */}
+                          {msg.expandedDiff && (
+                            <div className="mt-2 animate-in fade-in duration-200">
+                              <HighlightedCode
+                                code={msg.fullDiff}
+                                isDiff={true}
+                                maxHeight="420px"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* CONFIRMATION / DECISION WINDOW PROMPT */}
+                      {msg.taskId && (
+                        <div
+                          className={`mt-3 p-3.5 rounded-xl border transition-all ${
+                            msg.status === "accepted"
+                              ? "bg-emerald-950/30 border-emerald-500/40 text-emerald-300"
+                              : msg.status === "declined"
+                              ? "bg-rose-950/30 border-rose-500/40 text-rose-300"
+                              : "bg-gradient-to-r from-cyan-950/40 via-slate-900 to-indigo-950/40 border-cyan-500/30 text-slate-200"
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-bold font-mono">
+                                {msg.status === "accepted"
+                                  ? "Changes Accepted & Merged to Workspace"
+                                  : msg.status === "declined"
+                                  ? "Changes Declined & Reverted"
+                                  : "Accept these modifications to your codebase?"}
+                              </p>
+                              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                {msg.status === "pending_approval"
+                                  ? "Review the generated diff above before approving to disk."
+                                  : `Status: ${msg.status?.toUpperCase()}`}
+                              </p>
+                            </div>
+
+                            {msg.status === "pending_approval" ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDecision(msg.taskId!, "accepted")
+                                  }
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition-all cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Accept Changes</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDecision(msg.taskId!, "declined")
+                                  }
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-rose-600 hover:bg-rose-500 text-white shadow transition-all cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>Decline</span>
+                                </button>
+                              </div>
+                            ) : msg.status === "accepted" ? (
+                              <span className="flex items-center gap-1 text-xs font-mono text-emerald-400 font-bold">
+                                <CheckCheck className="w-4 h-4" />
+                                <span>Applied</span>
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-xs font-mono text-rose-400 font-bold">
+                                <XCircle className="w-4 h-4" />
+                                <span>Discarded</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <span className="text-[10px] text-slate-500 font-mono mt-1 px-1">
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {/* PROCESSING PULSE */}
+            {isProcessing && (
+              <div className="flex gap-3 justify-start items-center">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-cyan-600 text-white font-mono text-xs shadow animate-pulse">
+                  <Sparkles className="w-3.5 h-3.5" />
+                </div>
+                <div
+                  className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl rounded-tl-xs border text-xs font-mono ${
+                    isLight
+                      ? "bg-slate-100 text-slate-700 border-slate-200"
+                      : "bg-slate-900 text-cyan-300 border-cyan-500/30"
+                  }`}
+                >
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                  <span>
+                    Grok analyzing repository &amp; generating syntax-highlighted diff...
+                  </span>
+                </div>
+              </div>
             )}
 
-            <button
-              onClick={onClose}
-              className={`p-2 rounded-xl transition-colors ${
-                isLight
-                  ? "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
-              }`}
-              title="Close Modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div
-          className={`px-5 py-2.5 border-b flex items-center justify-between gap-2 overflow-x-auto ${
-            isLight
-              ? "bg-slate-50/80 border-slate-200"
-              : "bg-slate-900/60 border-slate-800/80"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab("runner")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "runner"
-                  ? isLight
-                    ? "bg-white text-cyan-700 shadow-sm border border-slate-200"
-                    : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                  : isLight
-                  ? "text-slate-600 hover:text-slate-900"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Play className="w-3.5 h-3.5" />
-              <span>Task Runner</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("heal")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "heal"
-                  ? isLight
-                    ? "bg-white text-amber-700 shadow-sm border border-slate-200"
-                    : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                  : isLight
-                  ? "text-slate-600 hover:text-slate-900"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              <span>Self-Heal Build Error</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("tasks")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "tasks"
-                  ? isLight
-                    ? "bg-white text-emerald-700 shadow-sm border border-slate-200"
-                    : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                  : isLight
-                  ? "text-slate-600 hover:text-slate-900"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Code2 className="w-3.5 h-3.5" />
-              <span>Task History ({tasks.length})</span>
-            </button>
+            <div ref={chatEndRef} />
           </div>
 
-          <button
-            onClick={fetchStatusAndTasks}
-            className={`p-1.5 rounded-lg text-xs font-mono flex items-center gap-1 transition-colors ${
+          {/* SUGGESTION PROMPT PILLS */}
+          <div
+            className={`px-4 py-2 border-t flex items-center gap-2 overflow-x-auto select-none no-scrollbar ${
               isLight
-                ? "text-slate-500 hover:text-slate-800 hover:bg-slate-200"
-                : "text-slate-400 hover:text-white hover:bg-slate-800"
+                ? "bg-slate-50 border-slate-200"
+                : "bg-slate-900/60 border-slate-800/80"
             }`}
-            title="Refresh Status"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Sync</span>
-          </button>
-        </div>
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider font-semibold whitespace-nowrap">
+              Suggestions:
+            </span>
+            {[
+              "View & configure environment secrets",
+              "Audit missing API keys and tokens",
+              "Add backoff retry jitter to ArxivPipeline",
+              "Audit TypeScript type safety in services",
+              "Refactor Navbar with memoized action buttons",
+            ].map((sug, sIdx) => (
+              <button
+                key={sIdx}
+                type="button"
+                onClick={() => handleSendPrompt(sug)}
+                disabled={isProcessing}
+                className={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
+                  isLight
+                    ? "bg-white text-slate-700 border-slate-200 hover:border-cyan-500 hover:text-cyan-700"
+                    : "bg-slate-900 text-slate-300 border-slate-800 hover:border-cyan-500/50 hover:text-cyan-300"
+                }`}
+              >
+                {sug}
+              </button>
+            ))}
+          </div>
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
-          {/* TAB 1: TASK RUNNER */}
-          {activeTab === "runner" && (
-            <form onSubmit={handleRunTask} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 space-y-1.5">
-                  <label
-                    className={`text-xs font-bold uppercase tracking-wider block ${
-                      isLight ? "text-slate-700" : "text-slate-300"
-                    }`}
-                  >
-                    Task Title
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={taskTitle}
-                    onChange={(e) => setTaskTitle(e.target.value)}
-                    placeholder="e.g. Audit Type Safety in XaiCodingAgent or Add Unit Tests"
-                    className={`w-full px-3.5 py-2.5 rounded-xl text-xs border font-medium focus:outline-none focus:ring-2 transition-all ${
-                      isLight
-                        ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:ring-cyan-500/40"
-                        : "bg-slate-900 border-slate-700 text-white focus:ring-cyan-400/50"
-                    }`}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label
-                    className={`text-xs font-bold uppercase tracking-wider block ${
-                      isLight ? "text-slate-700" : "text-slate-300"
-                    }`}
-                  >
-                    Category
-                  </label>
-                  <select
-                    value={taskCategory}
-                    onChange={(e) => setTaskCategory(e.target.value as any)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl text-xs border font-medium focus:outline-none focus:ring-2 transition-all ${
-                      isLight
-                        ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:ring-cyan-500/40"
-                        : "bg-slate-900 border-slate-700 text-white focus:ring-cyan-400/50"
-                    }`}
-                  >
-                    <option value="bugfix">Bugfix (Self-Heal)</option>
-                    <option value="refactor">Refactor &amp; Clean Code</option>
-                    <option value="feature">Feature Implementation</option>
-                    <option value="audit">Security &amp; Type Audit</option>
-                    <option value="test">Test Generation</option>
-                    <option value="review">Architecture Review</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label
-                  className={`text-xs font-bold uppercase tracking-wider block ${
-                    isLight ? "text-slate-700" : "text-slate-300"
-                  }`}
-                >
-                  Target Files (Comma-separated)
-                </label>
+          {/* INPUT & SEND FORM */}
+          <div
+            className={`p-3 sm:p-4 border-t ${
+              isLight
+                ? "bg-white border-slate-200"
+                : "bg-slate-950 border-slate-800"
+            }`}
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendPrompt();
+              }}
+              className="flex flex-col gap-2"
+            >
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={targetFiles}
-                  onChange={(e) => setTargetFiles(e.target.value)}
-                  placeholder="src/services/XaiCodingAgent.ts, server.ts"
-                  className={`w-full px-3.5 py-2 rounded-xl text-xs border font-mono focus:outline-none focus:ring-2 transition-all ${
+                  value={targetFile}
+                  onChange={(e) => setTargetFile(e.target.value)}
+                  placeholder="Optional target file (e.g. src/services/ArxivPipelineMicroservice.ts)"
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
                     isLight
-                      ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:ring-cyan-500/40"
-                      : "bg-slate-900 border-slate-700 text-cyan-300 focus:ring-cyan-400/50"
-                  }`}
+                      ? "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-cyan-500"
+                      : "bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/50"
+                  } outline-hidden`}
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label
-                  className={`text-xs font-bold uppercase tracking-wider block ${
-                    isLight ? "text-slate-700" : "text-slate-300"
-                  }`}
-                >
-                  Prompt &amp; Instructions
-                </label>
-                <textarea
-                  rows={3}
-                  value={taskDescription}
-                  onChange={(e) => setTaskDescription(e.target.value)}
-                  placeholder="Describe the coding change, bugfix, or type enhancement for the xAI agent to execute..."
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-xs border font-sans focus:outline-none focus:ring-2 transition-all ${
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={inputPrompt}
+                  onChange={(e) => setInputPrompt(e.target.value)}
+                  placeholder="Ask Grok to edit code, fix bugs, refactor, or generate unified diffs..."
+                  disabled={isProcessing}
+                  className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-sans border transition-colors ${
                     isLight
-                      ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:ring-cyan-500/40"
-                      : "bg-slate-900 border-slate-700 text-slate-200 focus:ring-cyan-400/50"
-                  }`}
+                      ? "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-cyan-500"
+                      : "bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/50"
+                  } outline-hidden`}
                 />
-              </div>
-
-              <div className="space-y-1.5">
-                <label
-                  className={`text-xs font-bold uppercase tracking-wider block ${
-                    isLight ? "text-slate-700" : "text-slate-300"
-                  }`}
-                >
-                  Code Snippet (Optional Context)
-                </label>
-                <textarea
-                  rows={2}
-                  value={codeSnippet}
-                  onChange={(e) => setCodeSnippet(e.target.value)}
-                  placeholder="Optional code snippet or interface to provide context..."
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono border focus:outline-none focus:ring-2 transition-all ${
-                    isLight
-                      ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:ring-cyan-500/40"
-                      : "bg-slate-900 border-slate-700 text-emerald-300 focus:ring-cyan-400/50"
-                  }`}
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-between">
-                <div
-                  className={`text-xs flex items-center gap-1.5 ${
-                    isLight ? "text-slate-500" : "text-slate-400"
-                  }`}
-                >
-                  <Zap className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Powered by xAI Autonomous Engineering Microservice</span>
-                </div>
-
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold text-xs inline-flex items-center gap-2 shadow-lg shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  disabled={!inputPrompt.trim() || isProcessing}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-bold bg-gradient-to-tr from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Executing with xAI Grok...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      <span>Run Autonomous Task</span>
-                    </>
-                  )}
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send</span>
                 </button>
               </div>
             </form>
-          )}
+          </div>
+        </motion.div>
 
-          {/* TAB 2: SELF-HEAL COMPILER ERROR */}
-          {activeTab === "heal" && (
-            <div className="space-y-4">
-              <div
-                className={`p-4 rounded-2xl border ${
-                  isLight
-                    ? "bg-amber-50/70 border-amber-200 text-amber-900"
-                    : "bg-amber-950/20 border-amber-500/30 text-amber-200"
-                }`}
-              >
-                <div className="flex items-center gap-2 font-bold text-xs">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  <span>Automated Build Error Diagnostics &amp; Self-Healing</span>
+        {/* DEDICATED ACCEPTANCE / REVIEW CONFIRMATION WINDOW */}
+        {reviewModalData && (
+          <div
+            id="xai-review-acceptance-dialog"
+            className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden ${
+                isLight
+                  ? "bg-white text-slate-900 border-slate-200"
+                  : "bg-slate-950 text-white border-cyan-500/40"
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900">
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                  <div>
+                    <h4 className="text-sm font-bold font-mono text-white">
+                      Review &amp; Accept Proposed Changes
+                    </h4>
+                    <p className="text-xs text-slate-400 font-mono">
+                      Target branch: {reviewModalData.gitSummary.gitBranch}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs mt-1 leading-relaxed opacity-90">
-                  Paste any build log or TypeScript/bundler error. The xAI agent inspects the syntax, resolves loader discrepancies (such as the unexpected &quot;type&quot; token), and produces an immediate fix.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label
-                  className={`text-xs font-bold uppercase tracking-wider block ${
-                    isLight ? "text-slate-700" : "text-slate-300"
-                  }`}
-                >
-                  Compiler Error Log
-                </label>
-                <textarea
-                  rows={5}
-                  value={errorLogInput}
-                  onChange={(e) => setErrorLogInput(e.target.value)}
-                  className={`w-full px-3.5 py-2.5 rounded-xl font-mono text-xs border leading-relaxed focus:outline-none focus:ring-2 ${
-                    isLight
-                      ? "bg-slate-50 border-slate-300 text-slate-800 focus:bg-white focus:ring-amber-500/40"
-                      : "bg-slate-900 border-slate-700 text-rose-300 focus:ring-amber-400/50"
-                  }`}
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span
-                  className={`text-xs ${
-                    isLight ? "text-slate-500" : "text-slate-400"
-                  }`}
-                >
-                  Current status: <strong>Build verified and compiling green</strong>
-                </span>
-
                 <button
                   type="button"
-                  onClick={handleRunSelfHealing}
-                  disabled={loading}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs inline-flex items-center gap-2 shadow-lg shadow-amber-600/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  onClick={() => setReviewModalData(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white"
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Diagnosing &amp; Healing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wrench className="w-4 h-4" />
-                      <span>Execute Self-Healing</span>
-                    </>
-                  )}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </div>
-          )}
 
-          {/* TAB 3: TASK HISTORY & DIFF VIEWER */}
-          {activeTab === "tasks" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Task Sidebar list */}
-              <div className="lg:col-span-4 space-y-2 max-h-[460px] overflow-y-auto pr-1">
-                {tasks.length === 0 ? (
-                  <div
-                    className={`p-4 rounded-xl border text-center text-xs ${
-                      isLight
-                        ? "bg-slate-50 border-slate-200 text-slate-500"
-                        : "bg-slate-900 border-slate-800 text-slate-400"
-                    }`}
-                  >
-                    No tasks executed yet.
+              {/* Review Content */}
+              <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
+                  <div>
+                    <span className="text-slate-400 block">Staged Commit:</span>
+                    <span className="text-white font-bold">
+                      {reviewModalData.gitSummary.commitMessage}
+                    </span>
                   </div>
-                ) : (
-                  tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      onClick={() => setSelectedTask(task)}
-                      className={`p-3 rounded-2xl border cursor-pointer transition-all ${
-                        selectedTask?.id === task.id
-                          ? isLight
-                            ? "bg-cyan-50/70 border-cyan-400 shadow-sm"
-                            : "bg-cyan-950/30 border-cyan-500/50 shadow-sm"
-                          : isLight
-                          ? "bg-slate-50 hover:bg-slate-100 border-slate-200"
-                          : "bg-slate-900/60 hover:bg-slate-900 border-slate-800"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span
-                          className={`text-[10px] font-mono font-bold uppercase px-1.5 py-0.2 rounded border ${
-                            task.status === "completed"
-                              ? isLight
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                                : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                              : task.status === "running"
-                              ? isLight
-                                ? "bg-cyan-50 text-cyan-700 border-cyan-300"
-                                : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
-                              : "bg-rose-500/20 text-rose-300 border-rose-500/30"
-                          }`}
-                        >
-                          {task.status}
-                        </span>
-                        <span
-                          className={`text-[10px] ${
-                            isLight ? "text-slate-500" : "text-slate-400"
-                          }`}
-                        >
-                          {new Date(task.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      <h4
-                        className={`text-xs font-bold truncate ${
-                          isLight ? "text-slate-900" : "text-white"
-                        }`}
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
+                      +{reviewModalData.gitSummary.linesAdded}
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold">
+                      -{reviewModalData.gitSummary.linesDeleted}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-xs font-mono text-slate-400 block mb-1.5">
+                    Modified Files:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {reviewModalData.gitSummary.filesModified.map((file, fIdx) => (
+                      <span
+                        key={fIdx}
+                        className="px-2.5 py-1 rounded-md text-xs font-mono bg-slate-900 border border-slate-800 text-cyan-300 flex items-center gap-1.5"
                       >
-                        {task.title}
-                      </h4>
-                      <p
-                        className={`text-[11px] truncate mt-0.5 ${
-                          isLight ? "text-slate-600" : "text-slate-400"
-                        }`}
-                      >
-                        {task.description}
-                      </p>
-                    </div>
-                  ))
-                )}
+                        <FileCode className="w-3.5 h-3.5 text-cyan-400" />
+                        {file}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-xs font-mono text-slate-400 block mb-1.5">
+                    Unified Diff Preview:
+                  </span>
+                  <HighlightedCode
+                    code={reviewModalData.fullDiff}
+                    isDiff={true}
+                    maxHeight="240px"
+                  />
+                </div>
               </div>
 
-              {/* Task Details & Unified Diff Area */}
-              <div className="lg:col-span-8 space-y-3">
-                {selectedTask ? (
-                  <div
-                    className={`p-4 rounded-2xl border space-y-3 ${
-                      isLight
-                        ? "bg-slate-50 border-slate-200"
-                        : "bg-slate-900/80 border-slate-800"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 border-slate-200 dark:border-slate-800">
-                      <div>
-                        <h3
-                          className={`text-sm font-bold ${
-                            isLight ? "text-slate-900" : "text-white"
-                          }`}
-                        >
-                          {selectedTask.title}
-                        </h3>
-                        <p
-                          className={`text-xs mt-0.5 ${
-                            isLight ? "text-slate-600" : "text-slate-400"
-                          }`}
-                        >
-                          {selectedTask.description}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {selectedTask.tokensUsed && (
-                          <span
-                            className={`text-[11px] font-mono px-2 py-0.5 rounded border ${
-                              isLight
-                                ? "bg-white border-slate-200 text-slate-700"
-                                : "bg-slate-950 border-slate-700 text-slate-300"
-                            }`}
-                          >
-                            {selectedTask.tokensUsed} tokens
-                          </span>
-                        )}
-
-                        <button
-                          onClick={() =>
-                            handleCopy(
-                              selectedTask.result || selectedTask.diff || "",
-                              selectedTask.id
-                            )
-                          }
-                          className={`px-2 py-1 rounded text-xs inline-flex items-center gap-1 border transition-colors ${
-                            isLight
-                              ? "bg-white hover:bg-slate-100 border-slate-300 text-slate-700"
-                              : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200"
-                          }`}
-                        >
-                          {copiedId === selectedTask.id ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-500" />
-                              <span>Copied</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Copy Output</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Result and Explanation */}
-                    {selectedTask.result && (
-                      <div className="space-y-1.5">
-                        <span
-                          className={`text-[11px] font-bold uppercase tracking-wider block ${
-                            isLight ? "text-slate-700" : "text-slate-300"
-                          }`}
-                        >
-                          Autonomous Analysis &amp; Outcome
-                        </span>
-                        <div
-                          className={`p-3 rounded-xl border text-xs leading-relaxed whitespace-pre-wrap ${
-                            isLight
-                              ? "bg-white border-slate-200 text-slate-800"
-                              : "bg-slate-950 border-slate-800 text-slate-200"
-                          }`}
-                        >
-                          {selectedTask.result}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Unified Diff View */}
-                    {selectedTask.diff && (
-                      <div className="space-y-1.5">
-                        <span
-                          className={`text-[11px] font-bold uppercase tracking-wider block ${
-                            isLight ? "text-slate-700" : "text-slate-300"
-                          }`}
-                        >
-                          Unified Code Diff
-                        </span>
-                        <div
-                          className={`p-3 rounded-xl border font-mono text-[11px] leading-relaxed overflow-x-auto ${
-                            isLight
-                              ? "bg-slate-900 text-slate-100 border-slate-800"
-                              : "bg-black/90 text-emerald-300 border-slate-800"
-                          }`}
-                        >
-                          {selectedTask.diff.split("\n").map((line, idx) => {
-                            const isAdded = line.startsWith("+");
-                            const isRemoved = line.startsWith("-");
-                            const isHeader = line.startsWith("@@") || line.startsWith("---") || line.startsWith("+++");
-
-                            return (
-                              <div
-                                key={idx}
-                                className={`${
-                                  isAdded
-                                    ? "text-emerald-400 bg-emerald-950/40 px-1"
-                                    : isRemoved
-                                    ? "text-rose-400 bg-rose-950/40 px-1"
-                                    : isHeader
-                                    ? "text-cyan-400 font-bold"
-                                    : "text-slate-400"
-                                }`}
-                              >
-                                {line}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Activity logs */}
-                    {selectedTask.logs && selectedTask.logs.length > 0 && (
-                      <div className="space-y-1">
-                        <span
-                          className={`text-[11px] font-bold uppercase tracking-wider block ${
-                            isLight ? "text-slate-700" : "text-slate-300"
-                          }`}
-                        >
-                          Execution Trace Logs
-                        </span>
-                        <div
-                          className={`p-2.5 rounded-xl border font-mono text-[10px] space-y-0.5 ${
-                            isLight
-                              ? "bg-white border-slate-200 text-slate-600"
-                              : "bg-slate-950 border-slate-800 text-slate-400"
-                          }`}
-                        >
-                          {selectedTask.logs.map((log, lIdx) => (
-                            <div key={lIdx}>{log}</div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    className={`p-8 rounded-2xl border text-center text-xs ${
-                      isLight
-                        ? "bg-slate-50 border-slate-200 text-slate-500"
-                        : "bg-slate-900/60 border-slate-800 text-slate-400"
-                    }`}
-                  >
-                    Select a task from the list to view diffs and execution traces.
-                  </div>
-                )}
+              {/* Action Buttons: Accept / Decline */}
+              <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-800 bg-slate-900/80">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDecision(reviewModalData.taskId, "declined")
+                  }
+                  className="px-4 py-2 rounded-xl text-xs font-mono font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+                >
+                  Decline &amp; Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDecision(reviewModalData.taskId, "accepted")
+                  }
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg transition-all cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Accept Changes</span>
+                </button>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div
-          className={`px-5 py-3 border-t flex items-center justify-between gap-3 text-xs ${
-            isLight
-              ? "bg-slate-50 border-slate-200 text-slate-600"
-              : "bg-slate-950 border-slate-800 text-slate-400"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-cyan-500" />
-            <span>Meridian Engineering Intelligence Engine</span>
+            </motion.div>
           </div>
+        )}
 
-          <button
-            onClick={onClose}
-            className={`px-4 py-1.5 rounded-xl font-medium transition-colors ${
-              isLight
-                ? "bg-slate-200 hover:bg-slate-300 text-slate-800"
-                : "bg-slate-800 hover:bg-slate-700 text-white"
-            }`}
-          >
-            Close Console
-          </button>
-        </div>
+        {/* ENVIRONMENT SECRETS MANAGEMENT SHEET */}
+        <SecretsManagementSheet
+          isOpen={isSecretsSheetOpen}
+          onClose={() => {
+            setIsSecretsSheetOpen(false);
+            loadSecretsStats();
+          }}
+          theme={theme}
+          onAskGrokToIntegrate={(secretKey, files) => {
+            setIsSecretsSheetOpen(false);
+            const target = files && files.length > 0 ? files[0] : "server.ts";
+            setTargetFile(target);
+            handleSendPrompt(
+              `Integrate environment secret ${secretKey} into ${target} with safe error handling and fallback.`
+            );
+          }}
+        />
       </div>
-    </div>
+    </AnimatePresence>
   );
 };
