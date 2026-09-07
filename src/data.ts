@@ -19,7 +19,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "arxivLink": "https://arxiv.org/abs/2609.05052",
     "timestamp": 1788786006974,
     "createdAt": 1788786006974,
-    "views": 571,
+    "views": 691,
     "slug": "2609-05052v1-0029",
     "status": "published",
     "readingTime": "7 min read"
