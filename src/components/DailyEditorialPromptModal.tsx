@@ -11,6 +11,8 @@ import {
   Sparkles,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   X,
   FileText,
   Binary,
@@ -258,6 +260,15 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
 
   // Filter for candidate deck: Default to "sep3" (showing all 4 September 3 candidates) with option for "all"
   const [deckFilter, setDeckFilter] = useState<"sep3" | "all">("sep3");
+
+  // Collapsible UI show/hide toggles for sleek uncluttered editing
+  const [showTelemetry, setShowTelemetry] = useState<boolean>(false);
+  const [showCandidateDeck, setShowCandidateDeck] = useState<boolean>(false);
+  const [showCorpusAnalysis, setShowCorpusAnalysis] = useState<boolean>(false);
+  const [showArticleDraftPreview, setShowArticleDraftPreview] = useState<boolean>(false);
+
+  // Check if current date or dispatch is weekend
+  const isWeekend = Boolean(data?.artTime?.isWeekend ?? (data?.dispatch?.dayOfWeek === 0 || data?.dispatch?.dayOfWeek === 6));
 
   // Candidate deck from response
   const candidatesDeck: EditorialCandidate[] = data?.dispatch?.candidatesDeck || [];
@@ -606,20 +617,10 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
 
         {/* Content Body */}
         <div
-          className={`p-4 sm:p-6 space-y-6 max-h-[76vh] overflow-y-auto ${
+          className={`p-4 sm:p-6 space-y-5 max-h-[76vh] overflow-y-auto ${
             isLight ? "bg-white" : "bg-slate-950"
           }`}
         >
-          {/* Observatory Environmental & Celestial Telemetry Deck */}
-          <ObservatoryTelemetryDeck
-            artTimeStr={liveArtClock}
-            isPendingReview={isPendingReview}
-            remainingSeconds={remainingSeconds}
-            formatCountdown={formatCountdown}
-            isAlreadyPublished={isAlreadyPublished}
-            scheduledTimeLabel="Tomorrow 09:00 AM ART"
-            theme={theme}
-          />
           {error && (
             <div
               className={`p-4 rounded-2xl border text-sm flex items-center gap-3 ${
@@ -742,175 +743,201 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
             </div>
           ) : (
             <>
-              {/* DATE INTEGRITY COMPARISON ACCORDION / BADGE */}
-              {currentCandidate?.dateComparison && (
+              {/* PRIMARY VIEW: FOCUSED ACTIVE STAGED PAPER OR INTERACTIVE DECK SWIPER */}
+              {!showCandidateDeck ? (
+                /* Sleek, Focused Active Candidate Card */
                 <div
-                  className={`relative rounded-2xl p-4 border overflow-hidden shadow-inner ${
+                  className={`p-5 rounded-2xl border transition-all ${
                     isLight
-                      ? "bg-slate-50 border-slate-200 text-slate-900"
-                      : "bg-slate-900/90 border-cyan-500/30 text-slate-100"
+                      ? "bg-slate-50/90 border-slate-200 text-slate-900 shadow-sm"
+                      : "bg-slate-900/80 border-cyan-500/30 text-slate-100 shadow-inner"
                   }`}
                 >
-                  {/* Subtle Raytracing Caustic background */}
-                  <div
-                    className="absolute inset-0 pointer-events-none opacity-20"
-                    style={{
-                      background: `radial-gradient(ellipse at ${lightState.lightX}% ${lightState.lightY}%, rgba(56, 189, 248, 0.4) 0%, transparent 60%)`,
-                    }}
-                  />
-
-                  <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full border font-mono text-xs font-bold flex items-center gap-1.5 ${
-                            isLight
-                              ? "bg-cyan-100 border-cyan-300 text-cyan-800"
-                              : "bg-cyan-500/20 border-cyan-400/40 text-cyan-300"
-                          }`}
-                        >
-                          <Compass className={`w-3 h-3 ${isLight ? "text-cyan-700" : "text-cyan-300"}`} />
-                          Source of Truth Date Verification
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
+                        arXiv:{currentCandidate?.arxivId || dispatch?.candidatePaper?.id}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {currentCandidate?.category || dispatch?.selectedCategory || "quant-ph"}
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                        Score: <strong className="text-cyan-600 dark:text-cyan-400">{currentCandidate?.score ?? 85}/100</strong>
+                      </span>
+                      {isPendingReview && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse">
+                          Staged for {dispatch?.dateArt ? dispatch.dateArt : "Upcoming Dispatch"}
                         </span>
-                        <span
-                          className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold flex items-center gap-1 ${
-                            isLight
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                              : "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
-                          }`}
-                        >
-                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          Dates Aligned
-                        </span>
-                      </div>
-                      <p className={`text-xs ${isLight ? "text-slate-700" : "text-slate-300"}`}>
-                        {currentCandidate.dateComparison.dateAlignmentReason}
-                      </p>
+                      )}
                     </div>
 
-                    {/* Side-by-side date cards */}
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                      <div
-                        className={`flex-1 md:flex-none p-2.5 rounded-xl border text-center min-w-[150px] ${
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCandidateDeck(true)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 border transition-all cursor-pointer ${
                           isLight
-                            ? "bg-white border-slate-200 text-slate-900"
-                            : "bg-slate-950/80 border-slate-800 text-white"
+                            ? "bg-white hover:bg-slate-100 text-cyan-800 border-slate-300 shadow-xs"
+                            : "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/30"
                         }`}
+                        title="Browse and swipe through alternative arXiv candidate preprints"
                       >
-                        <div
-                          className={`text-[10px] uppercase tracking-wider font-semibold flex items-center justify-center gap-1 ${
-                            isLight ? "text-slate-500" : "text-slate-400"
-                          }`}
-                        >
-                          <span>arXiv Announcement</span>
-                        </div>
-                        <div className={`text-xs font-bold mt-0.5 ${isLight ? "text-slate-900" : "text-white"}`}>
-                          {currentCandidate.dateComparison.arxivPubDate}
-                        </div>
-                        <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono">
-                          {currentCandidate.dateComparison.arxivDayOfWeekName} (Web Canonical)
-                        </div>
-                      </div>
+                        <Layers className="w-3.5 h-3.5 text-cyan-500" />
+                        <span>Swap Candidate ({displayedDeck.length})</span>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
 
-                      <ArrowRight className="w-4 h-4 text-cyan-500 flex-shrink-0 hidden sm:block" />
-
-                      <div
-                        className={`flex-1 md:flex-none p-2.5 rounded-xl border text-center min-w-[150px] ${
-                          isLight
-                            ? "bg-cyan-50/80 border-cyan-200"
-                            : "bg-cyan-950/30 border-cyan-500/40"
-                        }`}
-                      >
-                        <div
-                          className={`text-[10px] uppercase tracking-wider font-semibold flex items-center justify-center gap-1 ${
-                            isLight ? "text-cyan-800" : "text-cyan-300"
+                      {currentCandidate?.arxivLink && (
+                        <a
+                          href={currentCandidate.arxivLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`p-1.5 rounded-lg border transition-colors ${
+                            isLight
+                              ? "text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-100"
+                              : "text-slate-400 hover:text-white border-slate-800 hover:bg-slate-800"
                           }`}
+                          title="Open preprint on arXiv"
                         >
-                          <span>Meridian Scheduled</span>
-                        </div>
-                        <div
-                          className={`text-xs font-bold mt-0.5 ${
-                            isLight ? "text-cyan-950" : "text-cyan-100"
-                          }`}
-                        >
-                          {currentCandidate.dateComparison.meridianPubDate}
-                        </div>
-                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
-                          {currentCandidate.dateComparison.meridianPubTime}
-                        </div>
-                      </div>
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
                   </div>
 
-                  {/* Clarification on arXiv vs internal PDF dates */}
-                  <div
-                    className={`mt-3 pt-2.5 border-t flex items-start gap-2 text-[11px] ${
-                      isLight
-                        ? "border-slate-200 text-slate-600"
-                        : "border-slate-800/80 text-slate-400"
-                    }`}
-                  >
-                    <Info className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 flex-shrink-0 mt-0.5" />
-                    <span>
-                      {currentCandidate.dateComparison.sourceOfTruthNote}{" "}
-                      <strong className={isLight ? "text-slate-800" : "text-slate-300"}>
-                        arXiv announcement schedule operates Monday–Friday only (no weekend releases).
-                      </strong>
-                    </span>
+                  <div className="pt-3.5 space-y-2.5">
+                    <h3 className="text-base sm:text-lg font-bold leading-snug">
+                      {currentCandidate?.title || dispatch?.candidatePaper?.title}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span><strong>Authors:</strong> {currentCandidate?.authors || dispatch?.candidatePaper?.authors}</span>
+                      {currentCandidate?.dateComparison?.arxivPubDate && (
+                        <span className="font-mono text-cyan-600 dark:text-cyan-400">• Released {currentCandidate.dateComparison.arxivPubDate}</span>
+                      )}
+                    </div>
+
+                    {/* Excerpt + banner preview */}
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1 items-center">
+                      {currentCandidate?.bannerSvg ? (
+                        <div
+                          className={`sm:col-span-4 h-24 rounded-xl overflow-hidden border flex items-center justify-center [&>svg]:w-full [&>svg]:h-full shadow-inner ${
+                            isLight ? "border-slate-200 bg-slate-100" : "border-slate-700 bg-slate-950"
+                          }`}
+                        >
+                          <div dangerouslySetInnerHTML={{ __html: currentCandidate.bannerSvg }} />
+                        </div>
+                      ) : null}
+                      <div className={currentCandidate?.bannerSvg ? "sm:col-span-8 space-y-1.5" : "sm:col-span-12 space-y-1.5"}>
+                        <p className="text-xs leading-relaxed line-clamp-3 text-slate-600 dark:text-slate-300">
+                          {currentCandidate?.excerpt || dispatch?.candidatePaper?.summary}
+                        </p>
+                        {currentCandidate?.relevanceReason && (
+                          <div className="flex items-center gap-1.5 text-xs text-cyan-600 dark:text-cyan-400">
+                            <Zap className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                            <span>{currentCandidate.relevanceReason}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tags and markdown inspector */}
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/80 dark:border-slate-800/60">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {currentCandidate?.tags?.slice(0, 4).map((tag, tIdx) => (
+                          <span
+                            key={tIdx}
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                              isLight
+                                ? "bg-slate-100 text-slate-700 border-slate-200"
+                                : "bg-slate-800/80 text-slate-400 border-slate-700"
+                            }`}
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      {onOpenInEditor && currentCandidate?.fullDraft && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenInEditor(currentCandidate.fullDraft!)}
+                          className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Inspect Full Article Markdown</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
+              ) : (
+                /* TINDER CARDS STACK WITH SWIPE & RAYTRACING */
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-amber-500 animate-bounce" />
+                      <span
+                        className={`text-xs font-bold uppercase tracking-wider ${
+                          isLight ? "text-slate-900" : "text-white"
+                        }`}
+                      >
+                        Candidate Deck: Swipe to Choose Tomorrow's Dispatch
+                      </span>
+                    </div>
 
-              {/* TINDER CARDS STACK WITH SWIPE & RAYTRACING */}
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Flame className="w-4 h-4 text-amber-500 animate-bounce" />
-                    <span
-                      className={`text-xs font-bold uppercase tracking-wider ${
-                        isLight ? "text-slate-900" : "text-white"
-                      }`}
-                    >
-                      Candidate Deck: Swipe to Choose Tomorrow's Dispatch
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setShowCandidateDeck(false)}
+                        className={`px-3 py-1 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                          isLight
+                            ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                            : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+                        }`}
+                      >
+                        <ChevronUp className="w-3.5 h-3.5 inline mr-1" />
+                        Keep Selected
+                      </button>
 
-                  {/* Filter Pill Toggle between 09.3 batch (4) and All candidates */}
-                  <div
-                    className={`flex items-center gap-1 p-1 rounded-xl border ${
-                      isLight ? "bg-slate-100 border-slate-200" : "bg-slate-950 border-slate-800"
-                    }`}
-                  >
-                    <button
-                      onClick={() => setDeckFilter("sep3")}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        deckFilter === "sep3"
-                          ? isLight
-                            ? "bg-white text-cyan-900 border border-slate-300 shadow-xs"
-                            : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
-                          : isLight
-                          ? "text-slate-600 hover:text-slate-900"
-                          : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      ★ Sept 3 Batch (4)
-                    </button>
-                    <button
-                      onClick={() => setDeckFilter("all")}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        deckFilter === "all"
-                          ? isLight
-                            ? "bg-white text-cyan-900 border border-slate-300 shadow-xs"
-                            : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
-                          : isLight
-                          ? "text-slate-600 hover:text-slate-900"
-                          : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      All Candidates ({candidatesDeck.length})
-                    </button>
+                      {/* Filter Pill Toggle between 09.3 batch (4) and All candidates */}
+                      <div
+                        className={`flex items-center gap-1 p-1 rounded-xl border ${
+                          isLight ? "bg-slate-100 border-slate-200" : "bg-slate-950 border-slate-800"
+                        }`}
+                      >
+                        <button
+                          onClick={() => setDeckFilter("sep3")}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            deckFilter === "sep3"
+                              ? isLight
+                                ? "bg-white text-cyan-900 border border-slate-300 shadow-xs"
+                                : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                              : isLight
+                              ? "text-slate-600 hover:text-slate-900"
+                              : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          ★ Sept 3 Batch (4)
+                        </button>
+                        <button
+                          onClick={() => setDeckFilter("all")}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            deckFilter === "all"
+                              ? isLight
+                                ? "bg-white text-cyan-900 border border-slate-300 shadow-xs"
+                                : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                              : isLight
+                              ? "text-slate-600 hover:text-slate-900"
+                              : "text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          All Candidates ({candidatesDeck.length})
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
                 <div
                   className={`flex items-center justify-between text-xs px-1 ${
@@ -1301,6 +1328,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                   </div>
                 </div>
               </div>
+            )}
 
               {/* SECTION: X (TWITTER) AUTONOMOUS COMPANION POST EDITOR */}
               <div
@@ -1430,6 +1458,131 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                     {dispatch?.xPost.canonicalUrl || (currentCandidate ? currentCandidate.xPost.canonicalUrl : "")}
                   </span>
                 </div>
+              </div>
+
+              {/* COLLAPSIBLE ACCORDION 1: OBSERVATORY TELEMETRY & SKY CONDITIONS */}
+              <div
+                className={`rounded-2xl border overflow-hidden transition-all ${
+                  isLight ? "bg-slate-50 border-slate-200" : "bg-slate-900/60 border-slate-800"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowTelemetry(!showTelemetry)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-colors text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Compass className="w-4 h-4 text-cyan-500" />
+                    <span className="text-xs font-bold">Observatory Celestial &amp; Atmosphere Telemetry</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                      Lat -34.6° • {liveArtClock}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="text-[11px] font-medium">{showTelemetry ? "Hide" : "Show Telemetry"}</span>
+                    {showTelemetry ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </button>
+                <AnimatePresence>
+                  {showTelemetry && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="border-t border-slate-200 dark:border-slate-800/80 p-4"
+                    >
+                      <ObservatoryTelemetryDeck
+                        artTimeStr={liveArtClock}
+                        isPendingReview={isPendingReview}
+                        remainingSeconds={remainingSeconds}
+                        formatCountdown={formatCountdown}
+                        isAlreadyPublished={isAlreadyPublished}
+                        scheduledTimeLabel={isWeekend ? "Monday 09:00 AM ART" : "Tomorrow 09:00 AM ART"}
+                        theme={theme}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* COLLAPSIBLE ACCORDION 2: SOURCE DATE VERIFICATION & CADENCE RULES */}
+              <div
+                className={`rounded-2xl border overflow-hidden transition-all ${
+                  isLight ? "bg-slate-50 border-slate-200" : "bg-slate-900/60 border-slate-800"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowCorpusAnalysis(!showCorpusAnalysis)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition-colors text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Binary className="w-4 h-4 text-emerald-500" />
+                    <span className="text-xs font-bold">Source Date Verification &amp; Autonomous Cadence Rules</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      arXiv Mon–Fri Policy
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="text-[11px] font-medium">{showCorpusAnalysis ? "Hide" : "Show Rules"}</span>
+                    {showCorpusAnalysis ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </button>
+                <AnimatePresence>
+                  {showCorpusAnalysis && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="border-t border-slate-200 dark:border-slate-800/80 p-4 space-y-3"
+                    >
+                      {currentCandidate?.dateComparison && (
+                        <div
+                          className={`relative rounded-xl p-3.5 border overflow-hidden shadow-inner ${
+                            isLight
+                              ? "bg-white border-slate-200 text-slate-900"
+                              : "bg-slate-950/80 border-cyan-500/30 text-slate-100"
+                          }`}
+                        >
+                          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs">Date Alignment Verification:</span>
+                                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                                  ✓ Verified
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-600 dark:text-slate-300">
+                                {currentCandidate.dateComparison.dateAlignmentReason}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs font-mono">
+                              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                                <div className="text-[10px] text-slate-500">arXiv Canonical</div>
+                                <div className="font-bold">{currentCandidate.dateComparison.arxivPubDate}</div>
+                              </div>
+                              <ArrowRight className="w-3.5 h-3.5 text-cyan-500" />
+                              <div className="p-2 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800">
+                                <div className="text-[10px] text-cyan-600 dark:text-cyan-400">Meridian Cadence</div>
+                                <div className="font-bold">{currentCandidate.dateComparison.meridianPubDate}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-3 rounded-xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Info className="w-3.5 h-3.5 text-cyan-500" />
+                          <span>Autonomous arXiv Editorial Cadence Specification</span>
+                        </div>
+                        <p className="leading-relaxed text-[11px]">
+                          arXiv runs releases Monday through Friday nights. Friday night preprints are staged for publication on Monday 9:00 AM ART. The 10:00 AM ART auto-publish timeout is active on weekdays only.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </>
           )}

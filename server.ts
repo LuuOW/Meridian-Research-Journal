@@ -3635,6 +3635,106 @@ app.post("/api/xai/heal", async (req, res) => {
   }
 });
 
+// Interactive xAI Chat Prompt & Code Modification Endpoint
+app.post("/api/xai/chat", async (req, res) => {
+  try {
+    const { prompt, targetFiles, codeSnippet, conversationHistory } = req.body || {};
+    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+      return res.status(400).json({ success: false, error: "Prompt is required" });
+    }
+    const xai = microservicesRegistry.getXai();
+    const result = await xai.processChatPrompt({
+      prompt: prompt.trim(),
+      targetFiles: Array.isArray(targetFiles) ? targetFiles : undefined,
+      codeSnippet: codeSnippet || undefined,
+      conversationHistory: Array.isArray(conversationHistory) ? conversationHistory : undefined,
+    });
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Staged Changes Decision (Accept / Decline) Endpoint
+app.post("/api/xai/decide", async (req, res) => {
+  try {
+    const { taskId, decision } = req.body || {};
+    if (!taskId || !decision || (decision !== "accepted" && decision !== "declined")) {
+      return res.status(400).json({ success: false, error: "taskId and valid decision ('accepted' | 'declined') are required" });
+    }
+    const xai = microservicesRegistry.getXai();
+    const task = xai.decideTask(taskId, decision);
+    if (!task) {
+      return res.status(404).json({ success: false, error: "Task not found" });
+    }
+    res.json({ success: true, task });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Environment Secrets Audit & Awareness Endpoints
+app.get("/api/xai/secrets", (req, res) => {
+  try {
+    const xai = microservicesRegistry.getXai();
+    const secrets = xai.getSecrets();
+    const configuredCount = secrets.filter((s) => s.isConfigured).length;
+    res.json({
+      success: true,
+      secrets,
+      configuredCount,
+      totalCount: secrets.length,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/xai/secrets", (req, res) => {
+  try {
+    const { key, category, description, required, associatedFiles, examplePlaceholder } = req.body || {};
+    if (!key || typeof key !== "string" || !key.trim()) {
+      return res.status(400).json({ success: false, error: "Secret key name is required" });
+    }
+    const xai = microservicesRegistry.getXai();
+    const secret = xai.addOrUpdateSecret({
+      key: key.trim(),
+      category,
+      description,
+      required: Boolean(required),
+      associatedFiles: Array.isArray(associatedFiles) ? associatedFiles : undefined,
+      examplePlaceholder,
+    });
+    res.json({ success: true, secret });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete("/api/xai/secrets/:key", (req, res) => {
+  try {
+    const { key } = req.params;
+    if (!key) {
+      return res.status(400).json({ success: false, error: "Key parameter is required" });
+    }
+    const xai = microservicesRegistry.getXai();
+    const deleted = xai.deleteSecret(key);
+    res.json({ success: true, deleted });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get("/api/xai/secrets/env-template", (req, res) => {
+  try {
+    const xai = microservicesRegistry.getXai();
+    const envContent = xai.generateEnvTemplate();
+    res.json({ success: true, envContent });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Setup Vite or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

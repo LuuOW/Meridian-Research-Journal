@@ -105,23 +105,25 @@ export class DailyScheduleDaemon implements IMicroservice {
       let dispatch = loadStagedDailyDispatch();
 
       // If no dispatch staged for today, or previous dispatch is from a previous date:
-      // Only auto-stage during the 9:00 AM ART review window (hour === 9). This avoids staging
+      // Only auto-stage during the 9:00 AM ART review window (hour === 9) on weekdays. This avoids staging
       // drafts after the 10:00 AM auto-publish cutoff which would be immediately auto-published.
-      if (!dispatch || dispatch.dateArt !== art.dateString) {
+      // On weekends, arXiv has no announcements; Friday preprints stage for Monday 9:00 AM ART.
+      if (!dispatch || (dispatch.dateArt !== art.dateString && dispatch.dateArt !== art.targetPublishDate)) {
         if (art.isReviewWindow) {
           console.log(`[${this.serviceName}] 9:00 AM ART review window detected for date ${art.dateString}. Staging today's arXiv draft...`);
           dispatch = await this.stageTodayDispatch();
         } else {
-          // If we're already past 10 AM ART, skip staging to avoid immediate auto-publish loops.
+          // If we're already past 10 AM ART on weekdays, skip staging to avoid immediate auto-publish loops.
           if (art.isPast10AmArt) {
             console.log(`[${this.serviceName}] Past 10:00 AM ART and no staged dispatch present; skipping staging to avoid immediate auto-publish.`);
           }
         }
       }
 
-      // Check if staged dispatch is waiting for review and current time has reached 10:00 AM ART
+      // Check if staged dispatch is waiting for review and current time has reached 10:00 AM ART.
+      // Weekend dispatches bridge to Monday and must NEVER be auto-published on Saturday or Sunday.
       if (dispatch && dispatch.status === "staged_pending_review") {
-        if (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now()) {
+        if (!art.isWeekend && (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now())) {
           console.log(`[${this.serviceName}] 10:00 AM ART timeout reached. Auto-publishing unreviewed staged dispatch (${dispatch.id})...`);
           await this.executePublish(dispatch, "auto_timeout_publish");
         }
@@ -233,16 +235,21 @@ export class DailyScheduleDaemon implements IMicroservice {
     // Build the full multi-candidate deck (all 4 from Sept 3 + live arXiv crawlers)
     const candidatesDeck = buildCandidateDeck(existingBlogs, candidates, corpus, art);
 
-    const dispatchId = `dispatch_${art.dateString.replace(/-/g, "_")}`;
+    const targetDateArt = art.isWeekend ? art.targetPublishDate : art.dateString;
+    const targetDayName = art.isWeekend ? art.targetDayName : art.dayName;
+    const targetScheduledFor = art.isWeekend ? art.targetPublishEpoch9Am : art.scheduled9AmEpoch;
+    const targetAutoPublishAt = art.isWeekend ? art.targetPublishEpoch10Am : art.autoPublish10AmEpoch;
+
+    const dispatchId = `dispatch_${targetDateArt.replace(/-/g, "_")}`;
     const dispatch: StagedDailyDispatch = {
       id: dispatchId,
-      dateArt: art.dateString,
+      dateArt: targetDateArt,
       dayOfWeek: art.dayOfWeek,
-      dayName: art.dayName,
+      dayName: targetDayName,
       sourceArxivBatchDay: sourceBatch.sourceBatchName,
       createdAt: Date.now(),
-      scheduledFor: art.scheduled9AmEpoch,
-      autoPublishAt: art.autoPublish10AmEpoch,
+      scheduledFor: targetScheduledFor,
+      autoPublishAt: targetAutoPublishAt,
       status: "staged_pending_review",
       selectedCategory: primaryCandidate.category,
       candidatePaper: primaryCandidate,

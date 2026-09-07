@@ -144,6 +144,35 @@ export function getArtTime(referenceDate: Date = new Date()) {
   const autoPublish10AmEpoch = todayStartUtc + (10 * 60 * 60 * 1000); // 13:00 UTC
 
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  // Intelligent Weekend Bridge to Monday:
+  // arXiv announces papers Mon-Fri (no weekend announcements on Friday/Saturday nights US ET).
+  // Friday's arXiv preprints are published on Monday 9:00 AM ART.
+  let targetPublishDate = dateString;
+  let targetPublishEpoch9Am = scheduled9AmEpoch;
+  let targetPublishEpoch10Am = autoPublish10AmEpoch;
+  let targetDayName = dayNames[dayOfWeek];
+
+  if (dayOfWeek === 6) { // Saturday -> targets Monday (in 2 days)
+    const monDate = new Date(todayStartUtc + (2 * 24 * 60 * 60 * 1000));
+    const mYear = monDate.getUTCFullYear();
+    const mMonth = monDate.getUTCMonth() + 1;
+    const mDay = monDate.getUTCDate();
+    targetPublishDate = `${mYear}-${String(mMonth).padStart(2, "0")}-${String(mDay).padStart(2, "0")}`;
+    targetPublishEpoch9Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 9, 0, 0, 0);
+    targetPublishEpoch10Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 10, 0, 0, 0);
+    targetDayName = "Monday";
+  } else if (dayOfWeek === 0) { // Sunday -> targets Monday (in 1 day)
+    const monDate = new Date(todayStartUtc + (1 * 24 * 60 * 60 * 1000));
+    const mYear = monDate.getUTCFullYear();
+    const mMonth = monDate.getUTCMonth() + 1;
+    const mDay = monDate.getUTCDate();
+    targetPublishDate = `${mYear}-${String(mMonth).padStart(2, "0")}-${String(mDay).padStart(2, "0")}`;
+    targetPublishEpoch9Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 9, 0, 0, 0);
+    targetPublishEpoch10Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 10, 0, 0, 0);
+    targetDayName = "Monday";
+  }
 
   return {
     year,
@@ -158,9 +187,16 @@ export function getArtTime(referenceDate: Date = new Date()) {
     artDate,
     scheduled9AmEpoch,
     autoPublish10AmEpoch,
-    isReviewWindow: hour === 9,
-    isPast10AmArt: hour >= 10,
-    millisUntil10Am: Math.max(0, autoPublish10AmEpoch - utcMillis),
+    isWeekend,
+    isWeekendBridge: isWeekend,
+    targetPublishDate,
+    targetDayName,
+    targetPublishEpoch9Am,
+    targetPublishEpoch10Am,
+    // Only weekdays have active auto-review and auto-publish windows
+    isReviewWindow: !isWeekend && hour === 9,
+    isPast10AmArt: !isWeekend && hour >= 10,
+    millisUntil10Am: isWeekend ? Math.max(0, targetPublishEpoch10Am - utcMillis) : Math.max(0, autoPublish10AmEpoch - utcMillis),
   };
 }
 
@@ -171,6 +207,7 @@ export function getArtTime(referenceDate: Date = new Date()) {
  * - Tuesday's arXiv release -> Published on Wednesday 9 AM ART
  * - Wednesday's arXiv release -> Published on Thursday 9 AM ART
  * - Thursday's arXiv release -> Published on Friday 9 AM ART
+ * - Saturday & Sunday -> Weekend bridge targeting Monday 9 AM ART
  */
 export function getSourceArxivBatch(dayOfWeek: number): { sourceBatchName: string; note: string } {
   switch (dayOfWeek) {
@@ -200,14 +237,11 @@ export function getSourceArxivBatch(dayOfWeek: number): { sourceBatchName: strin
         note: "Published on Friday from Thursday's arXiv batch.",
       };
     case 6: // Saturday
+    case 0: // Sunday
+    default:
       return {
-        sourceBatchName: "Friday arXiv weekend edition",
-        note: "Weekend preview published from Friday announcements.",
-      };
-    default: // Sunday
-      return {
-        sourceBatchName: "Friday arXiv pre-announcements",
-        note: "Sunday evening staging for Monday morning 9 AM ART dispatch.",
+        sourceBatchName: "Friday arXiv preprints (weekend bridge to Monday)",
+        note: "arXiv has no weekend announcements. Friday preprints are published on Monday 9 AM ART.",
       };
   }
 }
@@ -668,7 +702,9 @@ $$\\hat{a}_{\\text{out}}(\\omega) = \\frac{\\kappa_{\\text{ext}} - \\kappa_0 - 2
 
 This preprint was selected by Meridian's autonomous AI selection model based on an exhaustive review of our ${corpus.totalArticles}-article historical database. It directly complements previous publications by establishing a rigorous analytical bridge between discrete Hilbert space projections and continuous optical field distributions.`;
 
-  const dateFormatted = new Date(artInfo.scheduled9AmEpoch).toLocaleDateString("en-US", {
+  // On weekends, the draft is explicitly dated for the upcoming Monday publishing slot
+  const publishTargetEpoch = artInfo.isWeekend ? artInfo.targetPublishEpoch9Am : artInfo.scheduled9AmEpoch;
+  const dateFormatted = new Date(publishTargetEpoch).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",

@@ -139,7 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {isEditorMode && (
             <div className="flex items-center gap-2 sm:gap-2.5 animate-fade-in">
               {/* Grouped Editor Tools Dropdown - Elevated Precision Console */}
-              {(onOpenPipelineStatus || onOpenDailyDispatch || onOpenXTest || onOpenResume || onOpenXaiAgent) && (
+              {(onOpenPipelineStatus || onOpenDailyDispatch || onOpenXTest) && (
                 <div className="relative" ref={toolsRef}>
                   <button
                     id="navbar-editor-tools-btn"
@@ -328,73 +328,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-2 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded-md border border-cyan-500/20">
                               @lk3mpe
-                            </span>
-                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                          </div>
-                        </button>
-                      )}
-
-                      {/* xAI Coding Agent Option */}
-                      {onOpenXaiAgent && (
-                        <button
-                          id="dropdown-xai-agent-btn"
-                          onClick={() => {
-                            setIsToolsOpen(false);
-                            onOpenXaiAgent();
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-t border-slate-100 dark:border-slate-800/60"
-                          role="menuitem"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-emerald-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-cyan-500/30 shadow-xs">
-                              <Terminal className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                                xAI Coding Agent
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              </div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Grok self-healing &amp; autonomous tasks
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-2 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded-md border border-cyan-500/20">
-                              Grok
-                            </span>
-                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                          </div>
-                        </button>
-                      )}
-
-                      {/* Resume / CV Export Option in Tools */}
-                      {onOpenResume && (
-                        <button
-                          id="dropdown-resume-btn"
-                          onClick={() => {
-                            setIsToolsOpen(false);
-                            onOpenResume();
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-t border-slate-100 dark:border-slate-800/60"
-                          role="menuitem"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-purple-500/20 shadow-xs">
-                              <FileText className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                                Curriculum Vitae
-                              </div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Downloadable PDF &amp; Markdown
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-mono font-bold text-purple-600 dark:text-purple-400 px-2 py-0.5 bg-purple-50 dark:bg-purple-950/50 rounded-md border border-purple-500/20">
-                              Export
                             </span>
                             <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
                           </div>
