@@ -3554,6 +3554,29 @@ app.post("/api/daily-dispatch/retry-x-post", async (req, res) => {
   }
 });
 
+// Autonomous Stack Configuration (arXiv Generation & X Posting Switches)
+app.get("/api/editor-config", (req, res) => {
+  try {
+    const config = microservicesRegistry.getDailyScheduleDaemon().getConfig();
+    res.json({ success: true, ...config });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/editor-config", (req, res) => {
+  try {
+    const { arxivGenerationEnabled, xPostingEnabled } = req.body || {};
+    const updated = microservicesRegistry.getDailyScheduleDaemon().updateConfig({
+      arxivGenerationEnabled: typeof arxivGenerationEnabled === "boolean" ? arxivGenerationEnabled : undefined,
+      xPostingEnabled: typeof xPostingEnabled === "boolean" ? xPostingEnabled : undefined,
+    });
+    res.json({ success: true, ...updated });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Check X API connection & credentials status
 app.get("/api/x/status", async (req, res) => {
   try {

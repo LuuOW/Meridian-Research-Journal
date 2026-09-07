@@ -112,3 +112,9 @@ export interface GenerationJob {
   metrics?: PipelineExecutionRecord;
 }
 
+export interface AutonomousStackConfig {
+  arxivGenerationEnabled: boolean;
+  xPostingEnabled: boolean;
+  updatedAt?: number;
+}
+

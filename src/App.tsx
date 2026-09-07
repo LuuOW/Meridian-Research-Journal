@@ -35,6 +35,7 @@ import { AboutModal } from "./components/AboutModal";
 import { ResumeViewModal } from "./components/ResumeViewModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { DailyEditorialPromptModal } from "./components/DailyEditorialPromptModal";
+import { AutonomousEditorConsoleModal } from "./components/AutonomousEditorConsoleModal";
 import { XaiCodingAgentModal } from "./components/XaiCodingAgentModal";
 import { XaiFloatingButton } from "./components/XaiFloatingButton";
 import { PasskeyPortal } from "./components/PasskeyPortal";
@@ -100,6 +101,8 @@ export default function App() {
   const [isEditorPasswordModalOpen, setIsEditorPasswordModalOpen] = useState(false);
   const [isPipelineModalOpen, setIsPipelineModalOpen] = useState(false);
   const [isDailyEditorialModalOpen, setIsDailyEditorialModalOpen] = useState(false);
+  const [isEditorConsoleOpen, setIsEditorConsoleOpen] = useState(false);
+  const [editorConsoleTab, setEditorConsoleTab] = useState<"dispatch" | "climate" | "xtest" | "pipeline">("dispatch");
   const [isXaiAgentModalOpen, setIsXaiAgentModalOpen] = useState(false);
   const [hasPendingDispatch, setHasPendingDispatch] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>(() => {
@@ -1198,10 +1201,27 @@ export default function App() {
           setTheme(next);
           trackInteraction("theme_toggle", { details: { to: next } });
         }}
-        onOpenPipelineStatus={() => setIsPipelineModalOpen(true)}
+        onOpenPipelineStatus={() => {
+          setEditorConsoleTab("pipeline");
+          setIsEditorConsoleOpen(true);
+        }}
         onOpenAdSenseRevenue={() => setIsAdSenseModalOpen(true)}
-        onOpenDailyDispatch={() => setIsDailyEditorialModalOpen(true)}
-        onOpenXTest={() => setIsXTestModalOpen(true)}
+        onOpenDailyDispatch={() => {
+          setEditorConsoleTab("dispatch");
+          setIsEditorConsoleOpen(true);
+        }}
+        onOpenXTest={() => {
+          setEditorConsoleTab("xtest");
+          setIsEditorConsoleOpen(true);
+        }}
+        onOpenObservatoryClimate={() => {
+          setEditorConsoleTab("climate");
+          setIsEditorConsoleOpen(true);
+        }}
+        onOpenEditorConsole={(tab) => {
+          if (tab) setEditorConsoleTab(tab);
+          setIsEditorConsoleOpen(true);
+        }}
         onOpenXaiAgent={() => setIsXaiAgentModalOpen(true)}
         hasPendingDispatch={hasPendingDispatch}
         todayRevenueEstimate={formatCurrency(calculateCatalogRevenue(blogs).todayEstimate)}
@@ -1871,6 +1891,42 @@ export default function App() {
         onClose={() => setIsAdSenseModalOpen(false)}
         blogs={blogs}
         activeBlog={activeBlog || undefined}
+      />
+
+      {/* UNIFIED AUTONOMOUS EDITOR CONSOLE (DAILY DISPATCH, OBSERVATORY CLIMATE, X LIVE DIAGNOSTICS, PIPELINE) */}
+      <AutonomousEditorConsoleModal
+        isOpen={isEditorConsoleOpen}
+        onClose={() => setIsEditorConsoleOpen(false)}
+        initialTab={editorConsoleTab}
+        theme={theme}
+        isEditorMode={isEditorMode}
+        jobs={jobs}
+        onSelectBlog={(blog) => {
+          setActiveBlog(blog);
+          setIsEditorConsoleOpen(false);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onDismissJob={handleDismissJob}
+        onClearFinishedJobs={handleClearFinishedJobs}
+        onRetryJob={(arxivInput) => {
+          setIsEditorConsoleOpen(false);
+          handleRetryJob(arxivInput);
+        }}
+        onOpenCreate={() => {
+          setIsEditorConsoleOpen(false);
+          setIsCreateOpen(true);
+        }}
+        onArticlePublished={(newBlog) => {
+          setBlogs((prev) => [newBlog, ...prev.filter((b) => b.id !== newBlog.id && b.slug !== newBlog.slug)]);
+          setActiveBlog(newBlog);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onOpenInEditor={(draft) => {
+          setIsEditorConsoleOpen(false);
+          const match = draft.arxivLink ? draft.arxivLink.match(/(\d{4}\.\d{4,5})/) : null;
+          if (match) setInitialArxivId(match[1]);
+          setIsCreateOpen(true);
+        }}
       />
 
       {/* MERIDIAN 9:00 AM - 10:00 AM ART AUTONOMOUS DAILY EDITORIAL PROMPT MODAL */}

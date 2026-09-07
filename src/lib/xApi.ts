@@ -23,6 +23,16 @@ export interface XOAuth2Tokens {
   clientId?: string;
 }
 
+export interface XPricingInfo {
+  requiresPaidCredits: boolean;
+  minCredits: string;
+  balanceEstimate: string;
+  pricingDocUrl: string;
+  consoleUrl: string;
+  webIntentFallbackAvailable: boolean;
+  note: string;
+}
+
 export interface XTweetResult {
   success: boolean;
   mode: "live" | "unconfigured_simulation" | "error";
@@ -40,6 +50,9 @@ export interface XTweetResult {
   diagnosisDetail?: string;
   troubleshootingSteps?: string[];
   rawResponse?: any;
+  isCreditDepleted?: boolean;
+  pricingDocUrl?: string;
+  minCreditRequired?: string;
 }
 
 export interface XConnectionStatus {
@@ -56,6 +69,7 @@ export interface XConnectionStatus {
   accessLevel?: string;
   hasWritePermission?: boolean;
   writePermissionWarning?: string;
+  pricing?: XPricingInfo;
   keyPreviews?: {
     apiKey?: string;
     accessToken?: string;
@@ -67,6 +81,43 @@ export interface XConnectionStatus {
 
 let inMemoryOAuth2Token: string | null = null;
 let inMemoryRefreshToken: string | null = null;
+
+export const DEFAULT_X_PRICING: XPricingInfo = {
+  requiresPaidCredits: true,
+  minCredits: "$5.00",
+  balanceEstimate: "$0.00",
+  pricingDocUrl: "https://docs.x.com/x-api/getting-started/pricing",
+  consoleUrl: "https://console.x.com",
+  webIntentFallbackAvailable: true,
+  note: "X Developer Platform requires at least $5.00 in prepaid Pay-As-You-Go credits for programmatic write access (POST /2/tweets). Web Intent fallback is available at zero cost.",
+};
+
+function detectCreditIssue(httpStatus?: number, errorText?: string, parsedJson?: any) {
+  const text = `${errorText || ""} ${JSON.stringify(parsedJson || "")}`.toLowerCase();
+  const isCreditDepleted =
+    httpStatus === 402 ||
+    httpStatus === 403 ||
+    text.includes("insufficient balance") ||
+    text.includes("credits") ||
+    text.includes("balance") ||
+    text.includes("usage cap") ||
+    text.includes("enrolled") ||
+    text.includes("tier") ||
+    text.includes("payment") ||
+    text.includes("forbidden");
+
+  return {
+    isCreditDepleted,
+    pricingDocUrl: "https://docs.x.com/x-api/getting-started/pricing",
+    minCreditRequired: "$5.00 Pay-As-You-Go",
+    diagnosisTitle: isCreditDepleted
+      ? "X API Credits Required ($5 Minimum Pay-As-You-Go)"
+      : `X API HTTP ${httpStatus || 400} Error`,
+    diagnosisDetail: isCreditDepleted
+      ? "X Developer Platform v2 requires a minimum $5 prepaid credit balance to enable direct programmatic write access (POST /2/tweets). Web Intent fallback is available with 0 balance."
+      : (parsedJson?.detail || parsedJson?.title || errorText || "Unknown error"),
+  };
+}
 
 /**
  * RFC 3986 percent encoding for OAuth 1.0a
@@ -303,6 +354,7 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
       const errorText = await response.text();
       let parsedJson: any = null;
       try { parsedJson = JSON.parse(errorText); } catch {}
+      const creditInfo = detectCreditIssue(httpStatus, errorText, parsedJson);
 
       return {
         success: false,
@@ -312,8 +364,11 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
         intentUrl,
         timestamp,
         rawResponse: parsedJson || errorText,
-        diagnosisTitle: `X API HTTP ${httpStatus} Error`,
-        diagnosisDetail: errorText,
+        diagnosisTitle: creditInfo.diagnosisTitle,
+        diagnosisDetail: creditInfo.diagnosisDetail,
+        isCreditDepleted: creditInfo.isCreditDepleted,
+        pricingDocUrl: creditInfo.pricingDocUrl,
+        minCreditRequired: creditInfo.minCreditRequired,
       };
     } catch (err: any) {
       console.error("[X API OAuth 2.0 Exception]", err);
@@ -335,6 +390,9 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
       timestamp,
       diagnosisTitle: "Simulation Mode (No Keys)",
       diagnosisDetail: "Configure X_OAUTH_ACCESS_TOKEN (OAuth 2.0) or OAuth 1.0a keys in Settings to enable direct posting.",
+      isCreditDepleted: true,
+      pricingDocUrl: "https://docs.x.com/x-api/getting-started/pricing",
+      minCreditRequired: "$5.00 Pay-As-You-Go",
     };
   }
 
@@ -374,6 +432,7 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
     const errorText = await response.text();
     let parsedJson: any = null;
     try { parsedJson = JSON.parse(errorText); } catch {}
+    const creditInfo = detectCreditIssue(httpStatus, errorText, parsedJson);
 
     return {
       success: false,
@@ -383,10 +442,14 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
       intentUrl,
       timestamp,
       rawResponse: parsedJson || errorText,
-      diagnosisTitle: `X API HTTP ${httpStatus} Error`,
-      diagnosisDetail: errorText,
+      diagnosisTitle: creditInfo.diagnosisTitle,
+      diagnosisDetail: creditInfo.diagnosisDetail,
+      isCreditDepleted: creditInfo.isCreditDepleted,
+      pricingDocUrl: creditInfo.pricingDocUrl,
+      minCreditRequired: creditInfo.minCreditRequired,
     };
   } catch (err: any) {
+    const creditInfo = detectCreditIssue(undefined, err.message);
     return {
       success: false,
       mode: "error",
@@ -395,6 +458,9 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
       timestamp,
       diagnosisTitle: "Network / Fetch Exception",
       diagnosisDetail: err.message || "Unknown communication failure",
+      isCreditDepleted: creditInfo.isCreditDepleted,
+      pricingDocUrl: creditInfo.pricingDocUrl,
+      minCreditRequired: creditInfo.minCreditRequired,
     };
   }
 }
@@ -447,6 +513,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
           accessLevel: accessLevel || "read-write",
           hasWritePermission,
           rawResponse: data,
+          pricing: DEFAULT_X_PRICING,
           keyPreviews: {
             accessToken: `${currentToken.slice(0, 8)}...${currentToken.slice(-4)}`,
             hasSecret: !!oauth2.refreshToken,
@@ -465,6 +532,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
           error: parsed?.detail || `OAuth 2.0 verification failed (HTTP ${res.status}): ${errBody}`,
           authMethod: "OAuth 2.0 User Context",
           rawResponse: parsed || errBody,
+          pricing: DEFAULT_X_PRICING,
         };
       }
     } catch (err: any) {
@@ -497,6 +565,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
       missingKeys,
       error: `Missing credentials in environment: ${missingKeys.join(", ")}`,
       authMethod: "OAuth 1.0a User Context",
+      pricing: DEFAULT_X_PRICING,
       keyPreviews,
     };
   }
@@ -526,6 +595,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
         error: parsed?.detail || `X API verification failed (HTTP ${httpStatus}): ${errBody}`,
         authMethod: "OAuth 1.0a User Context",
         rawResponse: parsed || errBody,
+        pricing: DEFAULT_X_PRICING,
         keyPreviews,
       };
     }
@@ -546,6 +616,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
       accessLevel: accessLevel || undefined,
       hasWritePermission: accessLevel ? hasWritePermission : undefined,
       rawResponse: data,
+      pricing: DEFAULT_X_PRICING,
       keyPreviews,
     };
   } catch (err: any) {
@@ -555,6 +626,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
       missingKeys: [],
       error: err.message || "Network error testing X API connection",
       authMethod: "OAuth 1.0a User Context",
+      pricing: DEFAULT_X_PRICING,
       keyPreviews,
     };
   }

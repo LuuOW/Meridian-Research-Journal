@@ -9,6 +9,8 @@
  * 4. 10:00 AM ART Timeout: If unreviewed by 10:00 AM ART, automatically publishes and posts to X.
  */
 
+import fs from "fs";
+import path from "path";
 import { IMicroservice, ServiceHealth } from "./types";
 import { PersistenceMicroservice } from "./PersistenceMicroservice";
 import {
@@ -38,8 +40,116 @@ export class DailyScheduleDaemon implements IMicroservice {
   private intervalTimer: NodeJS.Timeout | null = null;
   private isProcessing: boolean = false;
 
+  // Runtime Config Switches:
+  // - arxivGenerationEnabled: Controls article generation step while maintaining arXiv sourcing & crawling
+  // - xPostingEnabled: Controls autonomous posting to X API
+  private arxivGenerationEnabled: boolean = true;
+  private xPostingEnabled: boolean = true;
+
   constructor(persistenceService: PersistenceMicroservice) {
     this.persistenceService = persistenceService;
+    this.loadConfig();
+  }
+
+  private getConfigFilePath(): string {
+    return path.join(process.cwd(), "autonomous_editor_config.json");
+  }
+
+  private loadConfig(): void {
+    try {
+      const configPath = this.getConfigFilePath();
+      if (fs.existsSync(configPath)) {
+        const raw = fs.readFileSync(configPath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.arxivGenerationEnabled === "boolean") {
+          this.arxivGenerationEnabled = parsed.arxivGenerationEnabled;
+        }
+        if (typeof parsed.xPostingEnabled === "boolean") {
+          this.xPostingEnabled = parsed.xPostingEnabled;
+        }
+        console.log(`[${this.serviceName}] Loaded autonomous config: arxivGeneration=${this.arxivGenerationEnabled}, xPosting=${this.xPostingEnabled}`);
+      }
+    } catch (err) {
+      console.warn(`[${this.serviceName}] Could not load config file, using defaults:`, err);
+    }
+  }
+
+  private saveConfigFile(): void {
+    try {
+      const configPath = this.getConfigFilePath();
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify(
+          {
+            arxivGenerationEnabled: this.arxivGenerationEnabled,
+            xPostingEnabled: this.xPostingEnabled,
+            updatedAt: Date.now(),
+          },
+          null,
+          2
+        ),
+        "utf-8"
+      );
+    } catch (err) {
+      console.error(`[${this.serviceName}] Failed to save autonomous_editor_config.json:`, err);
+    }
+  }
+
+  public getConfig(): { arxivGenerationEnabled: boolean; xPostingEnabled: boolean; updatedAt: number } {
+    return {
+      arxivGenerationEnabled: this.arxivGenerationEnabled,
+      xPostingEnabled: this.xPostingEnabled,
+      updatedAt: Date.now(),
+    };
+  }
+
+  public updateConfig(updates: { arxivGenerationEnabled?: boolean; xPostingEnabled?: boolean }): {
+    arxivGenerationEnabled: boolean;
+    xPostingEnabled: boolean;
+    updatedAt: number;
+  } {
+    if (typeof updates.arxivGenerationEnabled === "boolean") {
+      this.arxivGenerationEnabled = updates.arxivGenerationEnabled;
+    }
+    if (typeof updates.xPostingEnabled === "boolean") {
+      this.xPostingEnabled = updates.xPostingEnabled;
+    }
+    this.saveConfigFile();
+    console.log(
+      `[${this.serviceName}] Configuration updated: arxivGenerationEnabled=${this.arxivGenerationEnabled} (crawling/sourcing maintained), xPostingEnabled=${this.xPostingEnabled}`
+    );
+    return this.getConfig();
+  }
+
+  /**
+   * Helper to create a structured placeholder draft when article generation is paused in Config
+   * but arXiv sourcing and candidate crawling are preserved.
+   */
+  private createSourcedPlaceholderDraft(
+    candidate: { id: string; title: string; summary: string; authors?: string; category?: string; link?: string },
+    art: ReturnType<typeof getArtTime>
+  ): BlogPost {
+    const slug = candidate.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    return {
+      id: `draft_${candidate.id}`,
+      title: candidate.title,
+      slug,
+      excerpt: candidate.summary,
+      date: art.isWeekend ? art.targetPublishDate : art.dateString,
+      readingTime: "5 min read",
+      arxivLink: candidate.link || `https://arxiv.org/abs/${candidate.id}`,
+      bannerSvg: "",
+      content: `> **[SOURCING ONLY • ARTICLE GENERATION DISABLED IN CONFIG]**\n\n### Candidate Paper Metadata\n\n- **Title:** ${candidate.title}\n- **arXiv Identifier:** \`${candidate.id}\`\n- **Authors:** ${candidate.authors || "N/A"}\n- **Primary Discipline:** ${candidate.category || "physics.optics"}\n- **Official Preprint Link:** [${candidate.link || `https://arxiv.org/abs/${candidate.id}`}](${candidate.link || `https://arxiv.org/abs/${candidate.id}`})\n\n### Abstract\n\n${candidate.summary}\n\n---\n\n*Note: Autonomous article generation is currently paused via the **arXiv** switch in Config. Live sourcing, citation scoring, and candidate deck crawling remain fully operational. To generate the complete article, re-enable the arXiv switch in Config or trigger manual synthesis in the Editor.*`,
+      author: candidate.authors || "Lucas Kempe",
+      tags: [candidate.category || "physics.optics", "arXiv", "Sourced Candidate", "Quantum Optics"],
+      status: "sourced_pending_generation",
+      createdAt: Date.now(),
+      timestamp: Date.now(),
+    };
   }
 
   public async initialize(): Promise<boolean> {
@@ -122,8 +232,10 @@ export class DailyScheduleDaemon implements IMicroservice {
 
       // Check if staged dispatch is waiting for review and current time has reached 10:00 AM ART.
       // Weekend dispatches bridge to Monday and must NEVER be auto-published on Saturday or Sunday.
-      if (dispatch && dispatch.status === "staged_pending_review") {
-        if (!art.isWeekend && (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now())) {
+      if (dispatch && (dispatch.status === "staged_pending_review" || dispatch.status === "sourced_pending_generation")) {
+        if (!this.arxivGenerationEnabled) {
+          console.log(`[${this.serviceName}] Auto-publish suppressed: arXiv article generation is disabled in Config (sourcing-only mode).`);
+        } else if (!art.isWeekend && (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now())) {
           console.log(`[${this.serviceName}] 10:00 AM ART timeout reached. Auto-publishing unreviewed staged dispatch (${dispatch.id})...`);
           await this.executePublish(dispatch, "auto_timeout_publish");
         }
@@ -226,8 +338,16 @@ export class DailyScheduleDaemon implements IMicroservice {
 
     const alternateCandidates = scoredCandidates.slice(1, 4);
 
-    // Generate Article Draft with Math & Animated SVG Banner
-    const draftArticle = generateStagedArticleDraft(primaryCandidate, corpus, art);
+    // Generate Article Draft with Math & Animated SVG Banner (only if arXiv generation switch is enabled)
+    let draftArticle: BlogPost;
+    if (this.arxivGenerationEnabled) {
+      draftArticle = generateStagedArticleDraft(primaryCandidate, corpus, art);
+    } else {
+      console.log(
+        `[${this.serviceName}] arXiv article generation disabled in Config. Sourcing & crawling paper only without synthesizing article draft.`
+      );
+      draftArticle = this.createSourcedPlaceholderDraft(primaryCandidate, art);
+    }
 
     // Generate 3-sentence futuristic companion post for X
     const xPost = buildAutonomousXPost(draftArticle, primaryCandidate.id, primaryCandidate.category);
@@ -250,7 +370,7 @@ export class DailyScheduleDaemon implements IMicroservice {
       createdAt: Date.now(),
       scheduledFor: targetScheduledFor,
       autoPublishAt: targetAutoPublishAt,
-      status: "staged_pending_review",
+      status: this.arxivGenerationEnabled ? "staged_pending_review" : "sourced_pending_generation",
       selectedCategory: primaryCandidate.category,
       candidatePaper: primaryCandidate,
       alternateCandidates,
@@ -299,10 +419,25 @@ export class DailyScheduleDaemon implements IMicroservice {
         : `10 AM ART Auto-Publish Timeout (${dispatch.candidatePaper.id})`
     );
 
-    // 3. Post to X (Twitter) API v2
+    // 3. Post to X (Twitter) API v2 - respect xPostingEnabled switch
     const tweetText = (customTweetText || dispatch.xPost.postText).trim();
-    console.log(`[${this.serviceName}] Sharing companion post to X...`);
-    const xResult = await postTweetToX(tweetText);
+    let xResult: XTweetResult;
+
+    if (this.xPostingEnabled) {
+      console.log(`[${this.serviceName}] Sharing companion post to X...`);
+      xResult = await postTweetToX(tweetText);
+    } else {
+      console.log(`[${this.serviceName}] X posting is DISABLED in Config. Skipping automated X tweet.`);
+      xResult = {
+        success: false,
+        mode: "error",
+        timestamp: Date.now(),
+        error: "X autonomous posting is disabled in Config",
+        errorCode: "X_POSTING_DISABLED",
+        diagnosisDetail: "X switch in Config is turned off. Web Intent is available for manual post.",
+        intentUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`,
+      };
+    }
 
     // 4. Update dispatch record with publication confirmation
     dispatch.status = via === "manual_editor_accept" ? "accepted_and_published" : "auto_published";
@@ -314,7 +449,7 @@ export class DailyScheduleDaemon implements IMicroservice {
     if (xResult.success) {
       console.log(`[${this.serviceName}] Article published successfully! X companion post live (Tweet ID: ${xResult.tweetId || "none"})`);
     } else {
-      console.log(`[${this.serviceName}] Article published successfully! Companion X post: ${xResult.errorCode || xResult.error || "requires write permission"} (Web Intent fallback ready: ${xResult.intentUrl})`);
+      console.log(`[${this.serviceName}] Article published! Companion X post: ${xResult.errorCode || xResult.error || "requires write permission"} (Web Intent ready: ${xResult.intentUrl})`);
     }
 
     return {
@@ -328,6 +463,10 @@ export class DailyScheduleDaemon implements IMicroservice {
    * Retries companion X post for the published daily dispatch once credentials are corrected
    */
   public async retryXPost(customTweetText?: string): Promise<{ success: boolean; xResult: XTweetResult; dispatch: StagedDailyDispatch }> {
+    if (!this.xPostingEnabled) {
+      throw new Error("X posting is currently disabled in Config. Enable the X switch in Config to retry posting.");
+    }
+
     const dispatch = loadStagedDailyDispatch();
     if (!dispatch) {
       throw new Error("No daily dispatch found to retry X post");
@@ -441,11 +580,25 @@ export class DailyScheduleDaemon implements IMicroservice {
         link: selected.arxivLink,
       };
 
-      if (selected.fullDraft) {
+      if (!this.arxivGenerationEnabled) {
+        dispatch.draftArticle = this.createSourcedPlaceholderDraft(
+          {
+            id: selected.arxivId,
+            title: selected.title,
+            summary: selected.excerpt,
+            authors: selected.authors,
+            category: selected.category,
+            link: selected.arxivLink,
+          },
+          art
+        );
+        dispatch.status = "sourced_pending_generation";
+      } else if (selected.fullDraft) {
         dispatch.draftArticle = {
           ...selected.fullDraft,
           date: selected.dateComparison.meridianPubDate,
         };
+        dispatch.status = "staged_pending_review";
       } else {
         dispatch.draftArticle = generateStagedArticleDraft(
           {
@@ -459,10 +612,10 @@ export class DailyScheduleDaemon implements IMicroservice {
           corpus,
           art
         );
+        dispatch.status = "staged_pending_review";
       }
 
       dispatch.xPost = selected.xPost;
-      dispatch.status = "staged_pending_review";
       dispatch.createdAt = Date.now();
       saveStagedDailyDispatch(dispatch);
     }

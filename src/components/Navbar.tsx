@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, Compass, Sun, Moon, Activity, Loader2, ChevronDown, Wrench, ArrowUpRight, FileText, Coins, Heart, QrCode, Terminal } from "lucide-react";
+import { Sparkles, Compass, Sun, Moon, Activity, Loader2, ChevronDown, Wrench, ArrowUpRight, FileText, Coins, Heart, QrCode, Terminal, Layers, Sliders, CheckCircle2, AlertTriangle } from "lucide-react";
 import { GenerationJob } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
+import { Switch } from "./Switch";
+import { useEditorConfig } from "../lib/editorConfig";
 
 interface NavbarProps {
   onOpenCreate: () => void;
@@ -18,6 +20,8 @@ interface NavbarProps {
   onOpenAdSenseRevenue?: () => void;
   onOpenDailyDispatch?: () => void;
   onOpenXTest?: () => void;
+  onOpenObservatoryClimate?: () => void;
+  onOpenEditorConsole?: (tab?: "dispatch" | "climate" | "xtest" | "pipeline") => void;
   onOpenXaiAgent?: () => void;
   hasPendingDispatch?: boolean;
   todayRevenueEstimate?: string;
@@ -39,6 +43,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdSenseRevenue,
   onOpenDailyDispatch,
   onOpenXTest,
+  onOpenObservatoryClimate,
+  onOpenEditorConsole,
   onOpenXaiAgent,
   hasPendingDispatch = false,
   todayRevenueEstimate,
@@ -46,6 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const toolsRef = useRef<HTMLDivElement>(null);
+  const { config, toggleArxivGeneration, toggleXPosting } = useEditorConfig();
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -138,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
           {isEditorMode && (
             <div className="flex items-center gap-2 sm:gap-2.5 animate-fade-in">
-              {/* Grouped Editor Tools Dropdown - Elevated Precision Console */}
+              {/* Grouped Editor Tools Dropdown - Config with arXiv & X Switches */}
               {(onOpenPipelineStatus || onOpenDailyDispatch || onOpenXTest) && (
                 <div className="relative" ref={toolsRef}>
                   <button
@@ -151,23 +158,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                         ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/25 shadow-sm shadow-cyan-500/10"
                         : hasPendingDispatch
                         ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/35 hover:bg-amber-500/20 shadow-sm shadow-amber-500/10"
+                        : !config.arxivGenerationEnabled || !config.xPostingEnabled
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/35 hover:bg-amber-500/20"
                         : "bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/90 hover:border-slate-300 dark:hover:border-slate-700"
                     }`}
-                    title="Editor Tools & Autonomous Pipeline Console"
+                    title="Editor Config & Autonomous Controls"
                     aria-expanded={isToolsOpen}
                   >
                     {/* Icon container */}
                     <div className="flex items-center justify-center shrink-0">
                       {runningCount > 0 ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500 shrink-0" />
-                      ) : hasPendingDispatch ? (
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 animate-pulse shrink-0" />
                       ) : (
-                        <Wrench className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 group-hover:text-cyan-500 transition-colors shrink-0" />
+                        <Sliders className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 group-hover:rotate-12 transition-transform shrink-0" />
                       )}
                     </div>
 
-                    <span className="tracking-tight">Tools</span>
+                    <span className="tracking-tight font-bold">Config</span>
 
                     {/* Contextual Live Status Pill */}
                     {runningCount > 0 ? (
@@ -180,164 +187,286 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse inline-block" />
                         Review
                       </span>
+                    ) : !config.arxivGenerationEnabled && !config.xPostingEnabled ? (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                        2 Muted
+                      </span>
+                    ) : !config.arxivGenerationEnabled ? (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                        Sourcing Only
+                      </span>
+                    ) : !config.xPostingEnabled ? (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                        X Muted
+                      </span>
                     ) : (
-                      <span className="w-2 h-2 rounded-full bg-emerald-500/90 shadow-[0_0_6px_rgba(16,185,129,0.7)] inline-block shrink-0" title="All engines operational" />
+                      <span className="w-2 h-2 rounded-full bg-emerald-500/90 shadow-[0_0_6px_rgba(16,185,129,0.7)] inline-block shrink-0" title="All autonomous engines operational" />
                     )}
 
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 text-slate-400 dark:text-slate-500 ${isToolsOpen ? "rotate-180 text-white dark:text-slate-950" : "group-hover:text-slate-700 dark:group-hover:text-slate-200"}`} />
                   </button>
 
-                  {/* Dropdown Menu Flyout - Precision Console */}
+                  {/* Dropdown Menu Flyout - Config with 2 Switches & Diagnostics */}
                   {isToolsOpen && (
                     <div 
-                      className="absolute right-0 mt-2.5 w-80 sm:w-84 rounded-2xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 shadow-2xl shadow-slate-900/15 dark:shadow-black/50 py-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
+                      className="absolute right-0 mt-2.5 w-84 sm:w-92 rounded-2xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 shadow-2xl shadow-slate-900/15 dark:shadow-black/50 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
                       role="menu"
                     >
                       {/* Top Specular Accent Horizon */}
                       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-emerald-500 opacity-90" />
 
                       {/* Header */}
-                      <div className="px-3.5 pt-1.5 pb-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-mono font-extrabold tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-                          Editor Console
-                        </span>
+                      <div className="px-3.5 pt-1.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sliders className="w-3.5 h-3.5 text-cyan-500" />
+                          <span className="text-[11px] uppercase font-mono font-extrabold tracking-wider text-slate-900 dark:text-slate-100">
+                            Config
+                          </span>
+                        </div>
                         <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/20">
                           Autonomous Stack
                         </span>
                       </div>
 
-                      {/* Daily Dispatch 9 AM ART Option */}
-                      {onOpenDailyDispatch && (
-                        <button
-                          id="dropdown-daily-dispatch-btn"
-                          onClick={() => {
-                            setIsToolsOpen(false);
-                            onOpenDailyDispatch();
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-800/60"
-                          role="menuitem"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-amber-500/30 shadow-xs">
-                              <Sparkles className="w-4 h-4" />
+                      {/* 1. arXiv Switch Component */}
+                      <div className="px-3.5 py-3 border-b border-slate-100 dark:border-slate-800/70 hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
+                              <Layers className="w-4 h-4" />
                             </div>
                             <div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                                Daily Dispatch
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30">
-                                  9 AM ART
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Autonomous review &amp; candidate deck
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {hasPendingDispatch ? (
-                              <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 px-2.5 py-0.5 bg-amber-50 dark:bg-amber-950/60 rounded-md border border-amber-500/30 animate-pulse flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-                                Review Staged
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                                09:00 Cadence
-                              </span>
-                            )}
-                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                          </div>
-                        </button>
-                      )}
-
-                      {/* Pipeline Status Option */}
-                      {onOpenPipelineStatus && (
-                        <button
-                          id="dropdown-pipeline-btn"
-                          onClick={() => {
-                            setIsToolsOpen(false);
-                            onOpenPipelineStatus();
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer"
-                          role="menuitem"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-cyan-500/30 shadow-xs">
-                              {runningCount > 0 ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
-                              ) : (
-                                <Activity className="w-4 h-4" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                                Pipeline Status
-                                {runningCount > 0 && (
-                                  <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping inline-block" />
+                              <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                arXiv
+                                {config.arxivGenerationEnabled ? (
+                                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                                    Generating
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                                    Sourcing Only
+                                  </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Queue &amp; arXiv synthesis logs
-                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            {runningCount > 0 ? (
-                              <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-2 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded-md border border-cyan-500/20 animate-pulse">
-                                {runningCount} active
-                              </span>
-                            ) : totalActive > 0 ? (
-                              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 px-2 py-0.5 bg-slate-100 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
-                                {totalActive} jobs
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 px-2 py-0.5 bg-emerald-500/10 rounded-md border border-emerald-500/20">
-                                Ready
-                              </span>
-                            )}
-                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                          </div>
-                        </button>
-                      )}
+                          <Switch
+                            id="navbar-switch-arxiv"
+                            checked={config.arxivGenerationEnabled}
+                            onChange={toggleArxivGeneration}
+                            activeColor="emerald"
+                            ariaLabel="Toggle arXiv article generation"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pl-9.5">
+                          {config.arxivGenerationEnabled
+                            ? "Disabling will stop article generation while maintaining candidate sourcing & crawling."
+                            : "Generation paused. Paper crawling and candidate scoring remain active."}
+                        </p>
+                      </div>
 
-                      {/* X (Twitter) Test & Diagnostics Option */}
-                      {onOpenXTest && (
-                        <button
-                          id="dropdown-x-test-btn"
-                          onClick={() => {
-                            setIsToolsOpen(false);
-                            onOpenXTest();
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-t border-slate-100 dark:border-slate-800/60"
-                          role="menuitem"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-black text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform font-bold text-xs border border-slate-700 shadow-xs">
+                      {/* 2. X Switch Component */}
+                      <div className="px-3.5 py-3 border-b border-slate-100 dark:border-slate-800/70 hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-black text-white flex items-center justify-center border border-slate-700 font-bold text-xs shrink-0">
                               𝕏
                             </div>
                             <div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                                X Live Diagnostics
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              </div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                OAuth 2.0 User Context &amp; inspection
+                              <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                X
+                                {config.xPostingEnabled ? (
+                                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 inline-block animate-pulse" />
+                                    Active
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                                    Disabled
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-2 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded-md border border-cyan-500/20">
-                              @lk3mpe
-                            </span>
-                            <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                          <Switch
+                            id="navbar-switch-x"
+                            checked={config.xPostingEnabled}
+                            onChange={toggleXPosting}
+                            activeColor="cyan"
+                            ariaLabel="Toggle X posting"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pl-9.5">
+                          {config.xPostingEnabled
+                            ? "Posts companion summary tweets automatically to X upon publication."
+                            : "Disables companion posts to X on publication (Web Intent stays available)."}
+                        </p>
+                      </div>
+
+                      {/* Consoles & Telemetry Section Header */}
+                      <div className="px-3.5 pt-2 pb-1 flex items-center justify-between">
+                        <span className="text-[9px] font-mono uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
+                          Editor Consoles &amp; Telemetry
+                        </span>
+                        {onOpenEditorConsole && (
+                          <button
+                            onClick={() => {
+                              setIsToolsOpen(false);
+                              onOpenEditorConsole("dispatch");
+                            }}
+                            className="text-[9px] font-mono font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            Open Console <ArrowUpRight className="w-2.5 h-2.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* 1. arXiv Next-Day Dispatch Option */}
+                      <button
+                        id="dropdown-daily-dispatch-btn"
+                        onClick={() => {
+                          setIsToolsOpen(false);
+                          if (onOpenEditorConsole) onOpenEditorConsole("dispatch");
+                          else if (onOpenDailyDispatch) onOpenDailyDispatch();
+                        }}
+                        className="w-full px-3.5 py-2 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-800/60"
+                        role="menuitem"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                            <Layers className="w-3.5 h-3.5" />
                           </div>
-                        </button>
-                      )}
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                              arXiv Next-Day
+                              <span className="px-1 py-0.1 rounded text-[8px] font-mono font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                                09:00 ART
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {hasPendingDispatch ? (
+                            <span className="text-[9px] font-mono font-bold text-amber-600 dark:text-amber-400 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/60 rounded border border-amber-500/30 animate-pulse">
+                              Review
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                              Cadence
+                            </span>
+                          )}
+                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                        </div>
+                      </button>
+
+                      {/* 2. Observatory Climate & Sky Telemetry Option */}
+                      <button
+                        id="dropdown-climate-btn"
+                        onClick={() => {
+                          setIsToolsOpen(false);
+                          if (onOpenEditorConsole) onOpenEditorConsole("climate");
+                          else if (onOpenObservatoryClimate) onOpenObservatoryClimate();
+                          else if (onOpenDailyDispatch) onOpenDailyDispatch();
+                        }}
+                        className="w-full px-3.5 py-2 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-800/60"
+                        role="menuitem"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 rounded-md bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30">
+                            <Compass className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                              Observatory Climate
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] font-mono text-cyan-600 dark:text-cyan-400 px-1.5 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded border border-cyan-500/20">
+                            -34.6° BA
+                          </span>
+                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                        </div>
+                      </button>
+
+                      {/* 3. X (Twitter) Diagnostics Option */}
+                      <button
+                        id="dropdown-x-test-btn"
+                        onClick={() => {
+                          setIsToolsOpen(false);
+                          if (onOpenEditorConsole) onOpenEditorConsole("xtest");
+                          else if (onOpenXTest) onOpenXTest();
+                        }}
+                        className="w-full px-3.5 py-2 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-800/60"
+                        role="menuitem"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 rounded-md bg-slate-900 dark:bg-black text-white flex items-center justify-center shrink-0 font-bold text-[10px] border border-slate-700">
+                            𝕏
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                              X Diagnostics
+                              <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                                $0 Bal
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-1.5 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded border border-cyan-500/20">
+                            @lk3mpe
+                          </span>
+                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                        </div>
+                      </button>
+
+                      {/* 4. Pipeline Status Option */}
+                      <button
+                        id="dropdown-pipeline-btn"
+                        onClick={() => {
+                          setIsToolsOpen(false);
+                          if (onOpenEditorConsole) onOpenEditorConsole("pipeline");
+                          else if (onOpenPipelineStatus) onOpenPipelineStatus();
+                        }}
+                        className="w-full px-3.5 py-2 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer"
+                        role="menuitem"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 rounded-md bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30">
+                            {runningCount > 0 ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />
+                            ) : (
+                              <Activity className="w-3.5 h-3.5" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                              Pipeline Status
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {runningCount > 0 ? (
+                            <span className="text-[9px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-1.5 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded border border-cyan-500/20 animate-pulse">
+                              {runningCount} active
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20">
+                              Ready
+                            </span>
+                          )}
+                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                        </div>
+                      </button>
 
                       {/* Subtle Footer Bar */}
                       <div className="px-3.5 pt-2 pb-0.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-400 dark:text-slate-500">
-                        <span>Autonomous Synthesis Engine</span>
-                        <span>v2.4</span>
+                        <span>Autonomous Stack</span>
+                        <span>v2.5</span>
                       </div>
                     </div>
                   )}

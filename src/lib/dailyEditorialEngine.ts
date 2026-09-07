@@ -82,7 +82,7 @@ export interface StagedDailyDispatch {
   createdAt: number;
   scheduledFor: number; // 9:00 AM ART timestamp
   autoPublishAt: number; // 10:00 AM ART timestamp
-  status: "staged_pending_review" | "accepted_and_published" | "auto_published" | "redrafted";
+  status: "staged_pending_review" | "accepted_and_published" | "auto_published" | "redrafted" | "sourced_pending_generation";
   selectedCategory: "physics.optics" | "quant-ph";
   candidatePaper: ArxivPaper & {
     score: number;
