@@ -5,6 +5,82 @@ import { EditorModeButton } from "./EditorModeButton";
 import { Switch } from "./Switch";
 import { useEditorConfig } from "../lib/editorConfig";
 
+// Vector Arxiv Logo Badge matching uploaded brand asset
+const ArxivLogoIcon: React.FC<{ className?: string }> = ({ className = "w-8 h-8" }) => (
+  <div 
+    className={`${className} rounded-lg bg-[#8F1414] flex items-center justify-center p-1 border border-red-800/40 shadow-xs shrink-0 select-none overflow-hidden`}
+    title="arXiv Article Generation"
+  >
+    <svg
+      viewBox="0 0 247 111"
+      className="w-full h-auto"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      {/* 'a' */}
+      <path
+        d="M390.61,255.154c5.018,0,8.206,3.312,8.206,8.4v37.831H363.308a4.813,4.813,0,0,1-5.143-4.929V283.427a8.256,8.256,0,0,1,7-8.148l25.507-3.572v-8.4H362.306a4.014,4.014,0,0,1-4.141-4.074c0-2.87,2.143-4.074,4.355-4.074Zm.059,38.081V279.942l-24.354,3.4v9.9Z"
+        transform="translate(-358.165 -222.27)"
+        fill="#ffffff"
+      />
+      {/* 'r' */}
+      <path
+        d="M427.571,255.154c1.859,0,3.1,1.24,3.985,3.453,1.062-2.213,2.568-3.453,4.694-3.453h14.878a4.062,4.062,0,0,1,4.074,4.074v7.828c0,2.656-1.327,4.074-4.074,4.074-2.656,0-4.074-1.418-4.074-4.074V263.3H436.515a2.411,2.411,0,0,0-2.656,2.745v27.188h10.007c2.658,0,4.074,1.329,4.074,4.074s-1.416,4.074-4.074,4.074h-26.39c-2.659,0-3.986-1.328-3.986-4.074s1.327-4.074,3.986-4.074h8.236V263.3h-7.263c-2.656,0-3.985-1.329-3.985-4.074,0-2.658,1.329-4.074,3.985-4.074Z"
+        transform="translate(-358.165 -222.27)"
+        fill="#ffffff"
+      />
+      {/* 'x' stroke 1 (white) */}
+      <path
+        d="M486.149,277.877l-32.741,38.852c-1.286,1.372-2.084,3.777-1.365,5.5a4.705,4.705,0,0,0,4.4,2.914,4.191,4.191,0,0,0,3.16-1.563l40.191-42.714a4.417,4.417,0,0,0,.042-6.042Z"
+        transform="translate(-358.165 -222.27)"
+        fill="#ffffff"
+      />
+      {/* 'x' stroke 2 (silver-grey crossing stroke) */}
+      <path
+        d="M486.149,277.877l31.187-38.268c1.492-1.989,2.2-3.03,1.492-4.723a5.142,5.142,0,0,0-4.481-3.161h0a4.024,4.024,0,0,0-3.008,1.108L472.711,274.6a4.769,4.769,0,0,0,.015,6.53L520.512,332.2a3.913,3.913,0,0,0,3.137,1.192,4.394,4.394,0,0,0,4.027-2.818c.719-1.727-.076-3.438-1.4-5.23l-40.124-47.464"
+        transform="translate(-358.165 -222.27)"
+        fill="#D1D5DB"
+      />
+      {/* 'x' stroke 3 (white top-right branch) */}
+      <path
+        d="M499.833,274.828,453.169,224.4s-1.713-2.08-3.524-2.124a4.607,4.607,0,0,0-4.338,2.788c-.705,1.692-.2,2.88,1.349,5.1l40.093,48.422"
+        transform="translate(-358.165 -222.27)"
+        fill="#ffffff"
+      />
+      {/* 'i' */}
+      <path
+        d="M539.233,255.154c2.656,0,4.074,1.416,4.074,4.074v34.007h10.1c2.746,0,4.074,1.329,4.074,4.074s-1.328,4.074-4.074,4.074H524.8c-2.656,0-4.074-1.328-4.074-4.074s1.418-4.074,4.074-4.074h10.362V263.3h-8.533c-2.744,0-4.073-1.329-4.073-4.074,0-2.658,1.329-4.074,4.073-4.074Zm4.22-17.615a5.859,5.859,0,1,1-5.819-5.819A5.9,5.9,0,0,1,543.453,237.539Z"
+        transform="translate(-358.165 -222.27)"
+        fill="#ffffff"
+      />
+      {/* 'v' */}
+      <path
+        d="M605.143,259.228a4.589,4.589,0,0,1-.267,1.594L590,298.9a3.722,3.722,0,0,1-3.721,2.48h-5.933a3.689,3.689,0,0,1-3.808-2.48l-15.055-38.081a3.23,3.23,0,0,1-.355-1.594,4.084,4.084,0,0,1,4.164-4.074,3.8,3.8,0,0,1,3.718,2.656l14.348,36.134,13.9-36.134a3.8,3.8,0,0,1,3.72-2.656A4.084,4.084,0,0,1,605.143,259.228Z"
+        transform="translate(-358.165 -222.27)"
+        fill="#ffffff"
+      />
+    </svg>
+  </div>
+);
+
+// Vector X (Twitter) Logo Badge
+const XLogoIcon: React.FC<{ className?: string }> = ({ className = "w-8 h-8" }) => (
+  <div 
+    className={`${className} rounded-lg bg-black text-white flex items-center justify-center p-1.5 border border-slate-800 shadow-xs shrink-0 select-none overflow-hidden`}
+    title="X Posting"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      className="w-4 h-4 text-white"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  </div>
+);
+
 interface NavbarProps {
   onOpenCreate: () => void;
   onOpenAbout: () => void;
@@ -206,267 +282,35 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 text-slate-400 dark:text-slate-500 ${isToolsOpen ? "rotate-180 text-white dark:text-slate-950" : "group-hover:text-slate-700 dark:group-hover:text-slate-200"}`} />
                   </button>
 
-                  {/* Dropdown Menu Flyout - Config with 2 Switches & Diagnostics */}
+                  {/* Dropdown Menu Flyout - 2 Switches only: arXiv icon + switch, X icon + switch */}
                   {isToolsOpen && (
                     <div 
-                      className="absolute right-0 mt-2.5 w-84 sm:w-92 rounded-2xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 shadow-2xl shadow-slate-900/15 dark:shadow-black/50 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
+                      className="absolute right-0 mt-2 w-36 sm:w-40 rounded-2xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-slate-900/15 dark:shadow-black/60 p-2 z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150"
                       role="menu"
+                      aria-label="Configuration Switches"
                     >
-                      {/* Top Specular Accent Horizon */}
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-emerald-500 opacity-90" />
-
-                      {/* Header */}
-                      <div className="px-3.5 pt-1.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Sliders className="w-3.5 h-3.5 text-cyan-500" />
-                          <span className="text-[11px] uppercase font-mono font-extrabold tracking-wider text-slate-900 dark:text-slate-100">
-                            Config
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                          Autonomous Stack
-                        </span>
+                      {/* 1. arXiv switch (icon only next to switch) */}
+                      <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-900/70 transition-colors">
+                        <ArxivLogoIcon className="w-8 h-8" />
+                        <Switch
+                          id="navbar-switch-arxiv"
+                          checked={config.arxivGenerationEnabled}
+                          onChange={toggleArxivGeneration}
+                          activeColor="emerald"
+                          ariaLabel="Toggle arXiv article generation"
+                        />
                       </div>
 
-                      {/* 1. arXiv Switch Component */}
-                      <div className="px-3.5 py-3 border-b border-slate-100 dark:border-slate-800/70 hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
-                              <Layers className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                arXiv
-                                {config.arxivGenerationEnabled ? (
-                                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                                    Generating
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-                                    Sourcing Only
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <Switch
-                            id="navbar-switch-arxiv"
-                            checked={config.arxivGenerationEnabled}
-                            onChange={toggleArxivGeneration}
-                            activeColor="emerald"
-                            ariaLabel="Toggle arXiv article generation"
-                          />
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pl-9.5">
-                          {config.arxivGenerationEnabled
-                            ? "Disabling will stop article generation while maintaining candidate sourcing & crawling."
-                            : "Generation paused. Paper crawling and candidate scoring remain active."}
-                        </p>
-                      </div>
-
-                      {/* 2. X Switch Component */}
-                      <div className="px-3.5 py-3 border-b border-slate-100 dark:border-slate-800/70 hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-black text-white flex items-center justify-center border border-slate-700 font-bold text-xs shrink-0">
-                              𝕏
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                X
-                                {config.xPostingEnabled ? (
-                                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 inline-block animate-pulse" />
-                                    Active
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-                                    Disabled
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <Switch
-                            id="navbar-switch-x"
-                            checked={config.xPostingEnabled}
-                            onChange={toggleXPosting}
-                            activeColor="cyan"
-                            ariaLabel="Toggle X posting"
-                          />
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pl-9.5">
-                          {config.xPostingEnabled
-                            ? "Posts companion summary tweets automatically to X upon publication."
-                            : "Disables companion posts to X on publication (Web Intent stays available)."}
-                        </p>
-                      </div>
-
-                      {/* Consoles & Telemetry Section Header */}
-                      <div className="px-3.5 pt-2 pb-1 flex items-center justify-between">
-                        <span className="text-[9px] font-mono uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
-                          Editor Consoles &amp; Telemetry
-                        </span>
-                        {onOpenEditorConsole && (
-                          <button
-                            onClick={() => {
-                              setIsToolsOpen(false);
-                              onOpenEditorConsole("dispatch");
-                            }}
-                            className="text-[9px] font-mono font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-0.5 cursor-pointer"
-                          >
-                            Open Console <ArrowUpRight className="w-2.5 h-2.5" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* 1. arXiv Next-Day Dispatch Option */}
-                      <button
-                        id="dropdown-daily-dispatch-btn"
-                        onClick={() => {
-                          setIsToolsOpen(false);
-                          if (onOpenEditorConsole) onOpenEditorConsole("dispatch");
-                          else if (onOpenDailyDispatch) onOpenDailyDispatch();
-                        }}
-                        className="w-full px-3.5 py-2 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-800/60"
-                        role="menuitem"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
-                            <Layers className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                              arXiv Next-Day
-                              <span className="px-1 py-0.1 rounded text-[8px] font-mono font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30">
-                                09:00 ART
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {hasPendingDispatch ? (
-                            <span className="text-[9px] font-mono font-bold text-amber-600 dark:text-amber-400 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/60 rounded border border-amber-500/30 animate-pulse">
-                              Review
-                            </span>
-                          ) : (
-                            <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                              Cadence
-                            </span>
-                          )}
-                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                        </div>
-                      </button>
-
-                      {/* 2. Observatory Climate & Sky Telemetry Option */}
-                      <button
-                        id="dropdown-climate-btn"
-                        onClick={() => {
-                          setIsToolsOpen(false);
-                          if (onOpenEditorConsole) onOpenEditorConsole("climate");
-                          else if (onOpenObservatoryClimate) onOpenObservatoryClimate();
-                          else if (onOpenDailyDispatch) onOpenDailyDispatch();
-                        }}
-                        className="w-full px-3.5 py-2 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-800/60"
-                        role="menuitem"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 rounded-md bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30">
-                            <Compass className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                              Observatory Climate
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-mono text-cyan-600 dark:text-cyan-400 px-1.5 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded border border-cyan-500/20">
-                            -34.6° BA
-                          </span>
-                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                        </div>
-                      </button>
-
-                      {/* 3. X (Twitter) Diagnostics Option */}
-                      <button
-                        id="dropdown-x-test-btn"
-                        onClick={() => {
-                          setIsToolsOpen(false);
-                          if (onOpenEditorConsole) onOpenEditorConsole("xtest");
-                          else if (onOpenXTest) onOpenXTest();
-                        }}
-                        className="w-full px-3.5 py-2 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer border-b border-slate-100 dark:border-slate-800/60"
-                        role="menuitem"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 rounded-md bg-slate-900 dark:bg-black text-white flex items-center justify-center shrink-0 font-bold text-[10px] border border-slate-700">
-                            𝕏
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                              X Diagnostics
-                              <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                                $0 Bal
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-1.5 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded border border-cyan-500/20">
-                            @lk3mpe
-                          </span>
-                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                        </div>
-                      </button>
-
-                      {/* 4. Pipeline Status Option */}
-                      <button
-                        id="dropdown-pipeline-btn"
-                        onClick={() => {
-                          setIsToolsOpen(false);
-                          if (onOpenEditorConsole) onOpenEditorConsole("pipeline");
-                          else if (onOpenPipelineStatus) onOpenPipelineStatus();
-                        }}
-                        className="w-full px-3.5 py-2 text-left flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer"
-                        role="menuitem"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 rounded-md bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/30">
-                            {runningCount > 0 ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />
-                            ) : (
-                              <Activity className="w-3.5 h-3.5" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                              Pipeline Status
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {runningCount > 0 ? (
-                            <span className="text-[9px] font-mono font-bold text-cyan-600 dark:text-cyan-400 px-1.5 py-0.5 bg-cyan-50 dark:bg-cyan-950/50 rounded border border-cyan-500/20 animate-pulse">
-                              {runningCount} active
-                            </span>
-                          ) : (
-                            <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20">
-                              Ready
-                            </span>
-                          )}
-                          <ArrowUpRight className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                        </div>
-                      </button>
-
-                      {/* Subtle Footer Bar */}
-                      <div className="px-3.5 pt-2 pb-0.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-400 dark:text-slate-500">
-                        <span>Autonomous Stack</span>
-                        <span>v2.5</span>
+                      {/* 2. X switch (icon only next to switch) */}
+                      <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-900/70 transition-colors">
+                        <XLogoIcon className="w-8 h-8" />
+                        <Switch
+                          id="navbar-switch-x"
+                          checked={config.xPostingEnabled}
+                          onChange={toggleXPosting}
+                          activeColor="cyan"
+                          ariaLabel="Toggle X posting"
+                        />
                       </div>
                     </div>
                   )}

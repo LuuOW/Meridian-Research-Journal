@@ -1962,13 +1962,13 @@ export default function App() {
         theme={theme}
       />
 
-      {/* FLOATING XAI CODING AGENT ACTION BUTTON (Restricted to Editor Mode) */}
-      {isEditorMode && (
+      {/* FLOATING XAI CODING AGENT ACTION BUTTON - Hidden per user request */}
+      {/* {isEditorMode && (
         <XaiFloatingButton
           onClick={() => setIsXaiAgentModalOpen(true)}
           theme={theme}
         />
-      )}
+      )} */}
 
       {/* EDITOR PASSWORD MODAL */}
       <EditorPasswordModal
