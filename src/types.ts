@@ -17,6 +17,7 @@ export interface BlogPost {
   createdAt?: number;
   views?: number;
   isEditorEdition?: boolean;
+  updatedAt?: string;
 }
 
 export interface GenerationRequest {
