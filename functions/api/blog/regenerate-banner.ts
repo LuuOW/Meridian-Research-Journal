@@ -64,58 +64,97 @@ async function commitFilesToGitHub(params: {
     return { success: false, error: "Invalid repository format" };
   }
 
-  for (const file of files) {
-    let sha: string | undefined;
-    try {
-      const getRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repoName}/contents/${file.path}?ref=${branch}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "User-Agent": "Meridian-Research-Cloudflare",
-            Accept: "application/vnd.github+json"
-          }
-        }
-      );
-      if (getRes.ok) {
-        const getData: any = await getRes.json();
-        sha = getData.sha;
-      }
-    } catch {}
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "User-Agent": "Meridian-Research-Cloudflare",
+    Accept: "application/vnd.github+json",
+    "Content-Type": "application/json"
+  };
 
-    const encoded = encodeBase64(file.content);
-    const payload: any = {
-      message,
-      content: encoded,
-      branch,
-      committer: { name: authorName, email: authorEmail },
-      author: { name: authorName, email: authorEmail }
-    };
-    if (sha) payload.sha = sha;
+  try {
+    // 1. Get latest commit SHA on branch
+    const refRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/${branch}?_t=${Date.now()}`,
+      { headers }
+    );
+    if (!refRes.ok) return { success: false, error: "Failed to get ref" };
+    const refData: any = await refRes.json();
+    const latestCommitSha = refData.object?.sha;
 
-    try {
-      const putRes = await fetch(
-        `https://api.github.com/repos/${owner}/${repoName}/contents/${file.path}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "User-Agent": "Meridian-Research-Cloudflare",
-            "Content-Type": "application/json",
-            Accept: "application/vnd.github+json"
-          },
-          body: JSON.stringify(payload)
-        }
-      );
-      if (!putRes.ok) {
-        console.warn(`[GitHub Commit] Warning updating ${file.path}: HTTP ${putRes.status}`);
+    // 2. Get tree SHA of latest commit
+    const commitRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repoName}/git/commits/${latestCommitSha}`,
+      { headers }
+    );
+    if (!commitRes.ok) return { success: false, error: "Failed to get commit" };
+    const commitData: any = await commitRes.json();
+    const baseTreeSha = commitData.tree?.sha;
+
+    // 3. Create Blobs for each file (supports files of arbitrary size >1MB)
+    const treeItems: { path: string; mode: string; type: string; sha: string }[] = [];
+    for (const file of files) {
+      const blobRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/blobs`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          content: file.content,
+          encoding: "utf-8"
+        })
+      });
+      if (!blobRes.ok) {
+        console.warn(`[GitHub Blob] Failed creating blob for ${file.path}`);
+        continue;
       }
-    } catch (err: any) {
-      console.warn(`[GitHub Commit] Error committing ${file.path}:`, err?.message);
+      const blobData: any = await blobRes.json();
+      treeItems.push({
+        path: file.path,
+        mode: "100644",
+        type: "blob",
+        sha: blobData.sha
+      });
     }
-  }
 
-  return { success: true };
+    // 4. Create new Tree
+    const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/trees`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        base_tree: baseTreeSha,
+        tree: treeItems
+      })
+    });
+    if (!treeRes.ok) return { success: false, error: "Failed to create tree" };
+    const treeData: any = await treeRes.json();
+    const newTreeSha = treeData.sha;
+
+    // 5. Create new Commit
+    const nowIso = new Date().toISOString();
+    const newCommitRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/commits`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        message,
+        tree: newTreeSha,
+        parents: [latestCommitSha],
+        author: { name: authorName, email: authorEmail, date: nowIso },
+        committer: { name: authorName, email: authorEmail, date: nowIso }
+      })
+    });
+    if (!newCommitRes.ok) return { success: false, error: "Failed to create commit" };
+    const newCommitData: any = await newCommitRes.json();
+
+    // 6. Update branch ref
+    await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/${branch}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ sha: newCommitData.sha, force: true })
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.warn("GitHub commit error:", err?.message);
+    return { success: false, error: err?.message };
+  }
 }
 
 export const onRequestPost = async (context: {
