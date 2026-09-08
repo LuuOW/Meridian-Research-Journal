@@ -346,3 +346,12 @@ export function generateProceduralBannerSvg(title: string, tags?: string | strin
 </svg>`;
 }
 
+export {
+  generateCorpusBannerSvg,
+  regenerateAllCorpusBanners,
+  classifyArticleArchetype,
+  deriveCorpusProfile,
+  type ScientificArchetype,
+  type CorpusBannerProfile
+} from "./corpusBannerAlgorithm.js";
+

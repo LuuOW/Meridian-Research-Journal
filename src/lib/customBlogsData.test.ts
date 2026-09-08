@@ -25,6 +25,16 @@ test("custom_blogs.json matches PRELOADED_BLOGS in length and critical fields", 
 test("all recently generated arXiv articles have verified structure and valid metadata", () => {
   const recentArticles = [
     {
+      id: "blog-2609-05052v1-0029",
+      arxiv: "2609.05052",
+      keyword: "dielectric gratings"
+    },
+    {
+      id: "generated-1787570419854",
+      arxiv: "2408.09854",
+      keyword: "state frame potential"
+    },
+    {
       id: "generated-1787340727569",
       arxiv: "2608.20224",
       keyword: "two-photon imaging"

@@ -91,19 +91,20 @@ describe("Sitemap, SEO & Static Assets Suite", () => {
   });
 });
 
-// Advertising & Service Workers removed tests (replaces previous ad/SW presence suite)
-describe("Advertising & Service Workers removed", () => {
-  test("index.html does not include third-party ad tags", () => {
+// Advertising & Monetization Integration Suite
+describe("Advertising & Monetization Integration Suite", () => {
+  test("index.html contains valid monetization and AdSense tags", () => {
     const indexPath = path.join(process.cwd(), "index.html");
     assert.ok(fs.existsSync(indexPath), "index.html must exist");
     const content = fs.readFileSync(indexPath, "utf-8");
-    assert.ok(!content.includes('quge5.com') && !content.includes('profitableratecpmnetwork.com') && !content.includes('omg10.com') && !content.includes('pagead2.googlesyndication.com'));
+    assert.ok(content.includes('pagead2.googlesyndication.com'), "index.html must include Google AdSense script");
+    assert.ok(content.includes('ca-pub-7734562716191044'), "index.html must include publisher ID");
   });
 
   test("ad service worker files are neutralized or absent", () => {
     const adsterraPath = path.join(process.cwd(), "adsterra-sw.js");
     const monetagPath = path.join(process.cwd(), "monetag-sw.js");
-    const readIfExists = (p) => fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+    const readIfExists = (p: string) => fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
     const a = readIfExists(adsterraPath);
     const m = readIfExists(monetagPath);
     // Ensure no remote importScripts are present
@@ -196,7 +197,7 @@ describe("Math AST & Article Typography Stress Test", () => {
   });
 
   test("Latex sanitizer handles exotic bracketings and nested delimiters", () => {
-    assert.strictEqual(sanitizeLatexFormula("\\[ \\hat{H} \\left| \\psi \\right\\rangle = E \\left| \\psi \\right\\rangle \\]"), "\\hat{H} \\left| \\psi \\right\\rangle = E \\left| \\psi \\");
+    assert.strictEqual(sanitizeLatexFormula("\\[ \\hat{H} \\left| \\psi \\right\\rangle = E \\left| \\psi \\right\\rangle \\]"), "\\hat{H} \\left| \\psi \\right\\rangle = E \\left| \\psi \\right\\rangle");
     assert.strictEqual(sanitizeLatexFormula("$$ \\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J} $$"), "\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J}");
     assert.strictEqual(sanitizeLatexFormula(""), "");
     assert.strictEqual(sanitizeLatexFormula(null as any), "");

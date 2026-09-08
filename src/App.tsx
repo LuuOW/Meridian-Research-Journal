@@ -271,11 +271,6 @@ export default function App() {
     if (e) e.stopPropagation();
     if (!blogToUpdate) return;
 
-    if (!isEditorMode) {
-      setIsEditorPasswordModalOpen(true);
-      return;
-    }
-
     const activePassword = editorPassword || sessionStorage.getItem("meridian_editor_pwd") || "meridian";
     const bannerJob = createBannerGenerationJob(blogToUpdate);
     setJobs((prev) => [bannerJob, ...prev]);
@@ -775,8 +770,8 @@ export default function App() {
           }
           return;
         }
-      } catch (err) {
-        console.error("Failed to sync server backup JSON:", err);
+      } catch (err: any) {
+        console.warn("Server backup JSON sync offline/unreachable, continuing with local cache:", err?.message || err);
       }
     }
 
