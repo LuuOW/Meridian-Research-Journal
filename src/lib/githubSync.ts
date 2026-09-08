@@ -149,19 +149,28 @@ export function writeLocalBlogFiles(blogs: BlogPost[], targetBaseDir?: string): 
       }
     }
 
-    fs.writeFileSync(customBlogsPath, JSON.stringify(finalBlogs, null, 2), "utf-8");
+    const blogsJson = JSON.stringify(finalBlogs, null, 2);
+    fs.writeFileSync(customBlogsPath, blogsJson, "utf-8");
+
+    const publicDir = path.join(baseDir, "public");
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
+    }
+    const publicCustomBlogsPath = path.join(publicDir, "custom_blogs.json");
+    fs.writeFileSync(publicCustomBlogsPath, blogsJson, "utf-8");
 
     const dataTsPath = path.join(baseDir, "src", "data.ts");
     const dataTsContent = generateDataTsContent(finalBlogs);
     fs.writeFileSync(dataTsPath, dataTsContent, "utf-8");
 
     const sitemapContent = generateSitemapXml(finalBlogs);
-    const publicDir = path.join(baseDir, "public");
-    if (!fs.existsSync(publicDir)) {
-      fs.mkdirSync(publicDir, { recursive: true });
-    }
     const publicSitemapPath = path.join(publicDir, "sitemap.xml");
     fs.writeFileSync(publicSitemapPath, sitemapContent, "utf-8");
+
+    const rootSitemapPath = path.join(baseDir, "sitemap.xml");
+    try {
+      fs.writeFileSync(rootSitemapPath, sitemapContent, "utf-8");
+    } catch {}
     return true;
   } catch (err) {
     console.error("Failed to write local blog files:", err);

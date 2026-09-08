@@ -33,7 +33,7 @@
     "tags": [
       "Topology"
     ],
-    "views": 10,
+    "views": 480,
     "timestamp": 1725200000000,
     "createdAt": 1725200000000
   },
@@ -52,7 +52,7 @@
       "Differential Geometry",
       "Control Theory"
     ],
-    "views": 120,
+    "views": 420,
     "timestamp": 1725100000000,
     "createdAt": 1725100000000
   },
@@ -69,11 +69,10 @@
     "bannerSvg": "<svg><text>Quantum</text></svg>",
     "tags": [
       "Quantum Mechanics",
-      "Spectral Theory",
-      "Optics"
+      "Spectral Theory"
     ],
-    "views": 450,
-    "timestamp": 1725200000000,
+    "views": 399,
+    "timestamp": 1725000000000,
     "createdAt": 1725000000000
   }
 ]

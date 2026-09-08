@@ -15,6 +15,7 @@ import path from "path";
 import { BlogPost } from "../types";
 import { parseArxivFeedXml, ArxivPaper } from "./arxivUtils";
 import { generateProceduralBannerSvg } from "./svgBannerGenerator";
+import { generateCorpusBannerSvg } from "./corpusBannerAlgorithm";
 import { ensureAnimatedSvg } from "./svgUtils";
 import { buildXArticleUrl, countSentences } from "./xUtils";
 import { postTweetToX, XTweetResult } from "./xApi";
@@ -645,7 +646,8 @@ export function saveStagedDailyDispatch(dispatch: StagedDailyDispatch): void {
 export function generateStagedArticleDraft(
   candidate: ArxivPaper & { category: "physics.optics" | "quant-ph"; score?: number },
   corpus: CorpusAnalysis,
-  artInfo: ReturnType<typeof getArtTime>
+  artInfo: ReturnType<typeof getArtTime>,
+  existingCorpus?: BlogPost[]
 ): BlogPost {
   const timestamp = Date.now();
   const slugId = `${candidate.id.replace(/[^a-zA-Z0-9]/g, "-")}-${timestamp.toString().slice(-4)}`;
@@ -655,8 +657,14 @@ export function generateStagedArticleDraft(
     ? ["Optics", "Photonics", "Waveguides", "Mathematical Physics"]
     : ["Quantum Physics", "Hamiltonians", "Topology", "Mathematical Physics"];
 
-  // Generate procedural animated SVG banner with themed vector math
-  const rawSvg = generateProceduralBannerSvg(candidate.title, tags);
+  // Generate unique contextual corpus-aware animated SVG banner
+  const draftStub: Partial<BlogPost> = {
+    id: `blog-${slugId}`,
+    title: candidate.title,
+    tags,
+    excerpt: candidate.summary
+  };
+  const rawSvg = generateCorpusBannerSvg(draftStub, existingCorpus || []);
   const bannerSvg = ensureAnimatedSvg(rawSvg);
 
   // Scholarly markdown content with KaTeX math equations

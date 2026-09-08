@@ -215,17 +215,29 @@ export class DailyScheduleDaemon implements IMicroservice {
       let dispatch = loadStagedDailyDispatch();
 
       // If no dispatch staged for today, or previous dispatch is from a previous date:
-      // Only auto-stage during the 9:00 AM ART review window (hour === 9) on weekdays. This avoids staging
-      // drafts after the 10:00 AM auto-publish cutoff which would be immediately auto-published.
+      // Only auto-stage during the 9:00 AM ART review window (hour === 9) on weekdays.
+      // If past 10 AM ART on weekdays and today's article has not been published yet, perform late recovery.
       // On weekends, arXiv has no announcements; Friday preprints stage for Monday 9:00 AM ART.
       if (!dispatch || (dispatch.dateArt !== art.dateString && dispatch.dateArt !== art.targetPublishDate)) {
         if (art.isReviewWindow) {
           console.log(`[${this.serviceName}] 9:00 AM ART review window detected for date ${art.dateString}. Staging today's arXiv draft...`);
           dispatch = await this.stageTodayDispatch();
-        } else {
-          // If we're already past 10 AM ART on weekdays, skip staging to avoid immediate auto-publish loops.
-          if (art.isPast10AmArt) {
-            console.log(`[${this.serviceName}] Past 10:00 AM ART and no staged dispatch present; skipping staging to avoid immediate auto-publish.`);
+        } else if (art.isPast10AmArt && !art.isWeekend) {
+          // Check if today's edition is already in corpus
+          const existingBlogs = this.persistenceService.readBlogs();
+          const targetDateStr = art.dateString; // e.g. "2026-09-08"
+          const publishedToday = existingBlogs.some(b => {
+            const bDate = b.date ? new Date(b.date).toISOString().slice(0, 10) : "";
+            return bDate === targetDateStr || b.date === `September ${parseInt(targetDateStr.slice(8))}, ${targetDateStr.slice(0, 4)}`;
+          });
+          if (!publishedToday) {
+            console.log(`[${this.serviceName}] Past 10:00 AM ART on weekday and no article published for ${targetDateStr}; auto-staging and auto-publishing today's edition...`);
+            dispatch = await this.stageTodayDispatch(undefined, true);
+            if (dispatch && this.arxivGenerationEnabled) {
+              await this.executePublish(dispatch, "auto_timeout_publish");
+            }
+          } else {
+            console.log(`[${this.serviceName}] Past 10:00 AM ART and today's article is already present in corpus.`);
           }
         }
       }
@@ -251,11 +263,14 @@ export class DailyScheduleDaemon implements IMicroservice {
    * Stages today's publication draft by analyzing corpus history, crawling arXiv,
    * ranking candidates, generating KaTeX draft, animated SVG banner, and 3-sentence X post.
    */
-  public async stageTodayDispatch(forceCategory?: "physics.optics" | "quant-ph"): Promise<StagedDailyDispatch> {
+  public async stageTodayDispatch(
+    forceCategory?: "physics.optics" | "quant-ph",
+    allowLateStaging: boolean = false
+  ): Promise<StagedDailyDispatch> {
     const art = getArtTime();
 
-    // Defensive: do not stage if past 10:00 AM ART (auto-publish cutoff)
-    if (art.isPast10AmArt && !forceCategory) {
+    // Defensive: do not stage if past 10:00 AM ART unless explicitly forced or in late staging recovery
+    if (art.isPast10AmArt && !forceCategory && !allowLateStaging) {
       console.log(`[${this.serviceName}] stageTodayDispatch called after 10:00 AM ART; skipping staging to prevent immediate auto-publish.`);
       throw new Error("Staging skipped: past 10:00 AM ART");
     }
@@ -341,7 +356,7 @@ export class DailyScheduleDaemon implements IMicroservice {
     // Generate Article Draft with Math & Animated SVG Banner (only if arXiv generation switch is enabled)
     let draftArticle: BlogPost;
     if (this.arxivGenerationEnabled) {
-      draftArticle = generateStagedArticleDraft(primaryCandidate, corpus, art);
+      draftArticle = generateStagedArticleDraft(primaryCandidate, corpus, art, existingBlogs);
     } else {
       console.log(
         `[${this.serviceName}] arXiv article generation disabled in Config. Sourcing & crawling paper only without synthesizing article draft.`
@@ -525,7 +540,7 @@ export class DailyScheduleDaemon implements IMicroservice {
 
       console.log(`[${this.serviceName}] Redrafting with alternate candidate: "${nextCandidate.title}"`);
 
-      const draftArticle = generateStagedArticleDraft(nextCandidate, corpus, art);
+      const draftArticle = generateStagedArticleDraft(nextCandidate, corpus, art, existingBlogs);
       const xPost = buildAutonomousXPost(draftArticle, nextCandidate.id, nextCandidate.category);
 
       dispatch.candidatePaper = nextCandidate;
@@ -610,7 +625,8 @@ export class DailyScheduleDaemon implements IMicroservice {
             link: selected.arxivLink,
           },
           corpus,
-          art
+          art,
+          existingBlogs
         );
         dispatch.status = "staged_pending_review";
       }
@@ -655,7 +671,8 @@ export class DailyScheduleDaemon implements IMicroservice {
             link: top.arxivLink,
           },
           corpus,
-          art
+          art,
+          existingBlogs
         );
         const sourceBatch = getSourceArxivBatch(art.dayOfWeek);
         dispatch = {

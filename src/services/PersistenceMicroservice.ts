@@ -34,8 +34,10 @@ export class PersistenceMicroservice implements IMicroservice {
   private recordsFile: string;
   private deviceRegistryFile: string;
   private customBlogsFile: string;
+  private publicCustomBlogsFile: string;
   private dataTsFile: string;
   private sitemapFile: string;
+  private rootSitemapFile: string;
 
   private startTime: number = Date.now();
   private lastHeartbeat: number = Date.now();
@@ -51,8 +53,10 @@ export class PersistenceMicroservice implements IMicroservice {
     this.recordsFile = path.join(this.dataDir, "pipeline_records.json");
     this.deviceRegistryFile = path.join(this.dataDir, "device_sync_registry.json");
     this.customBlogsFile = path.join(base, "custom_blogs.json");
+    this.publicCustomBlogsFile = path.join(base, "public", "custom_blogs.json");
     this.dataTsFile = path.join(base, "src", "data.ts");
     this.sitemapFile = path.join(base, "public", "sitemap.xml");
+    this.rootSitemapFile = path.join(base, "sitemap.xml");
     this.firestoreDbInstance = options?.firestoreDb || null;
   }
 
@@ -243,9 +247,15 @@ export class PersistenceMicroservice implements IMicroservice {
       healthy: false
     };
 
-    // Tier 1: custom_blogs.json (Local dynamic JSON)
+    // Tier 1: custom_blogs.json (Local dynamic JSON + public mirror)
     try {
-      fs.writeFileSync(this.customBlogsFile, JSON.stringify(targetBlogs, null, 2), "utf-8");
+      const blogsJson = JSON.stringify(targetBlogs, null, 2);
+      fs.writeFileSync(this.customBlogsFile, blogsJson, "utf-8");
+      try {
+        const pubDir = path.dirname(this.publicCustomBlogsFile);
+        if (!fs.existsSync(pubDir)) fs.mkdirSync(pubDir, { recursive: true });
+        fs.writeFileSync(this.publicCustomBlogsFile, blogsJson, "utf-8");
+      } catch {}
       status.customBlogsJson = true;
     } catch (err) {
       console.error(`[${this.serviceName}] Tier 1 (custom_blogs.json) write failed:`, err);
@@ -268,10 +278,15 @@ export class PersistenceMicroservice implements IMicroservice {
       console.error(`[${this.serviceName}] Tier 3 (snapshot) write failed:`, err);
     }
 
-    // Tier 4: public/sitemap.xml (SEO indexing)
+    // Tier 4: public/sitemap.xml and root sitemap.xml (SEO indexing)
     try {
       const sitemapContent = generateSitemapXml(targetBlogs);
+      const pubDir = path.dirname(this.sitemapFile);
+      if (!fs.existsSync(pubDir)) fs.mkdirSync(pubDir, { recursive: true });
       fs.writeFileSync(this.sitemapFile, sitemapContent, "utf-8");
+      try {
+        fs.writeFileSync(this.rootSitemapFile, sitemapContent, "utf-8");
+      } catch {}
       status.sitemap = true;
     } catch (err) {
       console.error(`[${this.serviceName}] Tier 4 (sitemap.xml) write failed:`, err);
