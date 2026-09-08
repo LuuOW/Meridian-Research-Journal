@@ -318,11 +318,19 @@ export default function App() {
 
         // Update state in blogs list
         setBlogs((prev) =>
-          prev.map((b) => (b.id === blogToUpdate.id ? updatedBlog : b))
+          prev.map((b) =>
+            b.id === blogToUpdate.id || (b.slug && b.slug === blogToUpdate.slug)
+              ? updatedBlog
+              : b
+          )
         );
 
         // Update activeBlog state if it's currently open
-        if (activeBlog && activeBlog.id === blogToUpdate.id) {
+        if (
+          activeBlog &&
+          (activeBlog.id === blogToUpdate.id ||
+            (activeBlog.slug && activeBlog.slug === blogToUpdate.slug))
+        ) {
           setActiveBlog((prev) => (prev ? { ...prev, bannerSvg: newSvg } : null));
         }
 
@@ -335,11 +343,16 @@ export default function App() {
         try {
           const overrides = JSON.parse(localStorage.getItem("meridian_banner_overrides") || "{}");
           overrides[blogToUpdate.id] = newSvg;
+          if (blogToUpdate.slug) {
+            overrides[blogToUpdate.slug] = newSvg;
+          }
           localStorage.setItem("meridian_banner_overrides", JSON.stringify(overrides));
 
-          const customBlogs = blogs
-            .map((b) => (b.id === blogToUpdate.id ? updatedBlog : b))
-            .filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id));
+          const customBlogs = blogs.map((b) =>
+            b.id === blogToUpdate.id || (b.slug && b.slug === blogToUpdate.slug)
+              ? updatedBlog
+              : b
+          );
           localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
         } catch (_) {}
 
@@ -670,7 +683,10 @@ export default function App() {
     };
 
     const applyOverrides = (list: BlogPost[]) =>
-      deduplicateBlogs(list).map((b) => (bannerOverrides[b.id] ? { ...b, bannerSvg: bannerOverrides[b.id] } : b));
+      deduplicateBlogs(list).map((b) => {
+        const override = bannerOverrides[b.id] || (b.slug && bannerOverrides[b.slug]);
+        return override ? { ...b, bannerSvg: override } : b;
+      });
 
     // Immediately render local cache + preloaded blogs so the user sees blogs instantly
     const initialBlogs = sortBlogsByPublicationDate(applyOverrides([...localCustomBlogs, ...PRELOADED_BLOGS]));
@@ -703,7 +719,7 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         const rawBlogs = Array.isArray(data) ? data : (Array.isArray(data?.blogs) ? data.blogs : []);
-        serverBlogs = rawBlogs.filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+        serverBlogs = rawBlogs.filter((b: BlogPost) => b && b.id);
       } else {
         console.warn(`Server API responded with code ${response.status}. Using local cache fallback.`);
         fetchError = true;
@@ -713,15 +729,17 @@ export default function App() {
       fetchError = true;
     }
 
-    // 3. Merge lists using a Map keyed by id to avoid duplicates
+    // 3. Merge lists: PRELOADED_BLOGS provides baseline, localCustomBlogs overlays, and serverBlogs takes precedence
     const mergedMap = new Map<string, BlogPost>();
     
-    // Add local blogs first
+    PRELOADED_BLOGS.forEach(blog => {
+      mergedMap.set(blog.id, blog);
+    });
+
     localCustomBlogs.forEach(blog => {
       mergedMap.set(blog.id, blog);
     });
 
-    // Add server blogs (they take precedence or supplement)
     serverBlogs.forEach(blog => {
       mergedMap.set(blog.id, blog);
     });
@@ -739,14 +757,17 @@ export default function App() {
         if (response.ok) {
           const data = await response.json();
           const rawSynced = Array.isArray(data) ? data : (Array.isArray(data?.blogs) ? data.blogs : []);
-          const syncedBlogs = rawSynced.filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+          const syncedBlogs = rawSynced.filter((b: BlogPost) => b && b.id);
           
-          // Use syncedBlogs if available, otherwise preserve mergedCustomBlogs
-          const activeCustom = syncedBlogs.length > 0 ? syncedBlogs : mergedCustomBlogs;
-          const allBlogs = sortBlogsByPublicationDate(applyOverrides([...activeCustom, ...PRELOADED_BLOGS]));
+          if (syncedBlogs.length > 0) {
+            syncedBlogs.forEach(blog => {
+              mergedMap.set(blog.id, blog);
+            });
+          }
+          const allBlogs = sortBlogsByPublicationDate(applyOverrides(Array.from(mergedMap.values())));
           setBlogs(allBlogs);
-          if (activeCustom.length > 0) {
-            localStorage.setItem("meridian_blogs_saved", JSON.stringify(activeCustom));
+          if (mergedCustomBlogs.length > 0) {
+            localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
           }
 
           // Handle deep linking with resilient slug/ID matching
