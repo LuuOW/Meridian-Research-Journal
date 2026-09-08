@@ -697,7 +697,8 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "tags": [
       "Quantum",
       "Simulation"
-    ]
+    ],
+    "views": 576
   },
   {
     "title": "Spectral Fingerprints of Gauge Theories on a Quantum Computer",
