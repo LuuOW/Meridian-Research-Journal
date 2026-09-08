@@ -269,13 +269,29 @@ export async function commitFilesAtomicallyToGitHub(params: {
       const commitData: any = await commitRes.json();
       const baseTreeSha = commitData.tree?.sha;
 
-      // 3. Create a new Tree containing the updated files
-      const treeItems = files.map((file) => ({
-        path: file.path,
-        mode: "100644",
-        type: "blob",
-        content: file.content
-      }));
+      // 3. Create Git Blobs for each file to support arbitrarily large files without size limits (>1MB)
+      const treeItems: { path: string; mode: string; type: string; sha: string }[] = [];
+      for (const file of files) {
+        const blobRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            content: file.content,
+            encoding: "utf-8"
+          })
+        });
+        if (!blobRes.ok) {
+          const errJson: any = await blobRes.json().catch(() => ({}));
+          throw new Error(`Failed to create blob for ${file.path}: ${errJson.message || blobRes.statusText}`);
+        }
+        const blobData: any = await blobRes.json();
+        treeItems.push({
+          path: file.path,
+          mode: "100644",
+          type: "blob",
+          sha: blobData.sha
+        });
+      }
 
       const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
         method: "POST",
