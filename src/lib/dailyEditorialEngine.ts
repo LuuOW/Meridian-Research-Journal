@@ -19,6 +19,8 @@ import { generateCorpusBannerSvg } from "./corpusBannerAlgorithm";
 import { ensureAnimatedSvg } from "./svgUtils";
 import { buildXArticleUrl, countSentences } from "./xUtils";
 import { postTweetToX, XTweetResult } from "./xApi";
+import { formatSafeSubtitle, validateTitleAndSubtitle } from "./titleSubtitlePipeline";
+import { draftDistributionNote, cleanTextForDistributionNote } from "./distributionNotePipeline";
 
 export interface CorpusAnalysis {
   totalArticles: number;
@@ -389,12 +391,13 @@ export function buildAutonomousXPost(
 } {
   const shortId = blog.slug || blog.id.replace(/^blog-/, "");
   const canonicalUrl = buildXArticleUrl(shortId);
+  const readableTitle = cleanTextForDistributionNote(blog.title);
 
   // High-impact futurist headline
-  const headline = `BREAKTHROUGH: ${blog.title.slice(0, 75)}`;
+  const headline = `BREAKTHROUGH: ${readableTitle.slice(0, 75)}`;
 
   // Construct 3 distinct visionary sentences
-  const sentence1 = `Today's arXiv dispatch (${arxivId}) unveils ${blog.title.toLowerCase().replace(/\.$/, "")}, redefining our mathematical model of ${category === "physics.optics" ? "photonic wave transport" : "quantum state evolution"}.`;
+  const sentence1 = `Today's arXiv dispatch (${arxivId}) unveils ${readableTitle.toLowerCase().replace(/\.$/, "")}, redefining our mathematical model of ${category === "physics.optics" ? "photonic wave transport" : "quantum state evolution"}.`;
   const sentence2 = `By deriving exact boundary invariants and energy tensors, this breakthrough bridges deep theory into next-generation physical architectures.`;
   const sentence3 = `Explore our comprehensive mathematical derivation, interactive phase space simulation, and audio synthesis: ${canonicalUrl}`;
 
@@ -718,10 +721,13 @@ This preprint was selected by Meridian's autonomous AI selection model based on 
     year: "numeric",
   });
 
+  const rawExcerpt = formatSafeSubtitle(candidate.summary, candidate.id, 200);
+  const validatedPresentation = validateTitleAndSubtitle(candidate.title, rawExcerpt);
+
   return {
     id: `blog-${slugId}`,
-    title: candidate.title,
-    excerpt: `Autonomous scholarly analysis of arXiv:${candidate.id}: ${candidate.summary.slice(0, 160)}...`,
+    title: validatedPresentation.sanitizedTitle,
+    excerpt: validatedPresentation.sanitizedExcerpt,
     content,
     bannerSvg,
     tags,

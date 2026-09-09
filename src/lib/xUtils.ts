@@ -1,3 +1,5 @@
+import { latexToHumanReadable } from "./titleSubtitlePipeline";
+
 export interface CachedXPost {
   draftText: string;
   headline?: string;
@@ -162,7 +164,9 @@ EXCLUSIVE PERSPECTIVE: FUTURISTIC VISION
 - Emphasize how today's mathematical derivations pave the way for tomorrow's quantum networks, photonic supercomputing, non-linear metamaterials, and cosmological or quantum discoveries.
 
 CRITICAL LENGTH & FORMATTING CONSTRAINTS:
-- The generated X post body MUST BE EXACTLY 3 SENTENCES IN TOTAL LENGTH (excluding the paper URL and trailing hashtags).
+- The generated post body MUST BE EXACTLY 3 SENTENCES IN TOTAL LENGTH (excluding the paper URL and trailing hashtags).
+- ZERO EMOJIS: Never include emojis in the post text, headline, or hashtags under any circumstances.
+- STRICTLY HUMAN-READABLE CHARACTERS: Convert any LaTeX expressions like $\\mathsf{QAC}^0$ or $\\mathtt{PARITY}_n$ into clean Unicode text (e.g. QAC⁰, PARITYₙ). Never output raw LaTeX syntax.
 - ABSOLUTE UNIQUENESS MANDATE: Never use generic boilerplate openers (e.g., do NOT start with "Hot off the press", "Exciting news", "We are pleased to announce", or "In this paper").
 - Every post MUST be 100% unique, dynamically extracting the exact physical mechanisms, mathematical formulations, and transformative visionary implications from the given paper.
 
@@ -233,13 +237,16 @@ export const generateFallbackXPost = (params: {
 }) => {
   const { title, excerpt, content = "", tags = [], blogUrl, blogId } = params;
   const targetUrl = blogUrl || buildXArticleUrl(blogId);
-  const cleanTitle = title.length > 80 ? `${title.slice(0, 77)}...` : title;
+  
+  // Convert any LaTeX in title to clean human-readable Unicode text
+  const readableTitle = latexToHumanReadable(title);
+  const cleanTitle = readableTitle.length > 80 ? `${readableTitle.slice(0, 77)}...` : readableTitle;
 
   const primaryTag = tags.length > 0 ? tags[0] : "Quantum Systems";
   const secondaryTag = tags.length > 1 ? tags[1] : "Photonic Frontiers";
-  const hash = hashString(`${title}_${excerpt || ""}_future_${blogId || ""}`);
+  const hash = hashString(`${readableTitle}_${excerpt || ""}_future_${blogId || ""}`);
 
-  let cleanExcerpt = (excerpt || "").trim();
+  let cleanExcerpt = latexToHumanReadable((excerpt || "").trim());
   if (!cleanExcerpt) {
     cleanExcerpt = "Charting next-generation physical architectures and paradigm shifts.";
   } else if (cleanExcerpt.toLowerCase().includes("a rigorous scholarly analysis")) {
@@ -247,7 +254,7 @@ export const generateFallbackXPost = (params: {
       content.match(/## Executive Abstract[^\n]*\n+([^\n.]+)\./i) ||
       content.match(/This investigation presents ([^\n.]+)\./i);
     if (contentSentenceMatch && contentSentenceMatch[1]) {
-      cleanExcerpt = contentSentenceMatch[1].trim();
+      cleanExcerpt = latexToHumanReadable(contentSentenceMatch[1].trim());
     } else {
       cleanExcerpt = `Pioneering foundational breakthroughs across ${primaryTag} and ${secondaryTag}.`;
     }
@@ -259,7 +266,7 @@ export const generateFallbackXPost = (params: {
   const cleanMechanism = firstExcerptSentence.endsWith(".") ? firstExcerptSentence : `${firstExcerptSentence}.`;
 
   const hookOptions: string[] = [
-    `🌌 The future of ${primaryTag} is accelerating: "${cleanTitle}".`,
+    `The future of ${primaryTag} is accelerating: "${cleanTitle}".`,
     `A transformative horizon for ${secondaryTag}: "${cleanTitle}".`,
     `What will next-generation physical architectures look like? "${cleanTitle}" rewrites foundational limits.`,
     `Glimpsing the frontier of ${primaryTag}: "${cleanTitle}" unlocks unchartered quantum capabilities.`,

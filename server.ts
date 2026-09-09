@@ -26,6 +26,10 @@ import {
   sanitizeHashtags as sanitizeXHashtags
 } from "./src/lib/xUtils";
 import {
+  validateAndSanitizeDistributionNote,
+  cleanTextForDistributionNote
+} from "./src/lib/distributionNotePipeline";
+import {
   syncAllBlogsToGitHub,
   testGitHubConnection,
   getGitHubSyncConfig,
@@ -3098,10 +3102,11 @@ app.post("/api/x/generate-post", async (req, res) => {
       try {
         const sanitized = cleanJsonText(response.text);
         const parsed = JSON.parse(sanitized);
+        const validated = validateAndSanitizeDistributionNote(parsed.postText);
         return res.json({
           success: true,
-          postText: parsed.postText,
-          headline: parsed.headline,
+          postText: validated.sanitizedText,
+          headline: cleanTextForDistributionNote(parsed.headline || "Futuristic Vision Synthesis"),
           hashtags: sanitizeXHashtags(parsed.hashtags),
           tone: "future"
         });
@@ -3136,11 +3141,12 @@ app.post("/api/x/generate-post", async (req, res) => {
           const data: any = await githubResponse.json();
           if (data.choices && data.choices[0] && data.choices[0].message?.content) {
             const parsed = JSON.parse(cleanJsonText(data.choices[0].message.content));
+            const validated = validateAndSanitizeDistributionNote(parsed.postText);
             console.log("Successfully generated X post via GitHub Models");
             return res.json({
               success: true,
-              postText: parsed.postText,
-              headline: parsed.headline,
+              postText: validated.sanitizedText,
+              headline: cleanTextForDistributionNote(parsed.headline || "Futuristic Vision Synthesis"),
               hashtags: sanitizeXHashtags(parsed.hashtags),
               tone: "future"
             });

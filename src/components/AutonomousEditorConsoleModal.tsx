@@ -812,7 +812,7 @@ export const AutonomousEditorConsoleModal: React.FC<AutonomousEditorConsoleModal
                     </div>
                   )}
 
-                  {/* Companion X Post Section */}
+                  {/* Distribution Note (Writer) Section */}
                   <div
                     className={`p-4 rounded-2xl border space-y-3 ${
                       isLight ? "bg-white border-slate-200" : "bg-slate-900/60 border-slate-800"
@@ -823,7 +823,7 @@ export const AutonomousEditorConsoleModal: React.FC<AutonomousEditorConsoleModal
                         <div className="w-6 h-6 rounded-lg bg-black text-white flex items-center justify-center text-xs font-bold">
                           𝕏
                         </div>
-                        <span className="text-xs font-bold">Companion Post Payload</span>
+                        <span className="text-xs font-bold">Distribution Note (Writer)</span>
                         <span className="text-[10px] font-mono text-cyan-500">@lk3mpe</span>
                       </div>
 
@@ -850,7 +850,7 @@ export const AutonomousEditorConsoleModal: React.FC<AutonomousEditorConsoleModal
                           ? "bg-slate-50 border-slate-300 text-slate-900"
                           : "bg-slate-950 border-slate-800 text-slate-200 focus:border-cyan-500"
                       }`}
-                      placeholder="Companion post text..."
+                      placeholder="Distribution note text..."
                     />
 
                     {/* Quick Web Intent Fallback */}

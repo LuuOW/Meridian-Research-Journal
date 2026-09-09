@@ -5,6 +5,7 @@ import { ViewCounter } from "./ViewCounter";
 import { RayTracedCard } from "./RayTracedCard";
 import { ensureAnimatedSvg } from "../lib/svgUtils";
 import { trackInteraction } from "../lib/adsenseTracker";
+import { FormattedMathText } from "./FormattedMathText";
 
 interface BlogPostCardProps {
   blog: BlogPost;
@@ -80,13 +81,17 @@ export const BlogPostCard: React.FC<BlogPostCardProps & { onClick: () => void }>
           </div>
 
           {/* Title and Excerpt */}
-          <h3 className="text-xl font-serif font-bold italic tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-black dark:group-hover:text-white transition-colors leading-[1.25] mb-3">
-            {blog.title}
-          </h3>
+          <FormattedMathText
+            as="h3"
+            text={blog.title}
+            className="text-xl font-serif font-bold italic tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-black dark:group-hover:text-white transition-colors leading-[1.25] mb-3"
+          />
           
-          <p className="text-sm text-gray-500 dark:text-neutral-400 leading-relaxed mb-6 flex-grow line-clamp-3">
-            {blog.excerpt}
-          </p>
+          <FormattedMathText
+            as="p"
+            text={blog.excerpt}
+            className="text-sm text-gray-500 dark:text-neutral-400 leading-relaxed mb-6 flex-grow line-clamp-3"
+          />
 
           {/* Divider & Footer Tags */}
           <div className="border-t border-gray-100 dark:border-neutral-800 pt-5 flex flex-wrap gap-2.5 items-center justify-between">

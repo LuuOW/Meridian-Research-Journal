@@ -416,7 +416,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
     }
   };
 
-  // Handle retry of companion X post without recreating or republishing the blog
+  // Handle retry of distribution note to X without recreating or republishing the blog
   const handleRetryXPost = async () => {
     setActionLoading(true);
     setError(null);
@@ -433,7 +433,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
       setPublishSuccess({ success: true, xResult: result.xResult, blog: null as any });
       fetchDispatch();
     } catch (err: any) {
-      setError(err.message || "Failed to retry companion post to X");
+      setError(err.message || "Failed to retry distribution note to X");
     } finally {
       setActionLoading(false);
     }
@@ -655,7 +655,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-300 hover:underline pt-1"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  View Live Companion Tweet on X
+                  View Live Distribution Note on X
                 </a>
               )}
               {publishSuccess.xResult && !publishSuccess.xResult.success && (
@@ -663,7 +663,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                   <div className="flex items-center gap-2 text-xs text-amber-300">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                     <span>
-                      Companion Post: {publishSuccess.xResult.error || "OAuth 1.0a permission limit (Read-only token)"}
+                      Distribution Note: {publishSuccess.xResult.error || "OAuth 1.0a permission limit (Read-only token)"}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
@@ -1330,7 +1330,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
               </div>
             )}
 
-              {/* SECTION: X (TWITTER) AUTONOMOUS COMPANION POST EDITOR */}
+              {/* SECTION: X (TWITTER) AUTONOMOUS DISTRIBUTION NOTE (WRITER) EDITOR */}
               <div
                 className={`p-4 sm:p-5 rounded-2xl border space-y-3 shadow-inner ${
                   isLight
@@ -1351,7 +1351,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                     </div>
                     <div>
                       <span className={`text-xs font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
-                        X Companion Thread Post
+                        Distribution Note (Writer)
                       </span>
                       <span className="text-[11px] text-cyan-600 dark:text-cyan-400 ml-1.5 font-mono">
                         @lk3mpe
@@ -1441,7 +1441,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                         ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600/30"
                         : "bg-slate-950 border-slate-700/80 text-slate-200 placeholder:text-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
                     }`}
-                    placeholder="Drafted companion post for X..."
+                    placeholder="Drafted distribution note for X..."
                   />
                 </div>
 

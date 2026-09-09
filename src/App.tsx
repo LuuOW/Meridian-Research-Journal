@@ -29,6 +29,7 @@ import { ensureAnimatedSvg, prepareSvgForPngExport } from "./lib/svgUtils";
 import { ViewCounter } from "./components/ViewCounter";
 import { sortBlogsByPublicationDate } from "./lib/viewCounter";
 import { XShareModal } from "./components/XShareModal";
+import { FormattedMathText } from "./components/FormattedMathText";
 import { XTestModal } from "./components/XTestModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
 import { AboutModal } from "./components/AboutModal";
@@ -126,7 +127,12 @@ export default function App() {
   const [articleToastMsg, setArticleToastMsg] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
-    return (localStorage.getItem("theme") as "light" | "dark") || "light";
+    const saved = localStorage.getItem("theme");
+    if (saved === "light" || saved === "dark") return saved;
+    if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      return "dark";
+    }
+    return "light";
   });
 
   // Keep HTML element sync'd with current theme
@@ -138,6 +144,20 @@ export default function App() {
     }
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  // Listen to OS / browser dark/bright system settings when not overridden
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      const saved = localStorage.getItem("theme");
+      if (!saved) {
+        setTheme(e.matches ? "dark" : "light");
+      }
+    };
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
+  }, []);
 
   // Track scroll progress & reader depth telemetry for the active blog
   useEffect(() => {
@@ -1509,13 +1529,17 @@ export default function App() {
                       </div>
 
                       {/* Header Title & Subtitle */}
-                      <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold italic tracking-tight leading-[1.1] text-black dark:text-white">
-                        {activeBlog.title}
-                      </h1>
+                      <FormattedMathText
+                        as="h1"
+                        text={activeBlog.title}
+                        className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold italic tracking-tight leading-[1.1] text-black dark:text-white"
+                      />
                       
-                      <p className="text-gray-600 dark:text-neutral-300 text-sm sm:text-base leading-relaxed font-light">
-                        {activeBlog.excerpt}
-                      </p>
+                      <FormattedMathText
+                        as="p"
+                        text={activeBlog.excerpt}
+                        className="text-gray-600 dark:text-neutral-300 text-sm sm:text-base leading-relaxed font-light"
+                      />
 
                       {/* Publication author & view metrics details */}
                       <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-gray-100/80 dark:border-neutral-800/80">
@@ -1622,7 +1646,7 @@ export default function App() {
                               });
                               setIsXModalOpen(true);
                             }}
-                            title="Draft & Share with X Companion"
+                            title="Draft & Share Distribution Note (Writer)"
                             className="p-2.5 bg-black hover:bg-neutral-900 text-white rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer border border-neutral-700/60 dark:border-neutral-600/60 flex items-center justify-center shrink-0"
                           >
                             <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1863,7 +1887,7 @@ export default function App() {
         />
       )}
 
-      {/* X SHARE COMPANION OVERLAY (FUTURISTIC VISION) */}
+      {/* DISTRIBUTION NOTE (WRITER) OVERLAY (FUTURISTIC VISION) */}
       {activeBlog && (
         <XShareModal
           isOpen={isXModalOpen}
@@ -1874,6 +1898,7 @@ export default function App() {
           tags={activeBlog.tags}
           arxivLink={activeBlog.arxivLink}
           blogId={activeBlog.slug || activeBlog.id}
+          theme={theme}
         />
       )}
 
