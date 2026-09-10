@@ -82,6 +82,33 @@ export interface XConnectionStatus {
 let inMemoryOAuth2Token: string | null = null;
 let inMemoryRefreshToken: string | null = null;
 
+// Track refresh tokens that have been rejected as invalid or revoked to avoid infinite retry loops and console errors
+const invalidRefreshTokens = new Set<string>();
+let lastRefreshFailure: { error: string; timestamp: number } | null = null;
+
+// Lightweight cache for connection status to prevent exhausting Twitter API rate limits on /users/me
+let cachedConnectionStatus: { status: XConnectionStatus; timestamp: number } | null = null;
+const CONNECTION_CACHE_TTL_MS = 60000; // 60 seconds
+
+export function clearInvalidRefreshTokens(): void {
+  invalidRefreshTokens.clear();
+  lastRefreshFailure = null;
+  cachedConnectionStatus = null;
+}
+
+export function resetXConnectionCache(): void {
+  cachedConnectionStatus = null;
+}
+
+export function setInMemoryOAuth2Tokens(accessToken: string, refreshToken?: string): void {
+  inMemoryOAuth2Token = accessToken.trim() || null;
+  if (refreshToken) {
+    inMemoryRefreshToken = refreshToken.trim() || null;
+    invalidRefreshTokens.delete(refreshToken.trim());
+  }
+  cachedConnectionStatus = null;
+}
+
 export const DEFAULT_X_PRICING: XPricingInfo = {
   requiresPaidCredits: true,
   minCredits: "$5.00",
@@ -167,17 +194,38 @@ export async function refreshOAuth2AccessToken(): Promise<string | null> {
   const tokens = getOAuth2Tokens();
   if (!tokens?.refreshToken || !tokens?.clientId) return null;
 
+  // Prevent repeated refresh attempts for tokens known to be invalid/revoked
+  if (invalidRefreshTokens.has(tokens.refreshToken)) {
+    return null;
+  }
+
+  const clientSecret = (
+    process.env.X_OAUTH_CLIENT_SECRET ||
+    process.env.X_CLIENT_SECRET ||
+    ""
+  ).trim();
+
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+
+    const bodyParams: Record<string, string> = {
+      grant_type: "refresh_token",
+      refresh_token: tokens.refreshToken,
+      client_id: tokens.clientId,
+    };
+
+    // If client secret is available (confidential client), send HTTP Basic Auth
+    if (clientSecret) {
+      headers["Authorization"] = `Basic ${Buffer.from(`${tokens.clientId}:${clientSecret}`).toString("base64")}`;
+      bodyParams.client_secret = clientSecret;
+    }
+
     const res = await fetch("https://api.twitter.com/2/oauth2/token", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: tokens.refreshToken,
-        client_id: tokens.clientId,
-      }).toString(),
+      headers,
+      body: new URLSearchParams(bodyParams).toString(),
     });
 
     if (res.ok) {
@@ -186,16 +234,38 @@ export async function refreshOAuth2AccessToken(): Promise<string | null> {
         inMemoryOAuth2Token = data.access_token;
         if (data.refresh_token) {
           inMemoryRefreshToken = data.refresh_token;
+          invalidRefreshTokens.delete(data.refresh_token);
         }
+        cachedConnectionStatus = null;
         console.log("[OAuth 2.0 Refresh] Successfully refreshed X access token!");
         return data.access_token;
       }
     } else {
       const errText = await res.text();
-      console.warn("[OAuth 2.0 Refresh] Token refresh endpoint returned error:", errText);
+      let parsedJson: any = null;
+      try { parsedJson = JSON.parse(errText); } catch {}
+
+      // Identify token invalidity / expiration / revocation errors (HTTP 400 invalid_request or invalid_grant)
+      const isTokenInvalidError =
+        res.status === 400 &&
+        (errText.includes("invalid_request") ||
+         errText.includes("invalid_grant") ||
+         errText.includes("Value passed for the token was invalid") ||
+         errText.includes("invalid_token") ||
+         parsedJson?.error === "invalid_request");
+
+      if (isTokenInvalidError) {
+        invalidRefreshTokens.add(tokens.refreshToken);
+        lastRefreshFailure = { error: errText, timestamp: Date.now() };
+        console.info(
+          `[OAuth 2.0 Refresh] Stored refresh token is inactive or expired (${parsedJson?.error_description || parsedJson?.error || "Value passed for the token was invalid"}). Stored token marked inactive until updated in Settings.`
+        );
+      } else {
+        console.info(`[OAuth 2.0 Refresh] Token refresh endpoint returned HTTP ${res.status}:`, errText);
+      }
     }
-  } catch (err) {
-    console.warn("[OAuth 2.0 Refresh] Exception during token refresh:", err);
+  } catch (err: any) {
+    console.info("[OAuth 2.0 Refresh] Network exception during token refresh:", err?.message || err);
   }
   return null;
 }
@@ -354,24 +424,30 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
       const errorText = await response.text();
       let parsedJson: any = null;
       try { parsedJson = JSON.parse(errorText); } catch {}
-      const creditInfo = detectCreditIssue(httpStatus, errorText, parsedJson);
 
-      return {
-        success: false,
-        mode: "error",
-        httpStatus,
-        error: parsedJson?.detail || parsedJson?.title || `X API returned HTTP ${httpStatus}: ${errorText}`,
-        intentUrl,
-        timestamp,
-        rawResponse: parsedJson || errorText,
-        diagnosisTitle: creditInfo.diagnosisTitle,
-        diagnosisDetail: creditInfo.diagnosisDetail,
-        isCreditDepleted: creditInfo.isCreditDepleted,
-        pricingDocUrl: creditInfo.pricingDocUrl,
-        minCreditRequired: creditInfo.minCreditRequired,
-      };
+      // If OAuth 2.0 failed and OAuth 1.0a credentials exist, fall back to OAuth 1.0a
+      const hasOAuth1 = getXCredentials();
+      if (!hasOAuth1) {
+        const creditInfo = detectCreditIssue(httpStatus, errorText, parsedJson);
+
+        return {
+          success: false,
+          mode: "error",
+          httpStatus,
+          error: parsedJson?.detail || parsedJson?.title || `X API returned HTTP ${httpStatus}: ${errorText}`,
+          intentUrl,
+          timestamp,
+          rawResponse: parsedJson || errorText,
+          diagnosisTitle: creditInfo.diagnosisTitle,
+          diagnosisDetail: creditInfo.diagnosisDetail,
+          isCreditDepleted: creditInfo.isCreditDepleted,
+          pricingDocUrl: creditInfo.pricingDocUrl,
+          minCreditRequired: creditInfo.minCreditRequired,
+        };
+      }
+      console.info("[X API] OAuth 2.0 publish attempt did not succeed (HTTP " + httpStatus + "); attempting configured OAuth 1.0a credentials...");
     } catch (err: any) {
-      console.error("[X API OAuth 2.0 Exception]", err);
+      console.info("[X API OAuth 2.0 Exception]", err?.message || err);
     }
   }
 
@@ -468,7 +544,12 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
 /**
  * Tests connection to X API v2 using current credentials
  */
-export async function testXConnection(): Promise<XConnectionStatus> {
+export async function testXConnection(forceRefresh = false): Promise<XConnectionStatus> {
+  const now = Date.now();
+  if (!forceRefresh && cachedConnectionStatus && now - cachedConnectionStatus.timestamp < CONNECTION_CACHE_TTL_MS) {
+    return cachedConnectionStatus.status;
+  }
+
   const oauth2 = getOAuth2Tokens();
 
   // 1. Prefer OAuth 2.0 User Context if configured
@@ -501,7 +582,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
         const accessLevel = (res.headers.get("x-access-level") || "").trim().toLowerCase();
         const hasWritePermission = !accessLevel || accessLevel.includes("write");
 
-        return {
+        const status: XConnectionStatus = {
           configured: true,
           connected: true,
           username: data?.data?.username,
@@ -520,23 +601,41 @@ export async function testXConnection(): Promise<XConnectionStatus> {
             hasBearer: true,
           },
         };
+        cachedConnectionStatus = { status, timestamp: now };
+        return status;
       } else {
-        const errBody = await res.text();
-        let parsed: any = null;
-        try { parsed = JSON.parse(errBody); } catch {}
-        return {
-          configured: true,
-          connected: false,
-          missingKeys: [],
-          httpStatus: res.status,
-          error: parsed?.detail || `OAuth 2.0 verification failed (HTTP ${res.status}): ${errBody}`,
-          authMethod: "OAuth 2.0 User Context",
-          rawResponse: parsed || errBody,
-          pricing: DEFAULT_X_PRICING,
-        };
+        // If OAuth 2.0 verification failed, check whether OAuth 1.0a is configured as an alternative
+        const hasOAuth1 = getXCredentials();
+        if (!hasOAuth1) {
+          const errBody = await res.text();
+          let parsed: any = null;
+          try { parsed = JSON.parse(errBody); } catch {}
+          const isTokenExpired = res.status === 401;
+
+          const status: XConnectionStatus = {
+            configured: true,
+            connected: false,
+            missingKeys: [],
+            httpStatus: res.status,
+            error: isTokenExpired
+              ? "OAuth 2.0 access token expired and refresh token is invalid or inactive. Please update tokens in Settings or re-authorize."
+              : (parsed?.detail || `OAuth 2.0 verification failed (HTTP ${res.status}): ${errBody}`),
+            authMethod: "OAuth 2.0 User Context",
+            rawResponse: parsed || errBody,
+            pricing: DEFAULT_X_PRICING,
+            keyPreviews: {
+              accessToken: `${currentToken.slice(0, 8)}...${currentToken.slice(-4)}`,
+              hasSecret: !!oauth2.refreshToken,
+              hasBearer: true,
+            },
+          };
+          cachedConnectionStatus = { status, timestamp: now };
+          return status;
+        }
+        console.info("[X API] OAuth 2.0 verification failed (HTTP " + res.status + "); evaluating configured OAuth 1.0a credentials...");
       }
     } catch (err: any) {
-      console.warn("[OAuth 2.0 Test Exception]", err);
+      console.info("[OAuth 2.0 Test Exception]", err?.message || err);
     }
   }
 
@@ -559,7 +658,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
   };
 
   if (missingKeys.length > 0) {
-    return {
+    const status: XConnectionStatus = {
       configured: false,
       connected: false,
       missingKeys,
@@ -568,6 +667,8 @@ export async function testXConnection(): Promise<XConnectionStatus> {
       pricing: DEFAULT_X_PRICING,
       keyPreviews,
     };
+    cachedConnectionStatus = { status, timestamp: now };
+    return status;
   }
 
   const credentials = getXCredentials()!;
@@ -587,7 +688,7 @@ export async function testXConnection(): Promise<XConnectionStatus> {
       const errBody = await res.text();
       let parsed: any = null;
       try { parsed = JSON.parse(errBody); } catch {}
-      return {
+      const status: XConnectionStatus = {
         configured: true,
         connected: false,
         missingKeys: [],
@@ -598,13 +699,15 @@ export async function testXConnection(): Promise<XConnectionStatus> {
         pricing: DEFAULT_X_PRICING,
         keyPreviews,
       };
+      cachedConnectionStatus = { status, timestamp: now };
+      return status;
     }
 
     const data: any = await res.json();
     const accessLevel = (res.headers.get("x-access-level") || "").trim().toLowerCase();
     const hasWritePermission = accessLevel.includes("write");
 
-    return {
+    const status: XConnectionStatus = {
       configured: true,
       connected: true,
       username: data?.data?.username,
@@ -619,8 +722,10 @@ export async function testXConnection(): Promise<XConnectionStatus> {
       pricing: DEFAULT_X_PRICING,
       keyPreviews,
     };
+    cachedConnectionStatus = { status, timestamp: now };
+    return status;
   } catch (err: any) {
-    return {
+    const status: XConnectionStatus = {
       configured: true,
       connected: false,
       missingKeys: [],
@@ -629,6 +734,8 @@ export async function testXConnection(): Promise<XConnectionStatus> {
       pricing: DEFAULT_X_PRICING,
       keyPreviews,
     };
+    cachedConnectionStatus = { status, timestamp: now };
+    return status;
   }
 }
 

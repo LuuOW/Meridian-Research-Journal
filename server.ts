@@ -3533,7 +3533,8 @@ app.post("/api/editor-config", (req, res) => {
 // Check X API connection & credentials status
 app.get("/api/x/status", async (req, res) => {
   try {
-    const status = await testXConnection();
+    const force = req.query.force === "true";
+    const status = await testXConnection(force);
     res.json({ success: true, ...status });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
