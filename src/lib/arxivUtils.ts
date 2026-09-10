@@ -1,9 +1,29 @@
+// Helper to decode HTML entities
+export const decodeHtmlEntities = (text: string): string => {
+  if (!text) return "";
+  return text
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+};
+
 // Helper to extract arXiv ID
 export const extractArxivId = (input: string): string | null => {
-  const urlMatch = input.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5})(?:v\d+)?/i);
+  if (!input) return null;
+  const clean = input.trim();
+  const urlMatch = clean.match(/arxiv\.org\/(?:abs|pdf)\/([a-z-]+(?:\.[a-z]{2})?\/\d{7}|\d{4}\.\d{4,5})(?:v\d+)?(?:\.pdf)?/i);
   if (urlMatch) return urlMatch[1];
-  const idMatch = input.match(/^(\d{4}\.\d{4,5})(?:v\d+)?$/);
-  if (idMatch) return idMatch[1];
+  const prefixMatch = clean.match(/(?:arxiv:\s*)([a-z-]+(?:\.[a-z]{2})?\/\d{7}|\d{4}\.\d{4,5})(?:v\d+)?/i);
+  if (prefixMatch) return prefixMatch[1];
+  const bareMatch = clean.match(/^([a-z-]+(?:\.[a-z]{2})?\/\d{7}|\d{4}\.\d{4,5})(?:v\d+)?$/i);
+  if (bareMatch) return bareMatch[1];
+  const generalMatch = clean.match(/([a-z-]+(?:\.[a-z]{2})?\/\d{7}|\d{4}\.\d{4,5})(?:v\d+)?/i);
+  if (generalMatch) return generalMatch[1];
   return null;
 };
 
@@ -133,9 +153,9 @@ export const parseArxivXml = (xml: string): ArxivMetadata => {
   const summaryMatch = searchContent.match(/<summary>([\s\S]*?)<\/summary>/);
   const authorMatches = [...searchContent.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
   
-  const title = titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title";
-  const summary = summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "";
-  const authors = authorMatches.map(m => m[1].trim()).slice(0, 3).join(", ");
+  const title = decodeHtmlEntities(titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title");
+  const summary = decodeHtmlEntities(summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "");
+  const authors = decodeHtmlEntities(authorMatches.map(m => m[1].trim()).slice(0, 3).join(", "));
   
   return { title, summary, authors };
 };
@@ -164,9 +184,9 @@ export const parseArxivFeedXml = (xml: string): ArxivPaper[] => {
     const summaryMatch = entryContent.match(/<summary>([\s\S]*?)<\/summary>/);
     const authorMatches = [...entryContent.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
     
-    const title = titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title";
-    const summary = summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "";
-    const authors = authorMatches.map(m => m[1].trim()).slice(0, 3).join(", ");
+    const title = decodeHtmlEntities(titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title");
+    const summary = decodeHtmlEntities(summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "");
+    const authors = decodeHtmlEntities(authorMatches.map(m => m[1].trim()).slice(0, 3).join(", "));
     
     if (id) {
       entries.push({

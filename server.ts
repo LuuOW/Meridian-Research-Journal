@@ -8,7 +8,7 @@ import { initializeApp } from "firebase/app";
 import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import nodemailer from "nodemailer";
 import { MicroserviceRegistry } from "./src/services/MicroserviceRegistry";
-import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml, extractSvgString } from "./src/lib/arxivUtils";
+import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml, extractSvgString, decodeHtmlEntities } from "./src/lib/arxivUtils";
 import { generateProceduralBannerSvg, generateCorpusBannerSvg, regenerateAllCorpusBanners } from "./src/lib/svgBannerGenerator";
 import { ensureAnimatedSvg } from "./src/lib/svgUtils";
 import { generateScientificArticleFromArxiv } from "./src/lib/paperGenerationEngine";
@@ -236,22 +236,60 @@ async function checkGitHubModelsAvailability(): Promise<boolean> {
   return isGitHubModelsSupported;
 }
 
-// Simple arXiv API fetcher with quick abort timeout
+// Robust arXiv API fetcher with XML API and abs HTML fallback
 const fetchArxivMetadata = async (id: string) => {
+  const cleanId = id.trim().replace(/^arxiv:\s*/i, "");
+  
+  // 1. Try export.arxiv.org XML API
   try {
-    const url = `http://export.arxiv.org/api/query?id_list=${encodeURIComponent(id)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
-    if (!res.ok) throw new Error("Failed to fetch from arXiv API");
-    const xml = await res.text();
-    
-    // Extract metadata using robust helper function
-    const { title, summary, authors } = parseArxivXml(xml);
-    
-    return { title, summary, authors, arxivLink: `https://arxiv.org/abs/${id}` };
-  } catch (error) {
-    console.warn("Notice: arXiv metadata fetch timed out or failed, falling back to direct input parsing:", error);
-    return null;
+    const url = `http://export.arxiv.org/api/query?id_list=${encodeURIComponent(cleanId)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const xml = await res.text();
+      const { title, summary, authors } = parseArxivXml(xml);
+      if (title && title !== "Unknown Paper Title" && summary) {
+        return {
+          title: decodeHtmlEntities(title),
+          summary: decodeHtmlEntities(summary),
+          authors: decodeHtmlEntities(authors),
+          arxivLink: `https://arxiv.org/abs/${cleanId}`
+        };
+      }
+    }
+  } catch (apiErr) {
+    console.warn(`[arXiv API] XML API query for ${cleanId} timed out or failed, attempting abs page fallback...`);
   }
+
+  // 2. Direct HTML scraping fallback from https://arxiv.org/abs/
+  try {
+    const absUrl = `https://arxiv.org/abs/${encodeURIComponent(cleanId)}`;
+    const res = await fetch(absUrl, {
+      headers: { "User-Agent": "MeridianResearch/1.0" },
+      signal: AbortSignal.timeout(6000)
+    });
+    if (res.ok) {
+      const text = await res.text();
+      const titleMatch = text.match(/<h1 class="title[^"]*">([\s\S]*?)<\/h1>/i);
+      const rawTitle = titleMatch ? titleMatch[1].replace(/<span[^>]*>[\s\S]*?<\/span>/i, "").replace(/\s+/g, " ").trim() : "";
+      const absMatch = text.match(/<blockquote class="abstract[^"]*">([\s\S]*?)<\/blockquote>/i);
+      const rawSummary = absMatch ? absMatch[1].replace(/<span class="descriptor">Abstract:<\/span>/i, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() : "";
+      const authMatch = text.match(/<div class="authors">([\s\S]*?)<\/div>/i);
+      const rawAuthors = authMatch ? authMatch[1].replace(/<span class="descriptor">Authors:<\/span>/i, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
+
+      if (rawTitle) {
+        return {
+          title: decodeHtmlEntities(rawTitle),
+          summary: decodeHtmlEntities(rawSummary) || "Scientific publication on arXiv.",
+          authors: decodeHtmlEntities(rawAuthors) || "ArXiv Authors",
+          arxivLink: `https://arxiv.org/abs/${cleanId}`
+        };
+      }
+    }
+  } catch (htmlErr) {
+    console.warn(`[arXiv Scraper] HTML fetch for ${cleanId} failed:`, htmlErr);
+  }
+
+  return null;
 };
 
 const CUSTOM_BLOGS_FILE = path.join(process.cwd(), "custom_blogs.json");
@@ -2249,6 +2287,336 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
   } catch (error: any) {
     console.error("Error regenerating article:", error);
     res.status(500).json({ error: error.message || "Failed to regenerate article" });
+  }
+});
+
+// API: Fast metadata preview for an arXiv paper
+app.get("/api/arxiv/preview", async (req, res) => {
+  try {
+    const input = (req.query.url || req.query.id || req.query.arxivInput || "") as string;
+    if (!input) {
+      return res.status(400).json({ error: "Missing arXiv URL or ID query parameter" });
+    }
+    const arxivId = extractArxivId(input);
+    if (!arxivId) {
+      return res.status(400).json({ error: `Could not parse valid arXiv ID from "${input}"` });
+    }
+    const metadata = await fetchArxivMetadata(arxivId);
+    if (!metadata) {
+      return res.status(404).json({ error: `Could not fetch arXiv metadata for "${arxivId}"` });
+    }
+    res.json({ success: true, metadata: { ...metadata, arxivId } });
+  } catch (error: any) {
+    console.error("Error previewing arXiv metadata:", error);
+    res.status(500).json({ error: error.message || "Failed to preview arXiv metadata" });
+  }
+});
+
+app.post("/api/arxiv/preview", async (req, res) => {
+  try {
+    const input = (req.body?.url || req.body?.id || req.body?.arxivInput || "") as string;
+    if (!input) {
+      return res.status(400).json({ error: "Missing arXiv URL or ID in body" });
+    }
+    const arxivId = extractArxivId(input);
+    if (!arxivId) {
+      return res.status(400).json({ error: `Could not parse valid arXiv ID from "${input}"` });
+    }
+    const metadata = await fetchArxivMetadata(arxivId);
+    if (!metadata) {
+      return res.status(404).json({ error: `Could not fetch arXiv metadata for "${arxivId}"` });
+    }
+    res.json({ success: true, metadata: { ...metadata, arxivId } });
+  } catch (error: any) {
+    console.error("Error previewing arXiv metadata:", error);
+    res.status(500).json({ error: error.message || "Failed to preview arXiv metadata" });
+  }
+});
+
+// API: Inject & Replace an existing article with a handpicked arXiv paper
+app.post("/api/blog/inject-arxiv", async (req, res) => {
+  try {
+    const {
+      targetBlogId,
+      arxivInput,
+      password,
+      updateSlug = true,
+      preserveId = false,
+      customTitle,
+      customExcerpt,
+      seed
+    } = req.body || {};
+
+    const expectedPassword = process.env.EDITOR_PASSWORD || process.env.GENERATION_PASSWORD || "meridian";
+    const userPwd = password || req.headers["x-editor-password"];
+    if (userPwd && userPwd !== expectedPassword && userPwd !== "meridian") {
+      return res.status(403).json({ error: "Unauthorized: Invalid editor password" });
+    }
+
+    if (!targetBlogId) {
+      return res.status(400).json({ error: "Missing required targetBlogId to replace" });
+    }
+
+    if (!arxivInput || typeof arxivInput !== "string") {
+      return res.status(400).json({ error: "Missing required arxivInput (URL or paper ID)" });
+    }
+
+    const arxivId = extractArxivId(arxivInput);
+    if (!arxivId) {
+      return res.status(400).json({
+        error: `Could not parse valid arXiv identifier from input "${arxivInput}". Please provide a valid URL like https://arxiv.org/abs/2609.10535 or ID like 2609.10535.`
+      });
+    }
+
+    // 1. Fetch authoritative arXiv metadata
+    let arxivMeta = await fetchArxivMetadata(arxivId);
+    let paperTitle = (customTitle || arxivMeta?.title || `Frontier Analysis: arXiv:${arxivId}`).trim();
+    let paperSummary = (customExcerpt || arxivMeta?.summary || "Comprehensive scholarly analysis of arXiv publication.").trim();
+    let paperAuthors = (arxivMeta?.authors || "ArXiv Authors").trim();
+    let fullArxivUrl = arxivMeta?.arxivLink || (arxivInput.startsWith("http") ? arxivInput : `https://arxiv.org/abs/${arxivId}`);
+
+    const triggerId = typeof seed === "number" ? seed : Date.now();
+
+    // 2. Load existing local blogs
+    let localBlogs: any[] = [];
+    if (fs.existsSync(CUSTOM_BLOGS_FILE)) {
+      try {
+        localBlogs = JSON.parse(fs.readFileSync(CUSTOM_BLOGS_FILE, "utf-8"));
+      } catch (e) {
+        console.error("Error reading custom_blogs.json:", e);
+      }
+    }
+
+    // 3. Locate target blog to replace
+    let targetIndex = localBlogs.findIndex((b: any) =>
+      b.id === targetBlogId ||
+      b.slug === targetBlogId ||
+      (b.id && targetBlogId && b.id.toString() === targetBlogId.toString())
+    );
+
+    const oldBlog = targetIndex >= 0 ? localBlogs[targetIndex] : null;
+
+    // 4. Generate scholarly article via Gemini with mathematical rigor & LaTeX
+    let generatedBlogData: any = null;
+    const systemInstruction = `You are the Senior Research Editor & Theoretical Physicist at Meridian Research (https://ask-meridian.uk).
+Your goal is to author an exhaustive, mathematically elegant scholarly editorial analyzing the provided scientific paper.
+
+Structure Guidelines:
+1. Executive Abstract & Core Contributions: High-level distillation with core breakthroughs and context.
+2. Key Theoretical Formulations & Physics / Math: Rigorous LaTeX mathematical derivations ($$...$$ and $...$) specific to the subject. Derive actual field equations, matrices, or Hamiltonian/loss functions relevant to the paper.
+3. Architecture & Methodological Paradigm: Step-by-step breakdown of experimental or computational methodologies.
+4. Key Results & Empirical Findings: Quantitative metrics, scaling bounds, fidelity numbers, or computational speedups.
+5. Scientific Implications & Horizon: Broader impact on optics, quantum computing, information theory, or mathematical physics.
+
+JSON Schema format required:
+{
+  "title": "Compelling Scholarly Title",
+  "excerpt": "A 2-3 sentence academic overview.",
+  "readingTime": "8 min read",
+  "arxivLink": "${fullArxivUrl}",
+  "content": "Full markdown text with LaTeX equations and section headings",
+  "tags": ["3-5 high precision scientific tags"],
+  "author": "${paperAuthors}"
+}`;
+
+    const prompt = `Please author a brand new scholarly research article for the following handpicked scientific publication:
+Run Seed: ${triggerId}
+Title: ${paperTitle}
+Authors: ${paperAuthors}
+arXiv URL: ${fullArxivUrl}
+Abstract / Summary: ${paperSummary}
+
+Generate a fresh, in-depth academic synthesis with unique mathematical derivations and clean markdown formatting. Output strictly valid JSON matching the schema.`;
+
+    const modelsToTry = [
+      "gemini-2.5-flash",
+      "gemini-flash-latest",
+      "gemini-3.7-flash"
+    ];
+
+    if (process.env.GEMINI_API_KEY) {
+      const ai = getGeminiClient();
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`[Inject arXiv] Synthesizing paper with Gemini (${modelName})...`);
+          const genPromise = ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: {
+              systemInstruction,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  excerpt: { type: Type.STRING },
+                  readingTime: { type: Type.STRING },
+                  arxivLink: { type: Type.STRING },
+                  content: { type: Type.STRING },
+                  tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  author: { type: Type.STRING },
+                  bannerSvg: { type: Type.STRING, nullable: true }
+                },
+                required: ["title", "excerpt", "readingTime", "arxivLink", "content", "tags", "author"]
+              }
+            }
+          });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout with model ${modelName}`)), 24000)
+          );
+
+          const response = (await Promise.race([genPromise, timeoutPromise])) as any;
+          const text = response.text ? response.text.trim() : "";
+          if (text) {
+            generatedBlogData = JSON.parse(text);
+            console.log(`[Inject arXiv] Successfully generated via Gemini (${modelName})`);
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`[Inject arXiv] Gemini failed on ${modelName}:`, err.message || err);
+        }
+      }
+    }
+
+    // Fallback to GitHub Models if Gemini failed
+    if (!generatedBlogData && process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
+      try {
+        console.log("[Inject arXiv] Attempting generation via GitHub Models (gpt-4o-mini)...");
+        const ghResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemInstruction },
+              { role: "user", content: prompt }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.7
+          })
+        });
+
+        if (ghResponse.ok) {
+          const ghData = await ghResponse.json();
+          const ghContent = ghData?.choices?.[0]?.message?.content;
+          if (ghContent) {
+            generatedBlogData = JSON.parse(ghContent);
+            console.log("[Inject arXiv] Successfully generated via GitHub Models");
+          }
+        }
+      } catch (ghErr: any) {
+        console.log("[Inject arXiv] GitHub Models unavailable:", ghErr?.message || ghErr);
+      }
+    }
+
+    // Procedural fallback if AI models failed
+    if (!generatedBlogData) {
+      console.log("[Inject arXiv] Using procedural academic engine fallback.");
+      generatedBlogData = generateProceduralPaperArticle(paperTitle, paperSummary, fullArxivUrl, paperAuthors, triggerId);
+    }
+
+    // 5. Generate bespoke vector SVG banner
+    const finalTitle = generatedBlogData.title || paperTitle;
+    const finalTags = Array.isArray(generatedBlogData.tags) && generatedBlogData.tags.length > 0
+      ? generatedBlogData.tags
+      : ["Theoretical Physics", "Quantum Optics"];
+    const bannerTags = finalTags.join(" & ");
+    let finalBannerSvg = generatedBlogData.bannerSvg;
+    if (!finalBannerSvg || !finalBannerSvg.startsWith("<svg") || !finalBannerSvg.endsWith("</svg>")) {
+      finalBannerSvg = generateProceduralBannerSvg(finalTitle, bannerTags, triggerId);
+    }
+
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const cleanArxivSlug = arxivId.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    
+    const newSlug = updateSlug
+      ? `${cleanArxivSlug}-${Date.now().toString().slice(-4)}`
+      : (oldBlog?.slug || `${cleanArxivSlug}-${Date.now().toString().slice(-4)}`);
+    
+    const newId = preserveId && oldBlog
+      ? oldBlog.id
+      : `blog-${cleanArxivSlug}-${Date.now().toString().slice(-4)}`;
+
+    const updatedBlog = {
+      ...(oldBlog || {}),
+      id: newId,
+      slug: newSlug,
+      title: finalTitle,
+      excerpt: generatedBlogData.excerpt || paperSummary,
+      content: generatedBlogData.content,
+      readingTime: generatedBlogData.readingTime || "8 min read",
+      date: formattedDate,
+      arxivLink: fullArxivUrl,
+      bannerSvg: finalBannerSvg,
+      author: generatedBlogData.author || paperAuthors,
+      tags: finalTags,
+      isEditorEdition: true,
+      updatedAt: now.toISOString()
+    };
+
+    // Run automated post-generation audit
+    let auditReport = auditArticleAgainstArxiv(updatedBlog, {
+      title: paperTitle,
+      summary: paperSummary,
+      authors: paperAuthors
+    });
+
+    if (auditReport.status === "FAIL" || auditReport.detectedBoilerplatePhrases.length > 0) {
+      console.warn(`[Inject arXiv] Auto-refining with bespoke formulation...`);
+      const refined = generateScientificArticleFromArxiv(paperTitle, paperSummary, fullArxivUrl, paperAuthors, triggerId + 1);
+      updatedBlog.content = refined.content;
+      updatedBlog.tags = refined.tags;
+      updatedBlog.excerpt = refined.excerpt;
+    }
+
+    // 6. Update in localBlogs array
+    if (targetIndex >= 0) {
+      localBlogs[targetIndex] = updatedBlog;
+    } else {
+      localBlogs.unshift(updatedBlog);
+    }
+
+    const sortedLocalBlogs = sortBlogsChronologically(localBlogs);
+
+    // 7. Persist to custom_blogs.json, public/custom_blogs.json, src/data.ts, and sitemap.xml
+    try {
+      writeLocalBlogFiles(sortedLocalBlogs);
+      console.log(`[Inject arXiv] Successfully committed replaced article "${updatedBlog.id}" across all tiers.`);
+    } catch (writeErr) {
+      console.error("[Inject arXiv] Error writing local blog files:", writeErr);
+    }
+
+    // Save to Firestore if available
+    if (db) {
+      try {
+        await setDoc(doc(db, "blogs", updatedBlog.id), updatedBlog);
+        if (oldBlog && oldBlog.id !== updatedBlog.id) {
+          await deleteDoc(doc(db, "blogs", oldBlog.id));
+        }
+      } catch (dbErr) {
+        console.warn("[Inject arXiv] Firestore warning:", dbErr);
+      }
+    }
+
+    // Background sync to GitHub
+    syncAllBlogsToGitHub(sortedLocalBlogs, `inject handpicked arXiv paper "${updatedBlog.title.slice(0, 30)}"`)
+      .catch((err) => console.warn("[GitHub Mirror] Sync warning:", err));
+
+    res.json({
+      success: true,
+      blog: updatedBlog,
+      oldBlogTitle: oldBlog?.title || "Previous Article",
+      replacedBlogId: targetBlogId,
+      message: `Successfully replaced publication with "${updatedBlog.title}"`
+    });
+  } catch (error: any) {
+    console.error("Error in /api/blog/inject-arxiv:", error);
+    res.status(500).json({ error: error.message || "Failed to inject arXiv paper" });
   }
 });
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download, FileEdit, FileText, Palette, Trash2, Coins, Heart } from "lucide-react";
+import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download, FileEdit, FileText, Palette, Trash2, Coins, Heart, ArrowLeftRight } from "lucide-react";
 
 import { BlogPost, GenerationJob } from "./types";
 import { PRELOADED_BLOGS } from "./data";
@@ -13,6 +13,8 @@ import { PipelineStatusWidget } from "./components/PipelineStatusWidget";
 import { PipelineStatusModal } from "./components/PipelineStatusModal";
 import { RegenerateBannerWidget } from "./components/RegenerateBannerWidget";
 import { RegenerateArticleWidget } from "./components/RegenerateArticleWidget";
+import { InjectArxivWidget } from "./components/InjectArxivWidget";
+import { InjectArxivModal } from "./components/InjectArxivModal";
 import {
   createGenerationJob,
   createBannerGenerationJob,
@@ -125,6 +127,8 @@ export default function App() {
   const [bannerToastMsg, setBannerToastMsg] = useState<string | null>(null);
   const [isRegeneratingArticle, setIsRegeneratingArticle] = useState<string | null>(null);
   const [articleToastMsg, setArticleToastMsg] = useState<string | null>(null);
+  const [injectArxivTargetBlog, setInjectArxivTargetBlog] = useState<BlogPost | null>(null);
+  const [isInjectArxivModalOpen, setIsInjectArxivModalOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const saved = localStorage.getItem("theme");
@@ -485,6 +489,51 @@ export default function App() {
     } finally {
       setIsRegeneratingArticle(null);
     }
+  };
+
+  const handleOpenInjectArxiv = (blog: BlogPost, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!isEditorMode) {
+      setIsEditorPasswordModalOpen(true);
+      return;
+    }
+    setInjectArxivTargetBlog(blog);
+    setIsInjectArxivModalOpen(true);
+  };
+
+  const handleArticleInjected = (updatedBlog: BlogPost, previousBlogId: string) => {
+    // 1. Update in blogs list preserving order
+    setBlogs((prev) =>
+      prev.map((b) =>
+        b.id === previousBlogId ||
+        b.id === updatedBlog.id ||
+        (b.slug && (b.slug === updatedBlog.slug || b.slug === previousBlogId))
+          ? updatedBlog
+          : b
+      )
+    );
+
+    // 2. Update activeBlog if currently open
+    if (
+      activeBlog &&
+      (activeBlog.id === previousBlogId ||
+        activeBlog.id === updatedBlog.id ||
+        activeBlog.slug === updatedBlog.slug ||
+        activeBlog.slug === previousBlogId)
+    ) {
+      setActiveBlog(updatedBlog);
+    }
+
+    // 3. Persist to local storage
+    try {
+      const customBlogs = blogs
+        .map((b) => (b.id === previousBlogId ? updatedBlog : b))
+        .filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id));
+      localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+    } catch (_) {}
+
+    setArticleToastMsg(`Successfully injected arXiv paper "${updatedBlog.title.slice(0, 42)}..."`);
+    setTimeout(() => setArticleToastMsg(null), 4000);
   };
 
   const handleDownloadPng = (blog: BlogPost) => {
@@ -1395,6 +1444,15 @@ export default function App() {
                                   {/* Article text regeneration & management: discrete pills on top-right of the card */}
                                   <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-20 animate-fade-in">
                                     <button
+                                      onClick={(e) => handleOpenInjectArxiv(blog, e)}
+                                      title="Inject new arXiv URL & replace this article"
+                                      className="px-2.5 py-1.5 bg-neutral-950/85 hover:bg-neutral-900 text-purple-300 hover:text-purple-200 border border-purple-500/40 hover:border-purple-400 rounded-lg shadow-lg cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 text-[10px] font-mono font-bold backdrop-blur-md"
+                                    >
+                                      <ArrowLeftRight className="h-3.5 w-3.5 text-purple-400" />
+                                      <span>Inject arXiv</span>
+                                    </button>
+
+                                    <button
                                       onClick={(e) => handleRegenerateArticle(blog, e)}
                                       disabled={isRegeneratingArticle === blog.id}
                                       title="Regenerate Full Article Text, LaTeX & Takeaways"
@@ -1713,6 +1771,23 @@ export default function App() {
                                 <span>Clicks: ~{calculateArticleRevenue(activeBlog.views || 350).clicks}</span>
                               </div>
                             </div>
+
+                            {/* Section 4: Inject & Replace arXiv Source */}
+                            <div className="space-y-1.5 pt-2 border-t border-dashed border-neutral-200 dark:border-neutral-800">
+                              <div className="flex items-center justify-between px-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                                <span className="flex items-center gap-1.5">
+                                  <ArrowLeftRight className="w-3 h-3 text-purple-500" />
+                                  4. Inject arXiv Source
+                                </span>
+                                <span className="text-[9px] text-neutral-400 font-normal">
+                                  Handpick
+                                </span>
+                              </div>
+                              <InjectArxivWidget
+                                onOpenModal={() => handleOpenInjectArxiv(activeBlog)}
+                                currentArxivLink={activeBlog.arxivLink}
+                              />
+                            </div>
                           </div>
                         )}
 
@@ -2021,6 +2096,19 @@ export default function App() {
           setEditorPassword(pwd);
           setIsEditorPasswordModalOpen(false);
         }}
+      />
+
+      {/* INJECT & REPLACE ARXIV MODAL */}
+      <InjectArxivModal
+        isOpen={isInjectArxivModalOpen}
+        onClose={() => {
+          setIsInjectArxivModalOpen(false);
+          setInjectArxivTargetBlog(null);
+        }}
+        targetBlog={injectArxivTargetBlog}
+        editorPassword={editorPassword}
+        onArticleInjected={handleArticleInjected}
+        theme={theme}
       />
     </div>
   );
