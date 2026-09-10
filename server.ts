@@ -2378,14 +2378,7 @@ app.post("/api/blog/inject-arxiv", async (req, res) => {
     const triggerId = typeof seed === "number" ? seed : Date.now();
 
     // 2. Load existing local blogs
-    let localBlogs: any[] = [];
-    if (fs.existsSync(CUSTOM_BLOGS_FILE)) {
-      try {
-        localBlogs = JSON.parse(fs.readFileSync(CUSTOM_BLOGS_FILE, "utf-8"));
-      } catch (e) {
-        console.error("Error reading custom_blogs.json:", e);
-      }
-    }
+    let localBlogs: any[] = readCustomBlogs();
 
     // 3. Locate target blog to replace
     let targetIndex = localBlogs.findIndex((b: any) =>
@@ -2394,7 +2387,22 @@ app.post("/api/blog/inject-arxiv", async (req, res) => {
       (b.id && targetBlogId && b.id.toString() === targetBlogId.toString())
     );
 
-    const oldBlog = targetIndex >= 0 ? localBlogs[targetIndex] : null;
+    let oldBlog = targetIndex >= 0 ? localBlogs[targetIndex] : null;
+    if (!oldBlog) {
+      try {
+        const allServerBlogs = await getBlogs();
+        const found = allServerBlogs.find((b: any) =>
+          b.id === targetBlogId ||
+          b.slug === targetBlogId ||
+          (b.id && targetBlogId && b.id.toString() === targetBlogId.toString())
+        );
+        if (found) {
+          oldBlog = found;
+        }
+      } catch (err) {
+        console.warn("[Inject arXiv] Error looking up target blog in allBlogs:", err);
+      }
+    }
 
     // 4. Generate scholarly article via Gemini with mathematical rigor & LaTeX
     let generatedBlogData: any = null;
@@ -2616,7 +2624,10 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
     });
   } catch (error: any) {
     console.error("Error in /api/blog/inject-arxiv:", error);
-    res.status(500).json({ error: error.message || "Failed to inject arXiv paper" });
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to inject arXiv paper. Please verify the arXiv ID."
+    });
   }
 });
 

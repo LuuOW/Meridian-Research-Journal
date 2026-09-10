@@ -1446,7 +1446,7 @@ export default function App() {
                                     <button
                                       onClick={(e) => handleOpenInjectArxiv(blog, e)}
                                       title="Inject new arXiv URL & replace this article"
-                                      className="px-2.5 py-1.5 bg-neutral-950/85 hover:bg-neutral-900 text-purple-300 hover:text-purple-200 border border-purple-500/40 hover:border-purple-400 rounded-lg shadow-lg cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 text-[10px] font-mono font-bold backdrop-blur-md"
+                                      className="px-2.5 py-1.5 bg-white/95 dark:bg-neutral-950/85 hover:bg-neutral-100 dark:hover:bg-neutral-900 text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-200 border border-purple-300 dark:border-purple-500/40 hover:border-purple-400 rounded-lg shadow-sm hover:shadow cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 text-[10px] font-mono font-bold backdrop-blur-md"
                                     >
                                       <ArrowLeftRight className="h-3.5 w-3.5 text-purple-400" />
                                       <span>Inject arXiv</span>
@@ -1786,6 +1786,7 @@ export default function App() {
                               <InjectArxivWidget
                                 onOpenModal={() => handleOpenInjectArxiv(activeBlog)}
                                 currentArxivLink={activeBlog.arxivLink}
+                                theme={theme}
                               />
                             </div>
                           </div>
