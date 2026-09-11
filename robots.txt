@@ -2,6 +2,7 @@
 User-agent: *
 Allow: /
 Allow: /blog/
+Allow: /ads.txt
 Allow: /sitemap.xml
 
 # Disallow internal API endpoints and administrative endpoints
