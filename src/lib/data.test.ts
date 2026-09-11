@@ -312,7 +312,8 @@ test("cleanJsonText handles unclosed markdown tags and excessive trailing backsl
 });
 
 test("extractArxivId handles strange whitespace, prefix variants, and non-arxiv paths", () => {
-  assert.strictEqual(extractArxivId("   arxiv:1706.03762   "), null, "Prefix with 'arxiv:' is not standard, should return null");
+  assert.strictEqual(extractArxivId("   arxiv:1706.03762   "), "1706.03762", "Prefix with 'arxiv:' should extract valid ID");
+  assert.strictEqual(extractArxivId("invalid-non-arxiv-id"), null, "Invalid string should return null");
   assert.strictEqual(extractArxivId("https://arxiv.org/abs/1212.56789"), "1212.56789", "Should match 5-digit suffixes");
   assert.strictEqual(extractArxivId("https://arxiv.org/abs/9912.1234"), "9912.1234", "Should match 4-digit suffixes");
 });

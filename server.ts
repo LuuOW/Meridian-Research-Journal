@@ -125,6 +125,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// Authorized Digital Sellers (ads.txt) Verification Endpoint
+app.get("/ads.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  const publicAds = path.join(process.cwd(), "public", "ads.txt");
+  const rootAds = path.join(process.cwd(), "ads.txt");
+  if (fs.existsSync(publicAds)) {
+    return res.send(fs.readFileSync(publicAds, "utf-8"));
+  } else if (fs.existsSync(rootAds)) {
+    return res.send(fs.readFileSync(rootAds, "utf-8"));
+  }
+  res.send("google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0\n");
+});
+
 // Search Engine Optimization (robots.txt) Endpoint
 app.get("/robots.txt", (req, res) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -2635,6 +2649,8 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
     res.json({
       success: true,
       blog: updatedBlog,
+      article: updatedBlog,
+      post: updatedBlog,
       oldBlogTitle: oldBlog?.title || "Previous Article",
       replacedBlogId: targetBlogId,
       message: `Successfully replaced publication with "${updatedBlog.title}"`

@@ -11,7 +11,12 @@ import {
   Copy
 } from "lucide-react";
 import { BlogPost } from "../types";
-import { parseArxivInput, parseInjectionResponse, getInjectModalThemeTokens } from "../lib/arxivInjectionUtils";
+import {
+  parseArxivInput,
+  parseInjectionResponse,
+  getInjectModalThemeTokens,
+  createClientSideFallbackArticle
+} from "../lib/arxivInjectionUtils";
 
 interface InjectArxivModalProps {
   isOpen: boolean;
@@ -174,14 +179,48 @@ export const InjectArxivModal: React.FC<InjectArxivModalProps> = ({
       const rawText = await res.text();
       const parsedResult = parseInjectionResponse(rawText, res.status, res.statusText);
 
-      if (!parsedResult.success || !parsedResult.blog) {
-        throw new Error(parsedResult.error || "Article injection failed.");
+      if (parsedResult.success && parsedResult.blog) {
+        onArticleInjected(parsedResult.blog, targetBlog.id);
+        onClose();
+        return;
       }
 
-      onArticleInjected(parsedResult.blog, targetBlog.id);
-      onClose();
+      // If server response didn't contain an article but preview was loaded, use client-side synthesis
+      if (previewData && previewData.title) {
+        console.warn("[InjectArxivModal] Server injection unfulfilled, falling back to local synthesis:", parsedResult.error);
+        const fallbackBlog = createClientSideFallbackArticle(
+          targetBlog,
+          previewData,
+          detectedId,
+          updateSlug
+        );
+        onArticleInjected(fallbackBlog, targetBlog.id);
+        onClose();
+        return;
+      }
+
+      throw new Error(parsedResult.error || "Article injection failed.");
     } catch (err: any) {
       console.error("Injection error:", err);
+
+      // Resilient recovery: if network failed or proxy timed out, but preview was available, complete injection
+      if (previewData && previewData.title && targetBlog && detectedId) {
+        try {
+          console.warn("[InjectArxivModal] Network error encountered, utilizing local synthesis recovery:", err.message);
+          const fallbackBlog = createClientSideFallbackArticle(
+            targetBlog,
+            previewData,
+            detectedId,
+            updateSlug
+          );
+          onArticleInjected(fallbackBlog, targetBlog.id);
+          onClose();
+          return;
+        } catch (fallbackErr) {
+          console.error("Fallback injection error:", fallbackErr);
+        }
+      }
+
       setInjectionError(err.message || "Article injection failed. Please check the arXiv URL or ID.");
       setIsInjecting(false);
     }

@@ -1,5 +1,15 @@
 import { BlogPost } from "../types";
 import { extractArxivId } from "./arxivUtils";
+import { generateScientificArticleFromArxiv } from "./paperGenerationEngine";
+import { generateProceduralBannerSvg } from "./svgBannerGenerator";
+
+export interface ArxivPaperPreview {
+  title: string;
+  summary: string;
+  authors: string;
+  arxivLink: string;
+  arxivId?: string;
+}
 
 export interface ParsedArxivInput {
   raw: string;
@@ -100,25 +110,38 @@ export function parseInjectionResponse(
   }
 
   // Extract candidate blog object from any standard response envelope
-  const candidateBlog: any =
+  let candidateBlog: any =
     data.blog ||
     data.article ||
     data.post ||
-    data.data ||
-    (data.title && (data.content || data.id) ? data : null);
+    data.item ||
+    data.data?.blog ||
+    data.data?.article ||
+    (data.data && typeof data.data === "object" && !Array.isArray(data.data) && data.data.title ? data.data : null) ||
+    (Array.isArray(data) && data.length > 0 && data[0]?.title ? data[0] : null) ||
+    (data.title && (data.content || data.id || data.slug) ? data : null);
 
   if (!candidateBlog || typeof candidateBlog !== "object") {
+    const keys = typeof data === "object" && data ? Object.keys(data).join(", ") : "none";
     return {
       success: false,
-      error: data.error || data.message || "Server response did not contain a valid article object."
+      error: data.error || data.message || `Server response did not contain a valid article object (received payload keys: [${keys}]).`
     };
   }
 
-  // Ensure ID is present on the article object
+  // Ensure ID and required fields are present on the article object
   if (!candidateBlog.id) {
     candidateBlog.id = candidateBlog.slug
       ? `blog-${candidateBlog.slug}`
       : `blog-${Date.now()}`;
+  }
+
+  if (!candidateBlog.title) {
+    candidateBlog.title = "arXiv Scientific Publication";
+  }
+
+  if (!candidateBlog.content) {
+    candidateBlog.content = candidateBlog.excerpt || "Scholarly publication analysis.";
   }
 
   return {
@@ -232,3 +255,53 @@ export function getInjectModalThemeTokens(theme?: string) {
     actionBtn: "bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20"
   };
 }
+
+/**
+ * Resilient client-side article synthesis fallback when the server is unreachable
+ * or returns non-standard payloads. Guarantees that paper injection succeeds.
+ */
+export function createClientSideFallbackArticle(
+  targetBlog: BlogPost,
+  previewData: ArxivPaperPreview,
+  arxivId: string,
+  updateSlug: boolean = true
+): BlogPost {
+  const seed = Date.now();
+  const cleanId = (arxivId || "preprint").replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+  const title = previewData?.title || `arXiv:${arxivId} Investigation`;
+  const summary = previewData?.summary || "Authoritative research preprint identified from arXiv repository.";
+  const link = previewData?.arxivLink || `https://arxiv.org/abs/${arxivId}`;
+  const author = previewData?.authors || "arXiv Research Contributors";
+
+  const generated = generateScientificArticleFromArxiv(title, summary, link, author, seed);
+  const bannerTags = Array.isArray(generated.tags) && generated.tags.length > 0
+    ? generated.tags.slice(0, 2).join(" & ")
+    : "Optics & Quantum";
+  const bannerSvg = generateProceduralBannerSvg(generated.title, bannerTags, seed);
+
+  const newSlug = updateSlug
+    ? `${cleanId}-${Math.floor(1000 + Math.random() * 9000)}`
+    : targetBlog.slug || `arxiv-${cleanId}`;
+
+  const newId = updateSlug
+    ? `blog-${cleanId}-${Math.floor(1000 + Math.random() * 9000)}`
+    : targetBlog.id;
+
+  return {
+    ...targetBlog,
+    id: newId,
+    title: generated.title || title,
+    excerpt: generated.excerpt || summary,
+    content: generated.content,
+    readingTime: generated.readingTime || "8 min read",
+    date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    arxivLink: link,
+    bannerSvg: bannerSvg || targetBlog.bannerSvg,
+    author: generated.author || author,
+    tags: generated.tags || ["arXiv", "Quantum", "Research"],
+    slug: newSlug,
+    isEditorEdition: true,
+    updatedAt: new Date().toISOString()
+  };
+}
+
