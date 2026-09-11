@@ -11,9 +11,6 @@ import { AudioPlayer } from "./components/AudioPlayer";
 import { ArxivGenerator } from "./components/ArxivGenerator";
 import { PipelineStatusWidget } from "./components/PipelineStatusWidget";
 import { PipelineStatusModal } from "./components/PipelineStatusModal";
-import { RegenerateBannerWidget } from "./components/RegenerateBannerWidget";
-import { RegenerateArticleWidget } from "./components/RegenerateArticleWidget";
-import { InjectArxivWidget } from "./components/InjectArxivWidget";
 import { InjectArxivModal } from "./components/InjectArxivModal";
 import {
   createGenerationJob,
@@ -1670,59 +1667,51 @@ export default function App() {
                           </button>
                         </div>
 
-                        {/* Editor Mode: Dedicated Pipeline Actions (Clearly Distinguished & Discrete) */}
+                        {/* Editor Mode: Discrete & Minimalist Editorial Actions */}
                         {isEditorMode && (
-                          <div className="space-y-3 pt-3 border-t border-neutral-200/70 dark:border-neutral-800/70">
-                            {/* Section 1: Article Prose & Derivations */}
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between px-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                                <span className="flex items-center gap-1.5">
-                                  <FileText className="w-3 h-3 text-emerald-500" />
-                                  1. Article Synthesis
-                                </span>
-                                <span className="text-[9px] text-neutral-400 font-normal">
-                                  Prose &amp; Math
-                                </span>
-                              </div>
-                              <RegenerateArticleWidget
-                                onRegenerate={() => handleRegenerateArticle(activeBlog)}
-                                isGenerating={isRegeneratingArticle === activeBlog.id}
-                              />
+                          <div className="pt-3 border-t border-neutral-200/80 dark:border-neutral-800/80 space-y-2">
+                            <div className="flex items-center justify-between px-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                              <span className="flex items-center gap-1.5">
+                                <Sparkles className="w-3 h-3 text-purple-500" />
+                                Editorial Actions
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                Editor Active
+                              </span>
                             </div>
 
-                            {/* Section 2: Banner Vector Artwork */}
-                            <div className="space-y-1.5 pt-2 border-t border-dashed border-neutral-200 dark:border-neutral-800">
-                              <div className="flex items-center justify-between px-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-                                <span className="flex items-center gap-1.5">
-                                  <Palette className="w-3 h-3 text-cyan-500" />
-                                  2. Artwork Banner
-                                </span>
-                                <span className="text-[9px] text-neutral-400 font-normal">
-                                  Vector SVG
-                                </span>
-                              </div>
-                              <RegenerateBannerWidget
-                                onRegenerate={() => handleRegenerateBanner(activeBlog)}
-                                isGenerating={isRegeneratingBanner === activeBlog.id}
-                              />
-                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              {/* 1. Prose & LaTeX */}
+                              <button
+                                onClick={() => handleRegenerateArticle(activeBlog)}
+                                disabled={isRegeneratingArticle === activeBlog.id}
+                                title="Regenerate article text, LaTeX derivations & takeaways"
+                                className="p-2.5 rounded-xl border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-neutral-800 dark:text-neutral-200 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50 group"
+                              >
+                                <FileText className={`w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform ${isRegeneratingArticle === activeBlog.id ? "animate-pulse" : ""}`} />
+                                <span className="text-[10px] font-mono font-semibold truncate">Prose &amp; Math</span>
+                              </button>
 
-                            {/* Section 3: Inject & Replace arXiv Source */}
-                            <div className="space-y-1.5 pt-2 border-t border-dashed border-neutral-200 dark:border-neutral-800">
-                              <div className="flex items-center justify-between px-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
-                                <span className="flex items-center gap-1.5">
-                                  <ArrowLeftRight className="w-3 h-3 text-purple-500" />
-                                  3. Inject arXiv Source
-                                </span>
-                                <span className="text-[9px] text-neutral-400 font-normal">
-                                  Handpick
-                                </span>
-                              </div>
-                              <InjectArxivWidget
-                                onOpenModal={() => handleOpenInjectArxiv(activeBlog)}
-                                currentArxivLink={activeBlog.arxivLink}
-                                theme={theme}
-                              />
+                              {/* 2. Banner SVG */}
+                              <button
+                                onClick={() => handleRegenerateBanner(activeBlog)}
+                                disabled={isRegeneratingBanner === activeBlog.id}
+                                title="Regenerate banner vector SVG artwork"
+                                className="p-2.5 rounded-xl border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 hover:border-cyan-500 hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30 text-neutral-800 dark:text-neutral-200 hover:text-cyan-700 dark:hover:text-cyan-300 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50 group"
+                              >
+                                <Palette className={`w-4 h-4 text-cyan-500 group-hover:scale-110 transition-transform ${isRegeneratingBanner === activeBlog.id ? "animate-spin" : ""}`} />
+                                <span className="text-[10px] font-mono font-semibold truncate">Banner SVG</span>
+                              </button>
+
+                              {/* 3. Inject arXiv */}
+                              <button
+                                onClick={() => handleOpenInjectArxiv(activeBlog)}
+                                title="Inject handpicked arXiv preprint & replace slot"
+                                className="p-2.5 rounded-xl border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 hover:border-purple-500 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 text-neutral-800 dark:text-neutral-200 hover:text-purple-700 dark:hover:text-purple-300 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 group"
+                              >
+                                <ArrowLeftRight className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
+                                <span className="text-[10px] font-mono font-semibold truncate">Inject arXiv</span>
+                              </button>
                             </div>
                           </div>
                         )}

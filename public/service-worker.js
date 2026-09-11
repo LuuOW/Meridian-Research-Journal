@@ -1,6 +1,5 @@
-self.options = {
-    "domain": "5gvci.com",
-    "zoneId": 11654383
-}
-self.lary = ""
-importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw')
+// Cleanup script: Automatically unregisters any legacy ad network service workers
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.registration.unregister());
+});

@@ -91,25 +91,41 @@ export function parseInjectionResponse(
     };
   }
 
-  if (data.success === false || data.error) {
+  // If the server explicitly indicated an error without returning an article
+  if (data.success === false && !data.blog && !data.article) {
     return {
       success: false,
       error: data.error || data.message || "Article injection failed."
     };
   }
 
-  if (!data.blog || typeof data.blog !== "object" || !data.blog.id) {
+  // Extract candidate blog object from any standard response envelope
+  const candidateBlog: any =
+    data.blog ||
+    data.article ||
+    data.post ||
+    data.data ||
+    (data.title && (data.content || data.id) ? data : null);
+
+  if (!candidateBlog || typeof candidateBlog !== "object") {
     return {
       success: false,
-      error: "Server response did not contain a valid article object."
+      error: data.error || data.message || "Server response did not contain a valid article object."
     };
+  }
+
+  // Ensure ID is present on the article object
+  if (!candidateBlog.id) {
+    candidateBlog.id = candidateBlog.slug
+      ? `blog-${candidateBlog.slug}`
+      : `blog-${Date.now()}`;
   }
 
   return {
     success: true,
-    blog: data.blog as BlogPost,
+    blog: candidateBlog as BlogPost,
     message: data.message,
-    replacedBlogId: data.replacedBlogId
+    replacedBlogId: data.replacedBlogId || candidateBlog.id
   };
 }
 

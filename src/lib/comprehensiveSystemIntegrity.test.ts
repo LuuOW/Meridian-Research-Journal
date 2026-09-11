@@ -77,39 +77,35 @@ describe("Sitemap, SEO & Static Assets Suite", () => {
     assert.ok(content.includes("User-agent: *"));
     assert.ok(content.includes("Allow: /"));
     assert.ok(content.includes("Allow: /blog/"));
-    assert.ok(content.includes("Allow: /ads.txt"));
+    assert.ok(!content.includes("Allow: /ads.txt"));
     assert.ok(content.includes("Allow: /sitemap.xml"));
     assert.ok(content.includes("Sitemap: https://ask-meridian.uk/sitemap.xml"));
   });
 
-  test("ads.txt exists and contains legitimate ad seller records", () => {
+  test("ads.txt is removed from public and root", () => {
     const adsPath = path.join(process.cwd(), "public", "ads.txt");
-    assert.ok(fs.existsSync(adsPath), "ads.txt must exist in /public");
-
-    const content = fs.readFileSync(adsPath, "utf-8");
-    assert.ok(content.includes("google.com, pub-7734562716191044, DIRECT, f08c47fec0942fa0"));
+    assert.ok(!fs.existsSync(adsPath), "ads.txt must not exist in /public");
   });
 });
 
 // Advertising & Monetization Integration Suite
-describe("Advertising & Monetization Integration Suite", () => {
-  test("index.html contains valid monetization and AdSense tags", () => {
+describe("Ad Network Removal & Site Cleanliness", () => {
+  test("index.html is free of external ad scripts and tracking popups", () => {
     const indexPath = path.join(process.cwd(), "index.html");
     assert.ok(fs.existsSync(indexPath), "index.html must exist");
     const content = fs.readFileSync(indexPath, "utf-8");
-    assert.ok(content.includes('pagead2.googlesyndication.com'), "index.html must include Google AdSense script");
-    assert.ok(content.includes('ca-pub-7734562716191044'), "index.html must include publisher ID");
+    assert.ok(!content.includes('quge5.com'), "index.html must not include quge5 ad script");
+    assert.ok(!content.includes('omg10.com'), "index.html must not include omg10 ad script");
+    assert.ok(!content.includes('pagead2.googlesyndication.com'), "index.html must not include Google AdSense script");
   });
 
   test("ad service worker files are neutralized or absent", () => {
-    const adsterraPath = path.join(process.cwd(), "adsterra-sw.js");
-    const monetagPath = path.join(process.cwd(), "monetag-sw.js");
+    const swPath = path.join(process.cwd(), "public", "sw.js");
     const readIfExists = (p: string) => fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
-    const a = readIfExists(adsterraPath);
-    const m = readIfExists(monetagPath);
-    // Ensure no remote importScripts are present
-    assert.ok(!a.includes('importScripts('));
-    assert.ok(!m.includes('importScripts('));
+    const swContent = readIfExists(swPath);
+    // Ensure no remote ad network importScripts are present
+    assert.ok(!swContent.includes('importScripts('));
+    assert.ok(!swContent.includes('5gvci.com'));
   });
 });
 
