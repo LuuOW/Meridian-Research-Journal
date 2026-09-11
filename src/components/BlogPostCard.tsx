@@ -4,7 +4,6 @@ import { BookOpen, Calendar, Clock, Sparkles } from "lucide-react";
 import { ViewCounter } from "./ViewCounter";
 import { RayTracedCard } from "./RayTracedCard";
 import { ensureAnimatedSvg } from "../lib/svgUtils";
-import { trackInteraction } from "../lib/adsenseTracker";
 import { FormattedMathText } from "./FormattedMathText";
 
 interface BlogPostCardProps {
@@ -23,26 +22,9 @@ const getTagAccentColor = (tags: string[]): string => {
 export const BlogPostCard: React.FC<BlogPostCardProps & { onClick: () => void }> = ({ blog, onClick }) => {
   const accentGlow = getTagAccentColor(blog.tags);
 
-  const handleClick = () => {
-    trackInteraction("page_view", {
-      postId: blog.id,
-      postTitle: blog.title,
-      details: { source: "card_click" }
-    });
-    onClick();
-  };
-
-  const handleMouseEnter = () => {
-    trackInteraction("raytrace_tilt", {
-      postId: blog.id,
-      postTitle: blog.title
-    });
-  };
-
   return (
     <RayTracedCard
-      onClick={handleClick}
-      onMouseEnter={handleMouseEnter}
+      onClick={onClick}
       className="h-full"
       accentGlowColor={accentGlow}
     >

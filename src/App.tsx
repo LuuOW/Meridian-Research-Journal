@@ -45,16 +45,8 @@ import { PasskeyPortal } from "./components/PasskeyPortal";
 import { RayTracedCard } from "./components/RayTracedCard";
 import { SearchFilterBar } from "./components/SearchFilterBar";
 import { filterBlogsIntelligently } from "./lib/autocompleteUtils";
-import { GoogleAdSlot } from "./components/GoogleAdSlot";
-import { AdSenseRevenueModal } from "./components/AdSenseRevenueModal";
 import { BinanceTerminalModal } from "./components/BinanceTerminalModal";
 import { DonationModal } from "./components/DonationModal";
-import {
-  calculateCatalogRevenue,
-  calculateArticleRevenue,
-  formatCurrency,
-  trackInteraction
-} from "./lib/adsenseTracker";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
@@ -97,7 +89,6 @@ export default function App() {
   }, [searchQuery, isSearching]);
   const [isXModalOpen, setIsXModalOpen] = useState(false);
   const [isXTestModalOpen, setIsXTestModalOpen] = useState(false);
-  const [isAdSenseModalOpen, setIsAdSenseModalOpen] = useState(false);
   const [isBinanceModalOpen, setIsBinanceModalOpen] = useState(false);
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
@@ -181,11 +172,6 @@ export default function App() {
         [25, 50, 75, 100].forEach((milestone) => {
           if (progress >= milestone && !milestonesReached.has(milestone)) {
             milestonesReached.add(milestone);
-            trackInteraction("scroll_depth", {
-              postId: activeBlog.id,
-              postTitle: activeBlog.title,
-              details: { milestone }
-            });
           }
         });
       } else {
@@ -199,22 +185,6 @@ export default function App() {
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [activeBlog]);
-
-  // Active reading dwell time telemetry (records 15-second active reading blocks)
-  useEffect(() => {
-    if (!activeBlog) return;
-    const dwellInterval = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        trackInteraction("reading_dwell", {
-          postId: activeBlog.id,
-          postTitle: activeBlog.title,
-          details: { seconds: 15 }
-        });
-      }
-    }, 15000);
-
-    return () => clearInterval(dwellInterval);
   }, [activeBlog]);
 
   // Inactivity detection: Disable Editor Mode after 5 minutes of inactivity (but defer while active generation pipeline jobs run)
@@ -1284,13 +1254,11 @@ export default function App() {
         onToggleTheme={() => {
           const next = theme === "light" ? "dark" : "light";
           setTheme(next);
-          trackInteraction("theme_toggle", { details: { to: next } });
         }}
         onOpenPipelineStatus={() => {
           setEditorConsoleTab("pipeline");
           setIsEditorConsoleOpen(true);
         }}
-        onOpenAdSenseRevenue={() => setIsAdSenseModalOpen(true)}
         onOpenDailyDispatch={() => {
           setEditorConsoleTab("dispatch");
           setIsEditorConsoleOpen(true);
@@ -1309,7 +1277,6 @@ export default function App() {
         }}
         onOpenXaiAgent={() => setIsXaiAgentModalOpen(true)}
         hasPendingDispatch={hasPendingDispatch}
-        todayRevenueEstimate={formatCurrency(calculateCatalogRevenue(blogs).todayEstimate)}
         activeJobs={jobs}
       />
 
@@ -1634,11 +1601,6 @@ export default function App() {
                           href={activeBlog.arxivLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          onClick={() => trackInteraction("arxiv_click", {
-                            postId: activeBlog.id,
-                            postTitle: activeBlog.title,
-                            details: { url: activeBlog.arxivLink }
-                          })}
                           className="flex items-center gap-2 border border-black dark:border-neutral-700 px-6 py-2.5 rounded-full text-xs font-bold hover:bg-gray-50 dark:hover:bg-neutral-900 text-black dark:text-white transition-all cursor-pointer"
                         >
                           <BookOpen className="w-4 h-4 text-black dark:text-white" />
@@ -1697,11 +1659,6 @@ export default function App() {
 
                           <button
                             onClick={() => {
-                              trackInteraction("share_click", {
-                                postId: activeBlog.id,
-                                postTitle: activeBlog.title,
-                                details: { network: "x" }
-                              });
                               setIsXModalOpen(true);
                             }}
                             title="Draft & Share Distribution Note (Writer)"
@@ -1750,34 +1707,12 @@ export default function App() {
                               />
                             </div>
 
-                            {/* Section 3: Article AdSense Performance & Valuation */}
-                            <div
-                              onClick={() => setIsAdSenseModalOpen(true)}
-                              className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/40 cursor-pointer hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30 transition-colors text-xs font-mono"
-                              title="Click to open AdSense Revenue & Telemetry Console"
-                            >
-                              <div className="flex items-center justify-between text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 mb-1">
-                                <span className="flex items-center gap-1.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                                  3. AdSense Est. Valuation
-                                </span>
-                                <span className="text-xs font-extrabold">
-                                  {formatCurrency(calculateArticleRevenue(activeBlog.views || 350).estimatedRevenue)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
-                                <span>RPM: ${calculateArticleRevenue(activeBlog.views || 350).rpm.toFixed(2)}</span>
-                                <span>Impr: {calculateArticleRevenue(activeBlog.views || 350).impressions}</span>
-                                <span>Clicks: ~{calculateArticleRevenue(activeBlog.views || 350).clicks}</span>
-                              </div>
-                            </div>
-
-                            {/* Section 4: Inject & Replace arXiv Source */}
+                            {/* Section 3: Inject & Replace arXiv Source */}
                             <div className="space-y-1.5 pt-2 border-t border-dashed border-neutral-200 dark:border-neutral-800">
                               <div className="flex items-center justify-between px-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
                                 <span className="flex items-center gap-1.5">
                                   <ArrowLeftRight className="w-3 h-3 text-purple-500" />
-                                  4. Inject arXiv Source
+                                  3. Inject arXiv Source
                                 </span>
                                 <span className="text-[9px] text-neutral-400 font-normal">
                                   Handpick
@@ -1828,9 +1763,6 @@ export default function App() {
 
                     {/* Render the math rich markdown article */}
                     <MathRenderer text={activeBlog.content} />
-                    
-                    {/* Google AdSense Sponsored Article Unit (custom_01) */}
-                    <GoogleAdSlot slotId="9736830690" className="my-8" />
 
                     {/* Article footer sign-off */}
                     <div className="border-t border-gray-100 dark:border-neutral-800 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -2002,13 +1934,6 @@ export default function App() {
         onClose={() => setIsResumeOpen(false)}
       />
 
-      {/* ADSENSE REVENUE TRACKER & TELEMETRY MODAL */}
-      <AdSenseRevenueModal
-        isOpen={isAdSenseModalOpen}
-        onClose={() => setIsAdSenseModalOpen(false)}
-        blogs={blogs}
-        activeBlog={activeBlog || undefined}
-      />
 
       {/* UNIFIED AUTONOMOUS EDITOR CONSOLE (DAILY DISPATCH, OBSERVATORY CLIMATE, X LIVE DIAGNOSTICS, PIPELINE) */}
       <AutonomousEditorConsoleModal

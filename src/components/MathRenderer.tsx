@@ -10,8 +10,6 @@ import {
   FileCode2
 } from "lucide-react";
 import { isMathExpression as isMath } from "../lib/mathUtils";
-import { GoogleInArticleAd } from "./GoogleInArticleAd";
-import { trackInteraction } from "../lib/adsenseTracker";
 
 interface MathRendererProps {
   text: string;
@@ -581,8 +579,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
       parts.push(
         <div
           key={`block-placeholder-${keyCounter++}`}
-          onClick={() => trackInteraction("latex_inspect", { details: { mode: "block_math" } })}
-          className="my-6 w-full overflow-x-auto py-2 text-slate-800 dark:text-neutral-200 cursor-pointer hover:bg-cyan-500/5 rounded-lg transition-colors"
+          className="my-6 w-full overflow-x-auto py-2 text-slate-800 dark:text-neutral-200 hover:bg-cyan-500/5 rounded-lg transition-colors"
           dangerouslySetInnerHTML={{ __html: mathObj.html }}
         />
       );
@@ -800,22 +797,10 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text }) => {
             
           case "paragraph":
           default: {
-            // Count paragraphs rendered before this one
-            const priorParagraphCount = blocks
-              .slice(0, bIdx)
-              .filter((b) => b.type === "paragraph" && b.content.trim().length > 20).length;
-
-            const isSecondParagraph = priorParagraphCount === 1 && block.content.trim().length > 20;
-
             return (
-              <React.Fragment key={`p-wrapper-${bIdx}`}>
-                <div key={`p-${bIdx}`} className="mb-4 leading-relaxed">
-                  {renderLine(block.content)}
-                </div>
-                {isSecondParagraph && (
-                  <GoogleInArticleAd slotId="2342440882" className="my-6" />
-                )}
-              </React.Fragment>
+              <div key={`p-${bIdx}`} className="mb-4 leading-relaxed">
+                {renderLine(block.content)}
+              </div>
             );
           }
         }

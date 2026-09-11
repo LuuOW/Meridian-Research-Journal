@@ -93,14 +93,12 @@ interface NavbarProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   onOpenPipelineStatus?: () => void;
-  onOpenAdSenseRevenue?: () => void;
   onOpenDailyDispatch?: () => void;
   onOpenXTest?: () => void;
   onOpenObservatoryClimate?: () => void;
   onOpenEditorConsole?: (tab?: "dispatch" | "climate" | "xtest" | "pipeline") => void;
   onOpenXaiAgent?: () => void;
   hasPendingDispatch?: boolean;
-  todayRevenueEstimate?: string;
   activeJobs?: GenerationJob[];
 }
 
@@ -116,14 +114,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   theme,
   onToggleTheme,
   onOpenPipelineStatus,
-  onOpenAdSenseRevenue,
   onOpenDailyDispatch,
   onOpenXTest,
   onOpenObservatoryClimate,
   onOpenEditorConsole,
   onOpenXaiAgent,
   hasPendingDispatch = false,
-  todayRevenueEstimate,
   activeJobs = []
 }) => {
   const [isToolsOpen, setIsToolsOpen] = useState(false);
