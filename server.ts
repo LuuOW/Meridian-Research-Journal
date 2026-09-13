@@ -37,6 +37,14 @@ import {
   generateDataTsContent
 } from "./src/lib/githubSync";
 import {
+  offlineRecordScheduler,
+  executeOfflineRecordPushToGitHub,
+  getRemoteOrLocalOfflineRecord,
+  OFFLINE_RECORD_FILE_PATH,
+  formatARTDate,
+  isWeekendInART
+} from "./src/lib/offlineBlogRecord";
+import {
   resolveBlogSlugOrId,
   normalizeSlug,
   stripSlugTimestampSuffix
@@ -932,6 +940,64 @@ app.post("/api/github/sync", async (req, res) => {
       error: err.message || "Failed to execute GitHub sync",
       message: err.message
     });
+  }
+});
+
+// API: Daily 5AM ART Offline Blog Record Status
+app.get("/api/automation/offline-record-status", async (req, res) => {
+  try {
+    const status = offlineRecordScheduler.getStatus();
+    const config = getGitHubSyncConfig();
+    const currentContent = await getRemoteOrLocalOfflineRecord();
+    const now = new Date();
+    const dateStr = formatARTDate(now);
+    const isWeekend = isWeekendInART(now);
+
+    res.json({
+      success: true,
+      currentDateART: dateStr,
+      isWeekend,
+      targetFile: OFFLINE_RECORD_FILE_PATH,
+      targetRepo: config.repo,
+      targetBranch: config.branch,
+      configured: config.configured,
+      scheduler: status,
+      recordContentSnippet: currentContent.slice(-300),
+      fullRecordContent: currentContent
+    });
+  } catch (err: any) {
+    console.error("Error retrieving offline record status:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Trigger Offline Blog Record Push to GitHub Main
+app.post("/api/automation/offline-record-sync", async (req, res) => {
+  try {
+    const { forceWeekend, forcePush, customTitle, date } = req.body || {};
+    const targetDate = date ? new Date(date) : new Date();
+
+    const result = await offlineRecordScheduler.triggerManual({
+      forceWeekend,
+      forcePush,
+      customTitle,
+      date: targetDate
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("Error executing offline record sync:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Get Offline Record Content
+app.get("/api/automation/offline-record-content", async (req, res) => {
+  try {
+    const content = await getRemoteOrLocalOfflineRecord();
+    res.type("text/plain").send(content);
+  } catch (err: any) {
+    res.status(500).send("Error reading offline_blog_record: " + err.message);
   }
 });
 
@@ -4142,6 +4208,11 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    try {
+      offlineRecordScheduler.start();
+    } catch (schedErr) {
+      console.error("Error starting offline record scheduler:", schedErr);
+    }
   });
 }
 

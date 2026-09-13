@@ -1,0 +1,33 @@
+name: Daily 5AM ART Offline Blog Record Automation
+
+on:
+  schedule:
+    # 5:00 AM ART (Argentina Time, UTC-3) corresponds to 08:00 AM UTC every day
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  daily-offline-record-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Execute Daily 5AM ART Record Logging & Push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: LuuOW/Meridian-Research-Journal
+          GITHUB_BRANCH: main
+        run: |
+          npx tsx scripts/sync_offline_record.ts

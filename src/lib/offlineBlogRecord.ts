@@ -1,0 +1,481 @@
+import fs from "fs";
+import path from "path";
+import { getGitHubSyncConfig, commitFileWithAutoShaRetry } from "./githubSync.js";
+
+export const OFFLINE_RECORD_FILE_PATH = "offline_blog_record";
+export const ART_TIMEZONE = "America/Argentina/Buenos_Aires";
+
+export interface OfflineRecordPushResult {
+  success: boolean;
+  message: string;
+  commitUrl?: string;
+  entry: string;
+  filePath: string;
+  date: string;
+  isWeekend: boolean;
+  timestamp: number;
+  error?: string;
+}
+
+/**
+ * Formats a Date object as DD/MM/YYYY strictly within the ART (Argentina Time, UTC-3) timezone
+ */
+export function formatARTDate(date: Date = new Date()): string {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: ART_TIMEZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+  return formatter.format(date);
+}
+
+/**
+ * Returns true if the provided date represents a Saturday or Sunday in ART timezone
+ */
+export function isWeekendInART(date: Date = new Date()): boolean {
+  const dayStr = new Intl.DateTimeFormat("en-US", {
+    timeZone: ART_TIMEZONE,
+    weekday: "short"
+  }).format(date);
+  return dayStr === "Sat" || dayStr === "Sun";
+}
+
+/**
+ * Gets the title of the latest generated article from custom_blogs.json or src/data.ts
+ */
+export function getLatestArticleTitle(baseDir?: string): string {
+  const root = baseDir || process.cwd();
+  const customBlogsPath = path.join(root, "custom_blogs.json");
+  
+  try {
+    if (fs.existsSync(customBlogsPath)) {
+      const raw = fs.readFileSync(customBlogsPath, "utf-8");
+      const blogs = JSON.parse(raw);
+      if (Array.isArray(blogs) && blogs.length > 0) {
+        // Find the first valid blog with a title
+        for (const b of blogs) {
+          if (b && typeof b.title === "string" && b.title.trim()) {
+            return b.title.trim();
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[offlineBlogRecord] Warning reading custom_blogs.json:", err);
+  }
+
+  // Safe fallback if blogs catalog is empty or unavailable
+  return "SI-Traceable Calibration and Performance Benchmarking of a Terahertz Photomixer Transmitter-Receiver System Using a Rydberg Atomic Sensor";
+}
+
+/**
+ * Generates the offline record block:
+ * For weekends:
+ * <DD/MM/YYYY>
+ * - Weekend
+ *
+ * For weekdays:
+ * <DD/MM/YYYY>
+ * <ARTICLE_TITLE>
+ */
+export function generateOfflineRecordEntry(options?: {
+  date?: Date;
+  articleTitle?: string;
+  forceWeekend?: boolean;
+}): string {
+  const targetDate = options?.date || new Date();
+  const dateStr = formatARTDate(targetDate);
+  const weekend = options?.forceWeekend !== undefined ? options.forceWeekend : isWeekendInART(targetDate);
+
+  if (weekend) {
+    return `${dateStr}\n- Weekend`;
+  }
+
+  const title = (options?.articleTitle || getLatestArticleTitle()).trim();
+  return `${dateStr}\n${title}`;
+}
+
+/**
+ * Appends a new entry to the existing offline_blog_record content cleanly.
+ * If checkDuplicateDate is true, avoids appending an identical date entry if it already exists.
+ */
+export function appendOfflineRecordContent(
+  existingContent: string,
+  newEntry: string,
+  checkDuplicateDate: boolean = true
+): { content: string; appended: boolean } {
+  const dateMatch = newEntry.match(/^(\d{2}\/\d{2}\/\d{4})/);
+  const entryDate = dateMatch ? dateMatch[1] : null;
+
+  if (checkDuplicateDate && entryDate) {
+    // Check if entryDate is already logged at an entry boundary
+    const lines = existingContent.split("\n").map(l => l.trim());
+    if (lines.includes(entryDate)) {
+      // Date is already recorded
+      return { content: existingContent, appended: false };
+    }
+  }
+
+  const cleanExisting = existingContent.trimEnd();
+  const content = cleanExisting ? `${cleanExisting}\n\n${newEntry}\n` : `${newEntry}\n`;
+  return { content, appended: true };
+}
+
+/**
+ * Calculates milliseconds until next 5:00:00 AM ART (which is 08:00:00.000 UTC)
+ */
+export function calculateMsUntilNext5AmART(fromDate: Date = new Date()): {
+  ms: number;
+  targetDateUTC: Date;
+  targetDateARTString: string;
+} {
+  const now = fromDate;
+  
+  // Argentina Time has a fixed offset of UTC-3 with no Daylight Saving Time.
+  // 5:00:00 AM ART corresponds precisely to 08:00:00.000 UTC.
+  const targetUTC = new Date(now.getTime());
+  targetUTC.setUTCHours(8, 0, 0, 0);
+
+  if (targetUTC.getTime() <= now.getTime()) {
+    // If 08:00 UTC already passed today, target 08:00 UTC tomorrow
+    targetUTC.setUTCDate(targetUTC.getUTCDate() + 1);
+  }
+
+  const ms = Math.max(1000, targetUTC.getTime() - now.getTime());
+  const targetDateARTString = new Intl.DateTimeFormat("en-GB", {
+    timeZone: ART_TIMEZONE,
+    dateStyle: "full",
+    timeStyle: "long"
+  }).format(targetUTC);
+
+  return {
+    ms,
+    targetDateUTC: targetUTC,
+    targetDateARTString
+  };
+}
+
+/**
+ * Fetches the current content of offline_blog_record from GitHub repo or local disk
+ */
+export async function getRemoteOrLocalOfflineRecord(): Promise<string> {
+  const config = getGitHubSyncConfig();
+  const localFilePath = path.join(process.cwd(), OFFLINE_RECORD_FILE_PATH);
+
+  // Attempt to fetch latest from GitHub if configured
+  if (config.configured) {
+    const [owner, repo] = config.repo.split("/");
+    if (owner && repo) {
+      try {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${OFFLINE_RECORD_FILE_PATH}?ref=${config.branch}&_t=${Date.now()}`;
+        const res = await fetch(url, {
+          headers: {
+            "Authorization": `Bearer ${config.token}`,
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "Meridian-Research-Sync"
+          }
+        });
+
+        if (res.ok) {
+          const data: any = await res.json();
+          if (data && data.content) {
+            const decoded = Buffer.from(data.content, "base64").toString("utf-8");
+            return decoded;
+          }
+        }
+      } catch (err) {
+        console.warn("[offlineBlogRecord] Warning fetching remote offline_blog_record:", err);
+      }
+    }
+  }
+
+  // Fallback to local file
+  if (fs.existsSync(localFilePath)) {
+    try {
+      return fs.readFileSync(localFilePath, "utf-8");
+    } catch (err) {
+      console.warn("[offlineBlogRecord] Warning reading local offline_blog_record:", err);
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Core Automation:
+ * Generates the entry for today (or specified date), appends it to offline_blog_record,
+ * saves it locally, and pushes straight to main on GitHub modifying ONLY and ONLY offline_blog_record.
+ */
+export async function executeOfflineRecordPushToGitHub(options?: {
+  date?: Date;
+  forceWeekend?: boolean;
+  customTitle?: string;
+  forcePush?: boolean;
+  localOnly?: boolean;
+  customFilePath?: string;
+  mockExistingContent?: string;
+}): Promise<OfflineRecordPushResult> {
+  const targetDate = options?.date || new Date();
+  const dateStr = formatARTDate(targetDate);
+  const isWeekend = options?.forceWeekend !== undefined ? options.forceWeekend : isWeekendInART(targetDate);
+  const entry = generateOfflineRecordEntry({
+    date: targetDate,
+    articleTitle: options?.customTitle,
+    forceWeekend: options?.forceWeekend
+  });
+
+  const targetPath = options?.customFilePath || OFFLINE_RECORD_FILE_PATH;
+  const localFilePath = path.isAbsolute(targetPath) ? targetPath : path.join(process.cwd(), targetPath);
+  
+  // 1. Fetch current content (from mock, GitHub or local)
+  let existingContent = options?.mockExistingContent !== undefined
+    ? options.mockExistingContent
+    : await getRemoteOrLocalOfflineRecord();
+  
+  // 2. Append entry
+  const appendResult = appendOfflineRecordContent(
+    existingContent,
+    entry,
+    !options?.forcePush // If forcePush is false, check duplicate
+  );
+
+  const finalContent = appendResult.content;
+
+  // 3. Write locally
+  try {
+    fs.writeFileSync(localFilePath, finalContent, "utf-8");
+    console.log(`[offlineBlogRecord] Updated local ${OFFLINE_RECORD_FILE_PATH} with entry for ${dateStr}`);
+  } catch (writeErr) {
+    console.error("[offlineBlogRecord] Error writing local offline_blog_record:", writeErr);
+  }
+
+  // 4. If localOnly is requested, return without pushing
+  if (options?.localOnly) {
+    return {
+      success: true,
+      message: `Updated local ${OFFLINE_RECORD_FILE_PATH} without GitHub push.`,
+      entry,
+      filePath: OFFLINE_RECORD_FILE_PATH,
+      date: dateStr,
+      isWeekend,
+      timestamp: Date.now()
+    };
+  }
+
+  // 5. Push to GitHub modifying ONLY and ONLY offline_blog_record
+  const config = getGitHubSyncConfig();
+  if (!config.configured) {
+    const errorMsg = "GitHub token or repository is not configured in environment (GITHUB_TOKEN).";
+    console.warn(`[offlineBlogRecord] ${errorMsg}`);
+    return {
+      success: false,
+      message: errorMsg,
+      entry,
+      filePath: OFFLINE_RECORD_FILE_PATH,
+      date: dateStr,
+      isWeekend,
+      timestamp: Date.now(),
+      error: errorMsg
+    };
+  }
+
+  const [owner, repo] = config.repo.split("/");
+  const commitMessage = isWeekend
+    ? `automation: log offline blog record for ${dateStr} - Weekend [skip ci]`
+    : `automation: log offline blog record for ${dateStr} [skip ci]`;
+
+  console.log(`[offlineBlogRecord] Committing and pushing ${OFFLINE_RECORD_FILE_PATH} to ${owner}/${repo}@${config.branch}...`);
+
+  const pushRes = await commitFileWithAutoShaRetry({
+    owner,
+    repo,
+    branch: config.branch,
+    filePath: OFFLINE_RECORD_FILE_PATH,
+    content: finalContent,
+    message: commitMessage,
+    token: config.token,
+    authorName: config.authorName,
+    authorEmail: config.authorEmail
+  });
+
+  if (!pushRes.success) {
+    console.error(`[offlineBlogRecord] Failed to push ${OFFLINE_RECORD_FILE_PATH}:`, pushRes.error);
+    return {
+      success: false,
+      message: `Failed to push ${OFFLINE_RECORD_FILE_PATH} to GitHub: ${pushRes.error}`,
+      entry,
+      filePath: OFFLINE_RECORD_FILE_PATH,
+      date: dateStr,
+      isWeekend,
+      timestamp: Date.now(),
+      error: pushRes.error
+    };
+  }
+
+  console.log(`[offlineBlogRecord] Successfully pushed ${OFFLINE_RECORD_FILE_PATH} to GitHub main! Commit: ${pushRes.commitUrl}`);
+
+  return {
+    success: true,
+    message: `Successfully logged and pushed to GitHub main (${OFFLINE_RECORD_FILE_PATH})`,
+    commitUrl: pushRes.commitUrl,
+    entry,
+    filePath: OFFLINE_RECORD_FILE_PATH,
+    date: dateStr,
+    isWeekend,
+    timestamp: Date.now()
+  };
+}
+
+/**
+ * Singleton State for the In-Server Daily Scheduler
+ */
+class OfflineRecordScheduler {
+  private timer: NodeJS.Timeout | null = null;
+  private intervalCheck: NodeJS.Timeout | null = null;
+  private isRunning: boolean = false;
+  private lastResult: OfflineRecordPushResult | null = null;
+  private lastRunDateStr: string = "";
+
+  public start(): void {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    console.log("[OfflineRecordScheduler] Initializing automated daily scheduler for 5:00 AM ART...");
+
+    // 1. Immediately check if today has been recorded (e.g. today is Sunday ~12:00 ART)
+    this.checkAndRunImmediate();
+
+    // 2. Schedule the exact next 5:00 AM ART run
+    this.scheduleNext5Am();
+
+    // 3. Set up a 15-minute background heartbeat to recover if process slept or timer drifted
+    this.intervalCheck = setInterval(() => {
+      this.heartbeatCheck();
+    }, 15 * 60 * 1000);
+  }
+
+  public stop(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    if (this.intervalCheck) {
+      clearInterval(this.intervalCheck);
+      this.intervalCheck = null;
+    }
+    this.isRunning = false;
+  }
+
+  public getStatus() {
+    const nextInfo = calculateMsUntilNext5AmART();
+    return {
+      running: this.isRunning,
+      nextRunUTC: nextInfo.targetDateUTC.toISOString(),
+      nextRunART: nextInfo.targetDateARTString,
+      msUntilNextRun: nextInfo.ms,
+      minutesUntilNextRun: Math.round(nextInfo.ms / 60000),
+      lastRunDate: this.lastRunDateStr,
+      lastResult: this.lastResult
+    };
+  }
+
+  public async triggerManual(options?: {
+    forceWeekend?: boolean;
+    date?: Date;
+    forcePush?: boolean;
+    customTitle?: string;
+  }): Promise<OfflineRecordPushResult> {
+    const result = await executeOfflineRecordPushToGitHub(options);
+    this.lastResult = result;
+    if (result.success) {
+      this.lastRunDateStr = result.date;
+    }
+    return result;
+  }
+
+  private async checkAndRunImmediate(): Promise<void> {
+    try {
+      const now = new Date();
+      const todayDateStr = formatARTDate(now);
+      const content = await getRemoteOrLocalOfflineRecord();
+
+      const lines = content.split("\n").map(l => l.trim());
+      if (!lines.includes(todayDateStr)) {
+        console.log(`[OfflineRecordScheduler] Today (${todayDateStr}) is not yet recorded in ${OFFLINE_RECORD_FILE_PATH}. Executing initial sync...`);
+        const res = await executeOfflineRecordPushToGitHub({ date: now });
+        this.lastResult = res;
+        if (res.success) {
+          this.lastRunDateStr = todayDateStr;
+        }
+      } else {
+        console.log(`[OfflineRecordScheduler] Today (${todayDateStr}) is already recorded in ${OFFLINE_RECORD_FILE_PATH}.`);
+        this.lastRunDateStr = todayDateStr;
+      }
+    } catch (err) {
+      console.error("[OfflineRecordScheduler] Error during immediate initial sync:", err);
+    }
+  }
+
+  private scheduleNext5Am(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+
+    const { ms, targetDateARTString } = calculateMsUntilNext5AmART();
+    console.log(`[OfflineRecordScheduler] Next scheduled push will execute at 5:00 AM ART (${targetDateARTString}) in ${(ms / 60000).toFixed(1)} minutes.`);
+
+    this.timer = setTimeout(async () => {
+      console.log("[OfflineRecordScheduler] 5:00 AM ART reached! Executing daily push to main...");
+      try {
+        const result = await executeOfflineRecordPushToGitHub();
+        this.lastResult = result;
+        if (result.success) {
+          this.lastRunDateStr = result.date;
+        }
+      } catch (runErr) {
+        console.error("[OfflineRecordScheduler] Error during scheduled daily push:", runErr);
+      } finally {
+        // Schedule next day's 5:00 AM ART
+        this.scheduleNext5Am();
+      }
+    }, ms);
+  }
+
+  private async heartbeatCheck(): Promise<void> {
+    try {
+      const now = new Date();
+      const todayStr = formatARTDate(now);
+
+      // Check current hour in ART
+      const hourART = parseInt(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: ART_TIMEZONE,
+          hour: "numeric",
+          hour12: false
+        }).format(now),
+        10
+      );
+
+      // If it's 5 AM ART or later, and today has not been recorded yet:
+      if (hourART >= 5 && this.lastRunDateStr !== todayStr) {
+        const content = await getRemoteOrLocalOfflineRecord();
+        const lines = content.split("\n").map(l => l.trim());
+        if (!lines.includes(todayStr)) {
+          console.log(`[OfflineRecordScheduler] Heartbeat detected unexecuted 5:00 AM run for ${todayStr}. Running now...`);
+          const res = await executeOfflineRecordPushToGitHub({ date: now });
+          this.lastResult = res;
+          if (res.success) {
+            this.lastRunDateStr = todayStr;
+          }
+        } else {
+          this.lastRunDateStr = todayStr;
+        }
+      }
+    } catch (err) {
+      console.warn("[OfflineRecordScheduler] Heartbeat check encountered error:", err);
+    }
+  }
+}
+
+export const offlineRecordScheduler = new OfflineRecordScheduler();

@@ -12,6 +12,7 @@
     "test": "tsx --test src/services/*.test.ts src/lib/*.test.ts",
     "test:services": "tsx --test src/services/*.test.ts",
     "test:lib": "tsx --test src/lib/*.test.ts",
+    "sync:offline-record": "tsx scripts/sync_offline_record.ts",
     "pull-prod": "node scripts/pull-prod.mjs"
   },
   "dependencies": {
