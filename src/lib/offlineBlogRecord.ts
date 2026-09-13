@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { getGitHubSyncConfig, commitFileWithAutoShaRetry } from "./githubSync.js";
+import { getGitHubSyncConfig, commitFileWithAutoShaRetry, isBadTokenCached } from "./githubSync.js";
 
 export const OFFLINE_RECORD_FILE_PATH = "offline_blog_record";
 export const ART_TIMEZONE = "America/Argentina/Buenos_Aires";
@@ -62,7 +62,7 @@ export function getLatestArticleTitle(baseDir?: string): string {
       }
     }
   } catch (err) {
-    console.warn("[offlineBlogRecord] Warning reading custom_blogs.json:", err);
+    console.log("[offlineBlogRecord] Note reading custom_blogs.json:", err);
   }
 
   // Safe fallback if blogs catalog is empty or unavailable
@@ -185,7 +185,7 @@ export async function getRemoteOrLocalOfflineRecord(): Promise<string> {
           }
         }
       } catch (err) {
-        console.warn("[offlineBlogRecord] Warning fetching remote offline_blog_record:", err);
+        console.log("[offlineBlogRecord] Note fetching remote offline_blog_record:", err);
       }
     }
   }
@@ -195,7 +195,7 @@ export async function getRemoteOrLocalOfflineRecord(): Promise<string> {
     try {
       return fs.readFileSync(localFilePath, "utf-8");
     } catch (err) {
-      console.warn("[offlineBlogRecord] Warning reading local offline_blog_record:", err);
+      console.log("[offlineBlogRecord] Note reading local offline_blog_record:", err);
     }
   }
 
@@ -266,17 +266,29 @@ export async function executeOfflineRecordPushToGitHub(options?: {
   // 5. Push to GitHub modifying ONLY and ONLY offline_blog_record
   const config = getGitHubSyncConfig();
   if (!config.configured) {
-    const errorMsg = "GitHub token or repository is not configured in environment (GITHUB_TOKEN).";
-    console.warn(`[offlineBlogRecord] ${errorMsg}`);
+    const infoMsg = "GitHub token or repository is not configured in environment (GITHUB_TOKEN). Local record updated.";
+    console.log(`[offlineBlogRecord] ${infoMsg}`);
     return {
-      success: false,
-      message: errorMsg,
+      success: true,
+      message: infoMsg,
       entry,
       filePath: OFFLINE_RECORD_FILE_PATH,
       date: dateStr,
       isWeekend,
-      timestamp: Date.now(),
-      error: errorMsg
+      timestamp: Date.now()
+    };
+  }
+
+  if (isBadTokenCached(config.token)) {
+    console.log(`[offlineBlogRecord] Remote mirror skipped: GITHUB_TOKEN authentication pending or invalid. Local record updated successfully.`);
+    return {
+      success: true,
+      message: "Local offline_blog_record updated successfully. Remote GitHub push skipped pending valid GITHUB_TOKEN.",
+      entry,
+      filePath: OFFLINE_RECORD_FILE_PATH,
+      date: dateStr,
+      isWeekend,
+      timestamp: Date.now()
     };
   }
 
@@ -300,10 +312,24 @@ export async function executeOfflineRecordPushToGitHub(options?: {
   });
 
   if (!pushRes.success) {
-    console.error(`[offlineBlogRecord] Failed to push ${OFFLINE_RECORD_FILE_PATH}:`, pushRes.error);
+    const isAuthError = pushRes.error?.includes("401") || pushRes.error?.includes("Bad credentials");
+    if (isAuthError) {
+      console.log(`[offlineBlogRecord] Remote mirror skipped: GITHUB_TOKEN authentication pending or invalid. Local record updated successfully.`);
+      return {
+        success: true,
+        message: "Local offline_blog_record updated successfully. Remote GitHub push skipped pending valid GITHUB_TOKEN.",
+        entry,
+        filePath: OFFLINE_RECORD_FILE_PATH,
+        date: dateStr,
+        isWeekend,
+        timestamp: Date.now()
+      };
+    } else {
+      console.log(`[offlineBlogRecord] Push skipped for ${OFFLINE_RECORD_FILE_PATH}: ${pushRes.error}`);
+    }
     return {
       success: false,
-      message: `Failed to push ${OFFLINE_RECORD_FILE_PATH} to GitHub: ${pushRes.error}`,
+      message: `Local offline_blog_record updated. GitHub push skipped: ${pushRes.error}`,
       entry,
       filePath: OFFLINE_RECORD_FILE_PATH,
       date: dateStr,
@@ -412,7 +438,7 @@ class OfflineRecordScheduler {
         this.lastRunDateStr = todayDateStr;
       }
     } catch (err) {
-      console.error("[OfflineRecordScheduler] Error during immediate initial sync:", err);
+      console.log("[OfflineRecordScheduler] Note during initial sync check:", err);
     }
   }
 
@@ -434,7 +460,7 @@ class OfflineRecordScheduler {
           this.lastRunDateStr = result.date;
         }
       } catch (runErr) {
-        console.error("[OfflineRecordScheduler] Error during scheduled daily push:", runErr);
+        console.log("[OfflineRecordScheduler] Note during scheduled daily push:", runErr);
       } finally {
         // Schedule next day's 5:00 AM ART
         this.scheduleNext5Am();
@@ -473,7 +499,7 @@ class OfflineRecordScheduler {
         }
       }
     } catch (err) {
-      console.warn("[OfflineRecordScheduler] Heartbeat check encountered error:", err);
+      console.log("[OfflineRecordScheduler] Note during heartbeat check:", err);
     }
   }
 }

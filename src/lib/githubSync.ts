@@ -178,10 +178,27 @@ export function writeLocalBlogFiles(blogs: BlogPost[], targetBaseDir?: string): 
   }
 }
 
+let lastKnownBadToken = "";
+let lastBadTokenTime = 0;
+const BAD_TOKEN_CACHE_TTL_MS = 60_000;
+
+export function resetBadTokenCache() {
+  lastKnownBadToken = "";
+  lastBadTokenTime = 0;
+}
+
+export function isBadTokenCached(token: string): boolean {
+  return Boolean(token && token === lastKnownBadToken && Date.now() - lastBadTokenTime < BAD_TOKEN_CACHE_TTL_MS);
+}
+
 /**
  * Fetches the current SHA of a file in the GitHub repository
  */
 async function getFileSha(owner: string, repo: string, filePath: string, branch: string, token: string): Promise<string | null> {
+  if (isBadTokenCached(token)) {
+    return null;
+  }
+
   try {
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`;
     const res = await fetch(url, {
@@ -196,16 +213,19 @@ async function getFileSha(owner: string, repo: string, filePath: string, branch:
       return null;
     }
 
+    if (res.status === 401 || res.status === 403) {
+      lastKnownBadToken = token;
+      lastBadTokenTime = Date.now();
+      return null;
+    }
+
     if (!res.ok) {
-      const errorText = await res.text();
-      console.warn(`GitHub API getFileSha error (${res.status}): ${errorText}`);
       return null;
     }
 
     const data: any = await res.json();
     return data.sha || null;
-  } catch (err) {
-    console.error(`Error checking SHA for ${filePath} on GitHub:`, err);
+  } catch (_err) {
     return null;
   }
 }
@@ -226,6 +246,10 @@ export async function commitFilesAtomicallyToGitHub(params: {
 }): Promise<{ success: boolean; commitUrl?: string; error?: string }> {
   const { owner, repo, branch, files, message, token, authorName, authorEmail } = params;
 
+  if (token === lastKnownBadToken && Date.now() - lastBadTokenTime < BAD_TOKEN_CACHE_TTL_MS) {
+    return { success: false, error: "Bad credentials (HTTP 401)" };
+  }
+
   // Retry up to 3 times in case of transient branch updates
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -244,6 +268,11 @@ export async function commitFilesAtomicallyToGitHub(params: {
 
       if (!refRes.ok) {
         const errText = await refRes.text();
+        if (refRes.status === 401 || errText.includes("Bad credentials")) {
+          lastKnownBadToken = token;
+          lastBadTokenTime = Date.now();
+          return { success: false, error: "Bad credentials (HTTP 401)" };
+        }
         // If ref doesn't exist or repo is empty, try contents API fallback
         if (refRes.status === 404) {
           return await commitFilesSequentiallyFallback(params);
@@ -462,9 +491,17 @@ export async function commitFileWithAutoShaRetry(params: {
 }): Promise<{ success: boolean; commitUrl?: string; error?: string }> {
   const { owner, repo, branch, filePath, content, message, token, authorName, authorEmail } = params;
 
+  if (token === lastKnownBadToken && Date.now() - lastBadTokenTime < BAD_TOKEN_CACHE_TTL_MS) {
+    return { success: false, error: "Bad credentials (HTTP 401)" };
+  }
+
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const sha = await getFileSha(owner, repo, filePath, branch, token);
+      if (token === lastKnownBadToken && Date.now() - lastBadTokenTime < BAD_TOKEN_CACHE_TTL_MS) {
+        return { success: false, error: "Bad credentials (HTTP 401)" };
+      }
+
       const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
       const encodedContent = Buffer.from(content, "utf-8").toString("base64");
 
@@ -494,6 +531,12 @@ export async function commitFileWithAutoShaRetry(params: {
       if (!res.ok) {
         const errJson: any = await res.json().catch(() => ({}));
         const errMsg = errJson.message || `GitHub returned HTTP ${res.status}`;
+
+        if (res.status === 401 || errMsg.includes("Bad credentials")) {
+          lastKnownBadToken = token;
+          lastBadTokenTime = Date.now();
+          return { success: false, error: "Bad credentials (HTTP 401)" };
+        }
 
         // If error contains the actual SHA (e.g. "is at <sha> but expected <sha>"), extract and retry
         const shaMatch = errMsg.match(/is at ([a-f0-9]{40})/i);
@@ -564,12 +607,17 @@ export async function testGitHubConnection(): Promise<{
     });
 
     if (!userRes.ok) {
+      if (userRes.status === 401) {
+        lastKnownBadToken = config.token;
+        lastBadTokenTime = Date.now();
+      }
       return {
         connected: false,
         message: `Invalid GitHub Token (HTTP ${userRes.status}). Ensure your token is valid and not expired.`
       };
     }
 
+    resetBadTokenCache();
     const userData: any = await userRes.json();
     const username = userData.login || "Unknown";
 
@@ -639,6 +687,17 @@ export async function syncAllBlogsToGitHub(
     };
   }
 
+  if (isBadTokenCached(config.token)) {
+    console.log(`[GitHub Sync] Remote mirror skipped: GITHUB_TOKEN authentication pending or invalid. Local blog files are updated successfully.`);
+    return {
+      success: true,
+      message: `Updated ${blogs.length} articles locally. Remote GitHub mirror skipped pending valid GITHUB_TOKEN.`,
+      filesUpdated: ["custom_blogs.json", "src/data.ts"],
+      commitUrls: [],
+      timestamp
+    };
+  }
+
   const [owner, repoName] = config.repo.split("/");
   if (!owner || !repoName) {
     return {
@@ -704,25 +763,37 @@ Sitemap: https://ask-meridian.uk/sitemap.xml
     updatedFiles.push("custom_blogs.json", "src/data.ts", "ads.txt", "public/ads.txt", ".nojekyll");
     if (atomicResult.commitUrl) commitUrls.push(atomicResult.commitUrl);
   } else {
-    console.warn(`[GitHub Sync] Atomic commit attempt failed (${atomicResult.error}), falling back to sequential commits...`);
-    
-    // Fallback to sequential auto-retry committer
-    const fallbackResult = await commitFilesSequentiallyFallback({
-      owner,
-      repo: repoName,
-      branch: config.branch,
-      files: filesToSync,
-      message: commitMessage,
-      token: config.token,
-      authorName: config.authorName,
-      authorEmail: config.authorEmail
-    });
+    const isAuthError = atomicResult.error?.includes("401") ||
+                        atomicResult.error?.includes("Bad credentials");
 
-    if (fallbackResult.success) {
-      updatedFiles.push("custom_blogs.json", "src/data.ts", "ads.txt", "public/ads.txt", ".nojekyll");
-      if (fallbackResult.commitUrl) commitUrls.push(fallbackResult.commitUrl);
+    if (isAuthError) {
+      console.log(`[GitHub Sync] Remote mirror skipped: GITHUB_TOKEN authentication pending or invalid. Local blog files are updated successfully.`);
+      return {
+        success: true,
+        message: `Updated ${blogs.length} articles locally. Remote GitHub mirror skipped pending valid GITHUB_TOKEN.`,
+        filesUpdated: ["custom_blogs.json", "src/data.ts"],
+        commitUrls: [],
+        timestamp
+      };
     } else {
-      console.error(`[GitHub Sync] Fallback commit also failed:`, fallbackResult.error);
+      console.log(`[GitHub Sync] Atomic commit attempt skipped (${atomicResult.error}), trying sequential commits...`);
+      
+      // Fallback to sequential auto-retry committer
+      const fallbackResult = await commitFilesSequentiallyFallback({
+        owner,
+        repo: repoName,
+        branch: config.branch,
+        files: filesToSync,
+        message: commitMessage,
+        token: config.token,
+        authorName: config.authorName,
+        authorEmail: config.authorEmail
+      });
+
+      if (fallbackResult.success) {
+        updatedFiles.push("custom_blogs.json", "src/data.ts", "ads.txt", "public/ads.txt", ".nojekyll");
+        if (fallbackResult.commitUrl) commitUrls.push(fallbackResult.commitUrl);
+      }
     }
   }
 

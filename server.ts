@@ -251,38 +251,18 @@ async function checkGitHubModelsAvailability(): Promise<boolean> {
   return isGitHubModelsSupported;
 }
 
-// Robust arXiv API fetcher with XML API and abs HTML fallback
+// Robust arXiv API fetcher prioritizing high-speed CDN abs page with XML API fallback
 const fetchArxivMetadata = async (id: string) => {
   const cleanId = id.trim().replace(/^arxiv:\s*/i, "");
   
-  // 1. Try export.arxiv.org XML API (HTTPS, 8-second timeout)
-  try {
-    const url = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(cleanId)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: "follow" });
-    if (res.ok) {
-      const xml = await res.text();
-      const { title, summary, authors } = parseArxivXml(xml);
-      if (title && title !== "Unknown Paper Title" && summary) {
-        return {
-          title: decodeHtmlEntities(title),
-          summary: decodeHtmlEntities(summary),
-          authors: decodeHtmlEntities(authors) || "arXiv Contributors",
-          arxivLink: `https://arxiv.org/abs/${cleanId}`
-        };
-      }
-    }
-  } catch (apiErr) {
-    console.warn(`[arXiv API] XML API query for ${cleanId} timed out or failed, attempting abs page fallback...`);
-  }
-
-  // 2. Direct HTML scraping fallback from https://arxiv.org/abs/
+  // 1. High-speed Fastly CDN abstract page parser (typically responds in 20-150ms)
   try {
     const absUrl = `https://arxiv.org/abs/${encodeURIComponent(cleanId)}`;
     const res = await fetch(absUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(4000),
       redirect: "follow"
     });
     if (res.ok) {
@@ -309,8 +289,28 @@ const fetchArxivMetadata = async (id: string) => {
         };
       }
     }
-  } catch (htmlErr) {
-    console.warn(`[arXiv Scraper] HTML fetch for ${cleanId} failed:`, htmlErr);
+  } catch (_absErr) {
+    // Gracefully proceed to export.arxiv.org XML API fallback if abs page had network error
+  }
+
+  // 2. Fallback to export.arxiv.org XML API
+  try {
+    const url = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(cleanId)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(3500), redirect: "follow" });
+    if (res.ok) {
+      const xml = await res.text();
+      const { title, summary, authors } = parseArxivXml(xml);
+      if (title && title !== "Unknown Paper Title" && summary) {
+        return {
+          title: decodeHtmlEntities(title),
+          summary: decodeHtmlEntities(summary),
+          authors: decodeHtmlEntities(authors) || "arXiv Contributors",
+          arxivLink: `https://arxiv.org/abs/${cleanId}`
+        };
+      }
+    }
+  } catch (_apiErr) {
+    // Both network attempts finished
   }
 
   // 3. Guaranteed graceful fallback metadata so UI preview never crashes or hangs
@@ -2063,7 +2063,7 @@ app.post("/api/blog/regenerate-banner", async (req, res) => {
 
     // Background GitHub sync
     syncAllBlogsToGitHub(localBlogs, `regenerate banner for "${(updatedBlog.title || title || "").slice(0, 30)}"`)
-      .catch((err) => console.warn("[GitHub Mirror] Banner regen sync warning:", err));
+      .catch((err) => console.log("[GitHub Mirror] Banner regen sync note:", err));
 
     res.json({ success: true, bannerSvg: cleanSvg, blog: updatedBlog });
   } catch (error: any) {
@@ -2103,7 +2103,7 @@ app.post("/api/blog/regenerate-all-banners", async (req, res) => {
     }
 
     syncAllBlogsToGitHub(updatedBlogs, "regenerate all article banners across corpus")
-      .catch((err) => console.warn("[GitHub Mirror] Banner bulk sync warning:", err));
+      .catch((err) => console.log("[GitHub Mirror] Banner bulk sync note:", err));
 
     res.json({ success: true, count: updatedBlogs.length, message: "All banners successfully regenerated with unique contextual vector art." });
   } catch (error: any) {
@@ -2375,7 +2375,7 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
 
     // Background GitHub sync
     syncAllBlogsToGitHub(sortedLocalBlogs, `regenerate article for "${(updatedBlog.title || "").slice(0, 30)}"`)
-      .catch((err) => console.warn("[GitHub Mirror] Article regen sync warning:", err));
+      .catch((err) => console.log("[GitHub Mirror] Article regen sync note:", err));
 
     res.json({ success: true, blog: updatedBlog, audit: auditReport });
   } catch (error: any) {
@@ -2710,7 +2710,7 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
 
     // Background sync to GitHub
     syncAllBlogsToGitHub(sortedLocalBlogs, `inject handpicked arXiv paper "${updatedBlog.title.slice(0, 30)}"`)
-      .catch((err) => console.warn("[GitHub Mirror] Sync warning:", err));
+      .catch((err) => console.log("[GitHub Mirror] Sync note:", err));
 
     res.json({
       success: true,

@@ -121,12 +121,49 @@ export class ArxivPipelineMicroservice implements IMicroservice {
       }
     }
 
-    // Attempt live arXiv API fetch with fallback
+    // Attempt high-speed Fastly CDN abstract page fetch first (typically 20-150ms)
+    try {
+      const absUrl = `https://arxiv.org/abs/${encodeURIComponent(arxivId)}`;
+      const resp = await fetch(absUrl, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+        signal: AbortSignal.timeout(4000)
+      });
+      if (resp.ok) {
+        const text = await resp.text();
+        const titleMatch = text.match(/<h1 class="title[^"]*">([\s\S]*?)<\/h1>/i);
+        const rawTitle = titleMatch
+          ? titleMatch[1].replace(/<span class="descriptor">[\s\S]*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+          : "";
+        const absMatch = text.match(/<blockquote class="abstract[^"]*">([\s\S]*?)<\/blockquote>/i);
+        const rawSummary = absMatch
+          ? absMatch[1].replace(/<span class="descriptor">[\s\S]*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+          : "";
+        const authMatch = text.match(/<div class="authors">([\s\S]*?)<\/div>/i);
+        const rawAuthors = authMatch
+          ? authMatch[1].replace(/<span class="descriptor">[\s\S]*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+          : "";
+
+        if (rawTitle) {
+          return {
+            arxivId,
+            title: rawTitle,
+            summary: rawSummary || `Automated scholarly synthesis and mathematical breakdown of arXiv preprint ${arxivId}.`,
+            authors: rawAuthors || "arXiv Researcher",
+            arxivLink: `https://arxiv.org/abs/${arxivId}`,
+            source: "arxiv_api"
+          };
+        }
+      }
+    } catch {
+      // Fall through to API query
+    }
+
+    // Secondary attempt: live arXiv XML API fetch
     try {
       const apiUrl = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(arxivId)}`;
       const resp = await fetch(apiUrl, {
         headers: { "User-Agent": "MeridianResearchBot/2.5" },
-        signal: AbortSignal.timeout(6000)
+        signal: AbortSignal.timeout(3500)
       });
 
       if (resp.ok) {

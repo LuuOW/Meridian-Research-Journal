@@ -206,6 +206,6 @@ test("offlineBlogRecord: Live Server Automation Endpoints Verification", async (
     }
   } catch (err: any) {
     // If dev server port is occupied or different in test environment, skip gracefully
-    console.warn("Skipping live HTTP server check in unit test runner:", err.message);
+    console.log("Skipping live HTTP server check in unit test runner:", err.message);
   }
 });
