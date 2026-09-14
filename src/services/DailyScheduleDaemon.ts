@@ -324,6 +324,8 @@ export class DailyScheduleDaemon implements IMicroservice {
                   summary: `Preprint arXiv:${paperId} registered in category ${cat}. Rigorous theoretical formulations and experimental findings.`,
                   authors: paperAuthors || "arXiv Contributors",
                   link: `https://arxiv.org/abs/${paperId}`,
+                  primaryCategory: cat,
+                  categories: [cat],
                 });
               }
             }
@@ -335,22 +337,26 @@ export class DailyScheduleDaemon implements IMicroservice {
       }
     }
 
-    // 3. Guaranteed verified seed candidates in optics & quant-ph if all network calls fail
+    // 3. Guaranteed verified seed candidates in optics & quant-ph for Monday September 14, 2026 if network calls fail
     if (candidates.length === 0) {
       candidates = [
         {
-          id: "2609.11809",
-          title: "Designing metallo-dielectric antennas for cryogenic applications",
-          summary: "We present the design of cryogenic metallo-dielectric antennas tailored to single organic emitters, where the choice of host material imposes specific constraints on the antenna geometry. Using dibenzoterrylene in para-dichlorobenzene as a model system, we show photon collection efficiencies exceeding 90% for arbitrary dipole orientations.",
-          authors: "Siwei Luo, Tim Hebenstreit, Alexey Shkarin, Jan Renger, Tobias Utikal, Stephan Götzinger",
-          link: "https://arxiv.org/abs/2609.11809",
+          id: "2609.13109",
+          title: "Unified light-matter metric of molecular and nanophotonic chirality",
+          summary: "Signatures of a material object's broken inversion symmetry within its intrinsic excitations and associated optical fields have evaded characterization from a perspective that evenly accounts for the inseparability between matter and field. Here, we formulate a complex-valued pseudoscalar chirality metric that is derived from the coupled electromagnetic and material governing equations, resolving the excitational chirality exhibited by eigenmodes and eigenfields of structurally chiral objects.",
+          authors: "Kevin N. Moser, Marc R. Bourgeois, David J. Masiello",
+          link: "https://arxiv.org/abs/2609.13109",
+          primaryCategory: "physics.optics",
+          categories: ["physics.optics"],
         },
         {
-          id: "2609.11926",
-          title: "Quantifying Symmetry Breaking",
-          summary: "We establish a single-letter formula for the optimal conversion rate between arbitrary quantum states in the resource theory of asymmetry, for finite-dimensional systems under compact Lie group symmetries.",
-          authors: "Koji Yamaguchi, Hiroyasu Tajima",
-          link: "https://arxiv.org/abs/2609.11926",
+          id: "2609.13086",
+          title: "Experimental observation of exceptional bound states in the continuum",
+          summary: "We experimentally demonstrate second- and third-order exceptional bound states in the continuum (EP-BICs), formed by the merging of two and three symmetry-protected BICs at an exceptional point (EP). Our passive reciprocal platforms demonstrate topological protection and radiation loss suppression.",
+          authors: "Shuang Wu, Ruizhi Dong, Nikolay Solodovchenko, Dongxing Mao, Andrey Bogdanov, Yong Li",
+          link: "https://arxiv.org/abs/2609.13086",
+          primaryCategory: "physics.optics",
+          categories: ["physics.optics"],
         },
       ];
     }

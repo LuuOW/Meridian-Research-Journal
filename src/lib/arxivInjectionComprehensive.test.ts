@@ -219,7 +219,7 @@ test("Inject & Replace: createClientSideFallbackArticle produces rich, valid sci
   assert.strictEqual(synthesized.title, preview.title);
   assert.strictEqual(synthesized.author, preview.authors);
   assert.strictEqual(synthesized.arxivLink, preview.arxivLink);
-  assert.strictEqual(synthesized.isEditorEdition, true);
+  assert.strictEqual(synthesized.isEditorEdition, false);
 
   // Validate academic content quality
   assert.ok(synthesized.content.length > 500, "Content must be substantial scholarly analysis");

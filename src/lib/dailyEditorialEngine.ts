@@ -216,35 +216,35 @@ export function getSourceArxivBatch(dayOfWeek: number): { sourceBatchName: strin
   switch (dayOfWeek) {
     case 1: // Monday
       return {
-        sourceBatchName: "Friday arXiv preprints (weekend bridge)",
-        note: "Published on Monday from Friday's optics/quant-ph arXiv announcements.",
+        sourceBatchName: "Monday arXiv preprints",
+        note: "Published on Monday from Monday's optics/quant-ph arXiv announcements.",
       };
     case 2: // Tuesday
       return {
-        sourceBatchName: "Monday arXiv preprints",
-        note: "Published on Tuesday from Monday's arXiv batch.",
+        sourceBatchName: "Tuesday arXiv preprints",
+        note: "Published on Tuesday from Tuesday's arXiv batch.",
       };
     case 3: // Wednesday
       return {
-        sourceBatchName: "Tuesday arXiv preprints",
-        note: "Published on Wednesday from Tuesday's arXiv batch.",
+        sourceBatchName: "Wednesday arXiv preprints",
+        note: "Published on Wednesday from Wednesday's arXiv batch.",
       };
     case 4: // Thursday
       return {
-        sourceBatchName: "Wednesday arXiv preprints",
-        note: "Published on Thursday from Wednesday's arXiv batch.",
+        sourceBatchName: "Thursday arXiv preprints",
+        note: "Published on Thursday from Thursday's arXiv batch.",
       };
     case 5: // Friday
       return {
-        sourceBatchName: "Thursday arXiv preprints",
-        note: "Published on Friday from Thursday's arXiv batch.",
+        sourceBatchName: "Friday arXiv preprints",
+        note: "Published on Friday from Friday's arXiv batch.",
       };
     case 6: // Saturday
     case 0: // Sunday
     default:
       return {
-        sourceBatchName: "Friday arXiv preprints (weekend bridge to Monday)",
-        note: "arXiv has no weekend announcements. Friday preprints are published on Monday 9 AM ART.",
+        sourceBatchName: "Weekend bridge to Monday",
+        note: "arXiv has no weekend announcements. Bridges to Monday 09:00 AM ART.",
       };
   }
 }

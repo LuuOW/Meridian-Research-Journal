@@ -300,7 +300,7 @@ export function createClientSideFallbackArticle(
     author: generated.author || author,
     tags: generated.tags || ["arXiv", "Quantum", "Research"],
     slug: newSlug,
-    isEditorEdition: true,
+    isEditorEdition: false,
     updatedAt: new Date().toISOString()
   };
 }
