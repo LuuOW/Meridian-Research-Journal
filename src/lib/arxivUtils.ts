@@ -166,6 +166,8 @@ export interface ArxivPaper {
   summary: string;
   authors: string;
   link: string;
+  primaryCategory?: string;
+  categories?: string[];
 }
 
 export const parseArxivFeedXml = (xml: string): ArxivPaper[] => {
@@ -184,6 +186,13 @@ export const parseArxivFeedXml = (xml: string): ArxivPaper[] => {
     const summaryMatch = entryContent.match(/<summary>([\s\S]*?)<\/summary>/);
     const authorMatches = [...entryContent.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
     
+    // Extract primary category and all category tags
+    const primaryCatMatch = entryContent.match(/<arxiv:primary_category[\s\S]*?term=["']([^"']+)["']/i);
+    const primaryCategory = primaryCatMatch ? primaryCatMatch[1].trim() : undefined;
+
+    const categoryMatches = [...entryContent.matchAll(/<category[\s\S]*?term=["']([^"']+)["']/gi)];
+    const categories = categoryMatches.map(m => m[1].trim()).filter(Boolean);
+
     const title = decodeHtmlEntities(titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title");
     const summary = decodeHtmlEntities(summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "");
     const authors = decodeHtmlEntities(authorMatches.map(m => m[1].trim()).slice(0, 3).join(", "));
@@ -194,7 +203,9 @@ export const parseArxivFeedXml = (xml: string): ArxivPaper[] => {
         title,
         summary,
         authors,
-        link: `https://arxiv.org/abs/${id.replace(/v\d+$/, "")}`
+        link: `https://arxiv.org/abs/${id.replace(/v\d+$/, "")}`,
+        primaryCategory,
+        categories: categories.length > 0 ? categories : undefined
       });
     }
   }

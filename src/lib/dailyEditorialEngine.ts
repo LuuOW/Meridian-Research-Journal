@@ -323,18 +323,46 @@ export function scoreArxivCandidate(
     return { score: -100, category: "quant-ph", relevanceReason: "Already published in journal" };
   }
 
+  // Strict domain safeguard: Reject papers strictly categorized under non-physics/non-quantum fields (e.g. cs.LG, cs.AI, econ, stat)
+  const allPaperCats = [
+    paper.primaryCategory,
+    ...(paper.categories || [])
+  ].filter(Boolean).map(c => c!.toLowerCase());
+
+  const hasOpticsCategory = allPaperCats.some(c => c === "physics.optics" || c.includes("optics"));
+  const hasQuantCategory = allPaperCats.some(c => c === "quant-ph" || c.includes("quant-ph"));
+  const isNonPhysicsOnly = allPaperCats.length > 0 &&
+    allPaperCats.every(c => c.startsWith("cs.") || c.startsWith("stat.") || c.startsWith("econ.") || c.startsWith("q-fin."));
+
+  if (isNonPhysicsOnly) {
+    return {
+      score: -1000,
+      category: corpus.recommendedCategory,
+      relevanceReason: `Disqualified: Preprint category (${paper.primaryCategory || allPaperCats.join(", ")}) is non-physics (Computer Science / ML), incompatible with Meridian's optics & quantum scope.`
+    };
+  }
+
   const titleLower = paper.title.toLowerCase();
   const summaryLower = paper.summary.toLowerCase();
   const text = `${titleLower} ${summaryLower}`;
 
-  let score = 50; // Base score
-
   // 1. Category Classification
-  const isOptics = text.includes("optics") || text.includes("photonic") || text.includes("laser") || text.includes("waveguide") || text.includes("metasurface") || text.includes("interferom");
-  const isQuantPh = text.includes("quantum") || text.includes("qubit") || text.includes("entangle") || text.includes("superconduct") || text.includes("hamiltonian") || text.includes("topolog");
+  const isOptics = hasOpticsCategory || text.includes("optics") || text.includes("photonic") || text.includes("laser") || text.includes("waveguide") || text.includes("metasurface") || text.includes("interferom");
+  const isQuantPh = hasQuantCategory || text.includes("quantum") || text.includes("qubit") || text.includes("entangle") || text.includes("superconduct") || text.includes("hamiltonian") || text.includes("topolog");
+
+  // If paper matches neither optics nor quant-ph domain, disqualify
+  if (!isOptics && !isQuantPh) {
+    return {
+      score: -500,
+      category: corpus.recommendedCategory,
+      relevanceReason: "Disqualified: Paper contents show no physical, optical, or quantum theoretical relevance."
+    };
+  }
 
   const category: "physics.optics" | "quant-ph" =
     isOptics && !isQuantPh ? "physics.optics" : isQuantPh && !isOptics ? "quant-ph" : corpus.recommendedCategory;
+
+  let score = 50; // Base score
 
   // 2. Category balance bonus (+20 if matches the recommended balance category)
   if (category === corpus.recommendedCategory) {

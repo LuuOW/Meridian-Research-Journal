@@ -110,9 +110,16 @@ export function appendOfflineRecordContent(
 
   if (checkDuplicateDate && entryDate) {
     // Check if entryDate is already logged at an entry boundary
-    const lines = existingContent.split("\n").map(l => l.trim());
-    if (lines.includes(entryDate)) {
-      // Date is already recorded
+    const lines = existingContent.split("\n");
+    const dateIndex = lines.findIndex(l => l.trim() === entryDate);
+    if (dateIndex !== -1) {
+      const entryLines = newEntry.split("\n");
+      const newTitle = entryLines[1];
+      if (lines[dateIndex + 1] !== undefined && newTitle && lines[dateIndex + 1].trim() !== newTitle.trim()) {
+        lines[dateIndex + 1] = newTitle;
+        return { content: lines.join("\n"), appended: true };
+      }
+      // Date and title are already recorded
       return { content: existingContent, appended: false };
     }
   }

@@ -98,18 +98,22 @@ test("parseArxivXml parses entry content and multi-author lists", () => {
 });
 
 test("parseArxivFeedXml parses multiple entries from search feed", () => {
-  const feedXml = `<feed xmlns="http://www.w3.org/2005/Atom">
+  const feedXml = `<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
   <entry>
     <id>http://arxiv.org/abs/2608.14468v1</id>
     <title>Paper One</title>
     <summary>Summary of Paper One</summary>
     <author><name>Author A</name></author>
+    <arxiv:primary_category term="physics.optics" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="physics.optics" scheme="http://arxiv.org/schemas/atom"/>
   </entry>
   <entry>
     <id>http://arxiv.org/abs/2608.16857v1</id>
     <title>Paper Two</title>
     <summary>Summary of Paper Two</summary>
     <author><name>Author B</name></author>
+    <arxiv:primary_category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
   </entry>
 </feed>`;
 
@@ -117,7 +121,38 @@ test("parseArxivFeedXml parses multiple entries from search feed", () => {
   assert.strictEqual(papers.length, 2);
   assert.strictEqual(papers[0].id, "2608.14468v1");
   assert.strictEqual(papers[0].title, "Paper One");
+  assert.strictEqual(papers[0].primaryCategory, "physics.optics");
   assert.strictEqual(papers[0].link, "https://arxiv.org/abs/2608.14468");
   assert.strictEqual(papers[1].id, "2608.16857v1");
   assert.strictEqual(papers[1].title, "Paper Two");
+  assert.strictEqual(papers[1].primaryCategory, "cs.LG");
+});
+
+test("scoreArxivCandidate strictly rejects non-physics/CS/ML papers from ingestion", async () => {
+  const { scoreArxivCandidate } = await import("./dailyEditorialEngine.js");
+  const mockCorpus = {
+    totalArticles: 110,
+    opticsCount: 40,
+    quantPhCount: 70,
+    opticsRatio: 0.36,
+    quantPhRatio: 0.64,
+    recentTags: ["optics", "quantum"],
+    selectionRationale: "Optics rebalancing",
+    recommendedCategory: "physics.optics" as const,
+    recentTopics: ["waveguides", "cryogenics"]
+  };
+
+  const csPaper = {
+    id: "2609.11042",
+    title: "T1: Terminal Agent Reinforcement Learning for Long-Horizon Tasks",
+    summary: "We evaluate large language models and reinforcement learning policies on long horizon command-line environments.",
+    authors: "Agent Authors",
+    link: "https://arxiv.org/abs/2609.11042",
+    primaryCategory: "cs.LG",
+    categories: ["cs.LG", "cs.AI"]
+  };
+
+  const scoreResult = scoreArxivCandidate(csPaper, mockCorpus, new Set());
+  assert.ok(scoreResult.score < 0, "Computer science paper should receive negative score and be disqualified");
+  assert.ok(scoreResult.relevanceReason.includes("Disqualified"), "Reason must clearly state disqualification");
 });
