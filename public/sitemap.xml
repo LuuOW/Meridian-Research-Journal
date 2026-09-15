@@ -2,15 +2,9 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
   <url>
     <loc>https://ask-meridian.uk/</loc>
-    <lastmod>2026-09-15</lastmod>
+    <lastmod>2026-09-14</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/2507-11204-8747</loc>
-    <lastmod>2026-09-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/2609-11809-3143</loc>
@@ -21,6 +15,19 @@
   <url>
     <loc>https://ask-meridian.uk/blog/2609-13109-8421</loc>
     <lastmod>2026-09-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/diagnostic-foundation-for-evaluating-llms-39-research-integr</loc>
+    <lastmod>2026-09-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://ask-meridian.uk/blog/diagnostic-foundation-for-evaluating-llms-39-research-integr</loc>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -248,6 +255,12 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/bosonic-codes-from-compact-phase-spaces-5272</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/diagnostic-foundation-for-evaluating-llms-research-integrity</loc>
     <lastmod>2026-09-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

@@ -24,6 +24,7 @@ import {
 } from "./lib/pipelineUtils";
 import { resolveBlogSlugOrId } from "./lib/slugResolver";
 import { ensureAnimatedSvg, prepareSvgForPngExport } from "./lib/svgUtils";
+import { isArticleBlocked, filterBlockedArticles } from "./lib/arxivBlocklist";
 
 import { ViewCounter } from "./components/ViewCounter";
 import { sortBlogsByPublicationDate } from "./lib/viewCounter";
@@ -689,13 +690,29 @@ export default function App() {
 
   // Load preloaded articles and any custom user generated articles from Firestore via Server API, and LocalStorage
   const loadBlogs = async () => {
+    // 0. Clean any quarantined/blocked papers from localStorage cache immediately
+    try {
+      const cachedActive = localStorage.getItem("meridian_active_blog_id");
+      if (cachedActive && isArticleBlocked(cachedActive)) {
+        localStorage.removeItem("meridian_active_blog_id");
+      }
+      const rawSaved = localStorage.getItem("meridian_blogs_saved");
+      if (rawSaved) {
+        const parsed = JSON.parse(rawSaved);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter((b: any) => !isArticleBlocked(b));
+          localStorage.setItem("meridian_blogs_saved", JSON.stringify(cleaned));
+        }
+      }
+    } catch (_) {}
+
     // 1. Get initial local custom blogs from localStorage as a local cache
     let localCustomBlogs: BlogPost[] = [];
     const saved = localStorage.getItem("meridian_blogs_saved");
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as BlogPost[];
-        localCustomBlogs = parsed.filter(cb => cb && cb.id && !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
+        localCustomBlogs = parsed.filter(cb => cb && cb.id && !isArticleBlocked(cb) && !PRELOADED_BLOGS.some(pb => pb.id === cb.id));
       } catch (err) {
         console.error("Failed to parse local custom blogs:", err);
       }
@@ -712,7 +729,7 @@ export default function App() {
     const deduplicateBlogs = (list: BlogPost[]): BlogPost[] => {
       const seen = new Set<string>();
       return list.filter((b) => {
-        if (!b || !b.id || seen.has(b.id)) return false;
+        if (!b || !b.id || isArticleBlocked(b) || seen.has(b.id)) return false;
         seen.add(b.id);
         return true;
       });
@@ -725,23 +742,39 @@ export default function App() {
       });
 
     // Immediately render local cache + preloaded blogs so the user sees blogs instantly
-    const initialBlogs = sortBlogsByPublicationDate(applyOverrides([...localCustomBlogs, ...PRELOADED_BLOGS]));
+    const cleanPreloaded = PRELOADED_BLOGS.filter(b => !isArticleBlocked(b));
+    const initialBlogs = sortBlogsByPublicationDate(applyOverrides([...localCustomBlogs, ...cleanPreloaded]));
     setBlogs(initialBlogs);
 
     // Handle deep linking via path /blog/:id or query parameter on load (initial pass)
     const getBlogIdFromUrl = () => {
       const pathParts = window.location.pathname.split("/");
       if (pathParts[1] === "blog" && pathParts[2]) {
-        return decodeURIComponent(pathParts[2]);
+        const candidate = decodeURIComponent(pathParts[2]);
+        if (isArticleBlocked(candidate)) {
+          console.warn("[Blocklist] Quarantined article route detected. Redirecting to home:", candidate);
+          window.history.replaceState({}, "", "/");
+          return null;
+        }
+        return candidate;
       }
       const searchParams = new URLSearchParams(window.location.search);
-      return searchParams.get("blog") || searchParams.get("id") || localStorage.getItem("meridian_active_blog_id");
+      const queryId = searchParams.get("blog") || searchParams.get("id");
+      if (queryId) {
+        if (isArticleBlocked(queryId)) {
+          window.history.replaceState({}, "", "/");
+          return null;
+        }
+        return queryId;
+      }
+      // Root "/" MUST display the homepage with today's article - DO NOT blindly resurrect old articles from localStorage!
+      return null;
     };
 
     const blogId = getBlogIdFromUrl();
     if (blogId) {
       const found = resolveBlogSlugOrId(blogId, initialBlogs);
-      if (found) {
+      if (found && !isArticleBlocked(found)) {
         setActiveBlog(found);
       }
     }
@@ -755,7 +788,7 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         const rawBlogs = Array.isArray(data) ? data : (Array.isArray(data?.blogs) ? data.blogs : []);
-        serverBlogs = rawBlogs.filter((b: BlogPost) => b && b.id);
+        serverBlogs = rawBlogs.filter((b: BlogPost) => b && b.id && !isArticleBlocked(b));
       } else {
         console.warn(`Server API responded with code ${response.status}. Using local cache fallback.`);
         fetchError = true;
@@ -765,22 +798,22 @@ export default function App() {
       fetchError = true;
     }
 
-    // 3. Merge lists: PRELOADED_BLOGS provides baseline, localCustomBlogs overlays, and serverBlogs takes precedence
+    // 3. Merge lists: cleanPreloaded provides baseline, localCustomBlogs overlays, and serverBlogs takes precedence
     const mergedMap = new Map<string, BlogPost>();
     
-    PRELOADED_BLOGS.forEach(blog => {
-      mergedMap.set(blog.id, blog);
+    cleanPreloaded.forEach(blog => {
+      if (!isArticleBlocked(blog)) mergedMap.set(blog.id, blog);
     });
 
     localCustomBlogs.forEach(blog => {
-      mergedMap.set(blog.id, blog);
+      if (!isArticleBlocked(blog)) mergedMap.set(blog.id, blog);
     });
 
     serverBlogs.forEach(blog => {
-      mergedMap.set(blog.id, blog);
+      if (!isArticleBlocked(blog)) mergedMap.set(blog.id, blog);
     });
 
-    const mergedCustomBlogs = sortBlogsByPublicationDate(Array.from(mergedMap.values()));
+    const mergedCustomBlogs = sortBlogsByPublicationDate(filterBlockedArticles(Array.from(mergedMap.values())));
 
     // 4. Proactively call the server sync endpoint to sync Firestore and server-side cache with any local-only cache blogs
     if (!fetchError) {
@@ -793,14 +826,14 @@ export default function App() {
         if (response.ok) {
           const data = await response.json();
           const rawSynced = Array.isArray(data) ? data : (Array.isArray(data?.blogs) ? data.blogs : []);
-          const syncedBlogs = rawSynced.filter((b: BlogPost) => b && b.id);
+          const syncedBlogs = rawSynced.filter((b: BlogPost) => b && b.id && !isArticleBlocked(b));
           
           if (syncedBlogs.length > 0) {
             syncedBlogs.forEach(blog => {
-              mergedMap.set(blog.id, blog);
+              if (!isArticleBlocked(blog)) mergedMap.set(blog.id, blog);
             });
           }
-          const allBlogs = sortBlogsByPublicationDate(applyOverrides(Array.from(mergedMap.values())));
+          const allBlogs = sortBlogsByPublicationDate(applyOverrides(filterBlockedArticles(Array.from(mergedMap.values()))));
           setBlogs(allBlogs);
           if (mergedCustomBlogs.length > 0) {
             localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
@@ -810,7 +843,7 @@ export default function App() {
           const refreshedBlogId = getBlogIdFromUrl();
           if (refreshedBlogId) {
             const found = resolveBlogSlugOrId(refreshedBlogId, allBlogs);
-            if (found) {
+            if (found && !isArticleBlocked(found)) {
               setActiveBlog(found);
             } else {
               // Direct server-side single-article lookup fallback

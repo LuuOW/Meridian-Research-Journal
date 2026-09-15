@@ -23,6 +23,7 @@ import {
   syncAllBlogsToGitHub,
   generateDataTsContent
 } from "../lib/githubSync";
+import { isArticleBlocked, filterBlockedArticles } from "../lib/arxivBlocklist";
 
 export class PersistenceMicroservice implements IMicroservice {
   public readonly serviceName = "PersistenceMicroservice";
@@ -160,6 +161,7 @@ export class PersistenceMicroservice implements IMicroservice {
         const list: BlogPost[] = JSON.parse(raw);
         if (Array.isArray(list)) {
           for (const b of list) {
+            if (isArticleBlocked(b)) continue;
             const key = b.slug || b.id || b.title;
             if (key && !map.has(key)) {
               map.set(key, b);
@@ -176,6 +178,7 @@ export class PersistenceMicroservice implements IMicroservice {
         const parsed: BlogPost[] = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           for (const b of parsed) {
+            if (isArticleBlocked(b)) continue;
             const key = b.slug || b.id || b.title;
             if (key) {
               const existing = map.get(key);
@@ -188,7 +191,7 @@ export class PersistenceMicroservice implements IMicroservice {
       console.error(`[${this.serviceName}] Error reading custom_blogs.json:`, err);
     }
 
-    const all = Array.from(map.values());
+    const all = filterBlockedArticles(Array.from(map.values()));
     if (all.length > 0) {
       all.sort((a, b) => {
         const timeA = a.createdAt || (a.date ? new Date(a.date).getTime() : 0) || 0;
@@ -210,14 +213,18 @@ export class PersistenceMicroservice implements IMicroservice {
   ): Promise<{ success: boolean; status: MultiTierStorageStatus }> {
     this.ensureDirectories();
 
+    const cleanBlogsInput = filterBlockedArticles(blogs);
+
     // Union merge with existing library to avoid accidental truncations
     const mergedMap = new Map<string, BlogPost>();
     const existing = this.readBlogs();
     for (const b of existing) {
+      if (isArticleBlocked(b)) continue;
       const key = b.slug || b.id || b.title;
       if (key) mergedMap.set(key, b);
     }
-    for (const b of blogs) {
+    for (const b of cleanBlogsInput) {
+      if (isArticleBlocked(b)) continue;
       const key = b.slug || b.id || b.title;
       if (key) {
         const prev = mergedMap.get(key);
@@ -225,14 +232,14 @@ export class PersistenceMicroservice implements IMicroservice {
       }
     }
 
-    const mergedBlogs = Array.from(mergedMap.values());
+    const mergedBlogs = filterBlockedArticles(Array.from(mergedMap.values()));
     mergedBlogs.sort((a, b) => {
       const timeA = a.createdAt || (a.date ? new Date(a.date).getTime() : 0) || 0;
       const timeB = b.createdAt || (b.date ? new Date(b.date).getTime() : 0) || 0;
       return timeB - timeA;
     });
 
-    const targetBlogs = mergedBlogs.length >= blogs.length ? mergedBlogs : blogs;
+    const targetBlogs = filterBlockedArticles(mergedBlogs.length >= cleanBlogsInput.length ? mergedBlogs : cleanBlogsInput);
 
     const status: MultiTierStorageStatus = {
       customBlogsJson: false,

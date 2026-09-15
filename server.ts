@@ -63,6 +63,7 @@ import {
   readPipelineRecords,
   createBlogSnapshot
 } from "./src/lib/persistenceManager";
+import { isArticleBlocked, filterBlockedArticles } from "./src/lib/arxivBlocklist";
 import {
   createPipelineTracker,
   recordStepProgress,
@@ -328,7 +329,8 @@ const readCustomBlogs = (): any[] => {
   try {
     if (fs.existsSync(CUSTOM_BLOGS_FILE)) {
       const data = fs.readFileSync(CUSTOM_BLOGS_FILE, "utf-8");
-      return JSON.parse(data);
+      const list = JSON.parse(data);
+      return filterBlockedArticles(Array.isArray(list) ? list : []);
     }
   } catch (error) {
     console.error("Error reading custom_blogs.json:", error);
@@ -338,7 +340,8 @@ const readCustomBlogs = (): any[] => {
 
 const writeCustomBlogs = (blogs: any[]) => {
   try {
-    fs.writeFileSync(CUSTOM_BLOGS_FILE, JSON.stringify(blogs, null, 2), "utf-8");
+    const cleanList = filterBlockedArticles(Array.isArray(blogs) ? blogs : []);
+    fs.writeFileSync(CUSTOM_BLOGS_FILE, JSON.stringify(cleanList, null, 2), "utf-8");
   } catch (error) {
     console.error("Error writing custom_blogs.json:", error);
   }
@@ -599,29 +602,38 @@ const sortBlogsChronologically = (blogs: any[]): any[] => {
 
 // Get all blogs, with fallback to local JSON file
 const getBlogs = async (): Promise<any[]> => {
-  const localBlogs = sortBlogsChronologically(readCustomBlogs());
+  const localBlogs = sortBlogsChronologically(filterBlockedArticles(readCustomBlogs()));
   if (!db) {
     return localBlogs;
   }
   try {
     const querySnapshot = await getDocs(collection(db, "blogs"));
     const firestoreBlogs: any[] = [];
-    querySnapshot.forEach((doc) => {
-      firestoreBlogs.push(doc.data());
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (!isArticleBlocked(data)) {
+        firestoreBlogs.push(data);
+      } else {
+        // If quarantined document found in Firestore, purge it immediately
+        try {
+          deleteDoc(docSnap.ref);
+          console.warn("[Blocklist] Purged quarantined document from Firestore:", docSnap.id);
+        } catch (_) {}
+      }
     });
 
     if (firestoreBlogs.length === 0 && localBlogs.length > 0) {
       // Seed Firestore with local blogs if Firestore is completely empty
       console.log(`Firestore blogs collection is empty. Seeding with ${localBlogs.length} local blogs...`);
       for (const blog of localBlogs) {
-        if (blog && blog.id) {
+        if (blog && blog.id && !isArticleBlocked(blog)) {
           await setDoc(doc(db, "blogs", blog.id), blog);
         }
       }
       return localBlogs;
     }
 
-    return sortBlogsChronologically(firestoreBlogs);
+    return sortBlogsChronologically(filterBlockedArticles(firestoreBlogs));
   } catch (error) {
     console.error("Error reading from Firestore, falling back to local file:", error);
     return localBlogs;
@@ -651,14 +663,18 @@ function broadcastPipelineUpdate(record: PipelineExecutionRecord) {
 
 // 99.999% Multi-Tier Save for a single blog: custom_blogs.json, src/data.ts, snapshot, sitemap, Firestore, GitHub
 const saveBlog = async (blog: any, reason: string = "save blog") => {
-  const rawLocalBlogs = readCustomBlogs();
+  if (isArticleBlocked(blog)) {
+    console.warn(`[Blocklist] Refusing to save quarantined blog:`, blog?.id, blog?.title);
+    return { success: false, reason: "Quarantined / blocklisted article", tiers: {} };
+  }
+  const rawLocalBlogs = filterBlockedArticles(readCustomBlogs());
   const existingIdx = rawLocalBlogs.findIndex((b: any) => b.id === blog.id || b.slug === blog.slug);
   if (existingIdx !== -1) {
     rawLocalBlogs[existingIdx] = { ...rawLocalBlogs[existingIdx], ...blog };
   } else {
     rawLocalBlogs.unshift(blog);
   }
-  const localBlogs = sortBlogsChronologically(rawLocalBlogs);
+  const localBlogs = sortBlogsChronologically(filterBlockedArticles(rawLocalBlogs));
 
   // Execute 6-Tier replication
   const result = await persistMultiTierBlogs(localBlogs, db, `${reason}: ${blog.title?.slice(0, 40) || blog.id}`);
@@ -669,7 +685,8 @@ const saveBlog = async (blog: any, reason: string = "save blog") => {
 
 // 99.999% Multi-Tier Save for multiple blogs: custom_blogs.json, src/data.ts, snapshot, sitemap, Firestore, GitHub
 const saveBlogs = async (blogs: any[], reason: string = "batch sync") => {
-  const sortedBlogs = sortBlogsChronologically(blogs);
+  const cleanBlogs = filterBlockedArticles(blogs);
+  const sortedBlogs = sortBlogsChronologically(cleanBlogs);
   const result = await persistMultiTierBlogs(sortedBlogs, db, reason);
   lastGitHubSyncTimestamp = Date.now();
   lastGitHubSyncStatus = result.tiers;
@@ -746,10 +763,13 @@ app.get("/api/blogs", async (req, res) => {
 // API: Resilient single blog resolver (by exact slug, base slug, ID, or arXiv ID)
 app.get("/api/blogs/:idOrSlug", async (req, res) => {
   const { idOrSlug } = req.params;
+  if (isArticleBlocked(idOrSlug)) {
+    return res.status(404).json({ error: "Article permanently quarantined / disqualified from corpus", query: idOrSlug, blocked: true });
+  }
   const allBlogs = await getBlogs();
   const matched = resolveBlogSlugOrId(idOrSlug, allBlogs);
 
-  if (matched) {
+  if (matched && !isArticleBlocked(matched)) {
     const views = matched.views || getBlogViews(matched.id);
     return res.json({ blog: { ...matched, views } });
   }
@@ -1586,7 +1606,7 @@ app.get("/api/passkeys/audit-summary", async (req, res) => {
 
 // API: Sync custom blogs from client and server
 app.post("/api/blogs/sync", async (req, res) => {
-  const clientBlogs = req.body.blogs || [];
+  const clientBlogs = filterBlockedArticles(req.body.blogs || []);
   const serverBlogs = await getBlogs();
   
   // Merge lists using a Map keyed by id to avoid duplicates
@@ -1594,19 +1614,19 @@ app.post("/api/blogs/sync", async (req, res) => {
   
   // First add all server-side blogs
   serverBlogs.forEach((blog: any) => {
-    if (blog && blog.id) {
+    if (blog && blog.id && !isArticleBlocked(blog)) {
       mergedMap.set(blog.id, blog);
     }
   });
   
   // Then add client-side blogs (which might have been created offline or saved in localStorage)
   clientBlogs.forEach((blog: any) => {
-    if (blog && blog.id) {
+    if (blog && blog.id && !isArticleBlocked(blog)) {
       mergedMap.set(blog.id, blog);
     }
   });
   
-  const mergedBlogs = sortBlogsChronologically(Array.from(mergedMap.values()));
+  const mergedBlogs = sortBlogsChronologically(filterBlockedArticles(Array.from(mergedMap.values())));
   
   await saveBlogs(mergedBlogs);
   res.json({ blogs: mergedBlogs });

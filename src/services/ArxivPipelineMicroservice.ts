@@ -18,6 +18,7 @@ import { PersistenceMicroservice } from "./PersistenceMicroservice";
 import { GoogleGenAI } from "@google/genai";
 import { cleanJsonText } from "../lib/arxivUtils";
 import { PRELOADED_BLOGS } from "../data";
+import { isArticleBlocked } from "../lib/arxivBlocklist";
 
 export class ArxivPipelineMicroservice implements IMicroservice {
   public readonly serviceName = "ArxivPipelineMicroservice";
@@ -96,6 +97,10 @@ export class ArxivPipelineMicroservice implements IMicroservice {
 
   public async ingestArxiv(input: string, rawText?: string): Promise<ArxivIngestionResult> {
     const cleanInput = (input || "").trim();
+
+    if (isArticleBlocked(cleanInput)) {
+      throw new Error(`Paper ${cleanInput} is permanently quarantined and blocklisted from Meridian.`);
+    }
 
     // Check if raw text or pre-parsed
     if (rawText && rawText.length > 50) {

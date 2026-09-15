@@ -21,6 +21,7 @@ import { buildXArticleUrl, countSentences } from "./xUtils";
 import { postTweetToX, XTweetResult } from "./xApi";
 import { formatSafeSubtitle, validateTitleAndSubtitle } from "./titleSubtitlePipeline";
 import { draftDistributionNote, cleanTextForDistributionNote } from "./distributionNotePipeline";
+import { isArticleBlocked } from "./arxivBlocklist";
 
 export interface CorpusAnalysis {
   totalArticles: number;
@@ -319,6 +320,14 @@ export function scoreArxivCandidate(
   existingArxivIds: Set<string>
 ): { score: number; category: "physics.optics" | "quant-ph"; relevanceReason: string } {
   const cleanId = paper.id.replace(/v\d+$/, "").trim();
+  if (isArticleBlocked(paper) || isArticleBlocked(cleanId)) {
+    return {
+      score: -9999,
+      category: corpus.recommendedCategory,
+      relevanceReason: `Permanently Quarantined: arXiv paper ${cleanId} (${paper.title}) is blocklisted from Meridian.`
+    };
+  }
+
   if (existingArxivIds.has(cleanId)) {
     return { score: -100, category: "quant-ph", relevanceReason: "Already published in journal" };
   }
