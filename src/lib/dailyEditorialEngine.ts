@@ -250,6 +250,98 @@ export function getSourceArxivBatch(dayOfWeek: number): { sourceBatchName: strin
   }
 }
 
+export interface KeywordTaxonomyCluster {
+  name: string;
+  category: "physics.optics" | "quant-ph";
+  keywords: string[];
+  frontierSignificance: string;
+}
+
+export const OPTICS_KEYWORD_TAXONOMY: KeywordTaxonomyCluster[] = [
+  {
+    name: "Topological Photonics & Berry Curvature",
+    category: "physics.optics",
+    keywords: ["topological photonics", "berry curvature", "chern number", "valley hall", "photonic topological insulator"],
+    frontierSignificance: "Backscattering-immune edge modes, topological invariants in synthetic dimensions."
+  },
+  {
+    name: "Non-Hermitian Optics & Bound States in the Continuum",
+    category: "physics.optics",
+    keywords: ["non-hermitian", "bound state in the continuum", "BIC", "exceptional point", "PT-symmetry", "nonreciprocal"],
+    frontierSignificance: "Radiation suppression, exceptional point sensor enhancement, parity-time phase transitions."
+  },
+  {
+    name: "Metasurfaces, Chiral Light-Matter & Polaritonics",
+    category: "physics.optics",
+    keywords: ["metasurface", "chiral", "nanophotonic chirality", "polariton", "exciton-polariton", "chiroptical"],
+    frontierSignificance: "Sub-wavelength phase control, broken inversion symmetry, polariton condensates."
+  },
+  {
+    name: "Structured Beams, Waveguides & Singular Optics",
+    category: "physics.optics",
+    keywords: ["orbital angular momentum", "phase singularity", "vortex beam", "photonic crystal waveguide", "inverse design"],
+    frontierSignificance: "High-dimensional spatial encoding, phase dislocation topology, dispersion engineering."
+  },
+  {
+    name: "Microcavity QED & Nonlinear Optics",
+    category: "physics.optics",
+    keywords: ["microcavity", "cavity QED", "stimulated Brillouin", "SU(1,1)", "nonlinear optics", "vacuum nonlinearity"],
+    frontierSignificance: "Strong coupling regimes, high-Q resonators, parametric photon generation."
+  }
+];
+
+export const QUANT_PH_KEYWORD_TAXONOMY: KeywordTaxonomyCluster[] = [
+  {
+    name: "Quantum State Tomography & Measurement Bases",
+    category: "quant-ph",
+    keywords: ["quantum state tomography", "measurement bases", "tomographic completeness", "shadow tomography", "frame potential"],
+    frontierSignificance: "Efficient d+1 state reconstruction, continuous-variable phase-space tomography."
+  },
+  {
+    name: "Many-Body Entanglement & Quantum Complexity",
+    category: "quant-ph",
+    keywords: ["many-body entanglement", "Loschmidt echo", "discrete time crystal", "quantum circuit complexity", "non-local magic"],
+    frontierSignificance: "Quench dynamics, non-stabilizerness, tensor-network state parameterization."
+  },
+  {
+    name: "Continuous-Variable Quantum Information & Bosonic Codes",
+    category: "quant-ph",
+    keywords: ["continuous variable", "squeezed state", "bosonic code", "GKP code", "cat code", "Gaussian boson sampling"],
+    frontierSignificance: "Hardware-efficient fault tolerance, phase-space error correction, quantum supremacy."
+  },
+  {
+    name: "Open Quantum Systems, Monitoring & Non-Hermitian Hamiltonians",
+    category: "quant-ph",
+    keywords: ["open quantum system", "measurement-induced", "entanglement transition", "non-Hermitian Hamiltonian", "Lindblad master equation"],
+    frontierSignificance: "Measurement-induced criticality, quantum trajectory dynamics, dissipative phase transitions."
+  },
+  {
+    name: "Rydberg Sensors, Quantum Metrology & Cavity Optomechanics",
+    category: "quant-ph",
+    keywords: ["Rydberg", "quantum metrology", "cavity optomechanics", "SI-traceable", "quantum sensor", "Heisenberg limit"],
+    frontierSignificance: "Fundamental noise limits, precision THz/microwave electrometry, optomechanical cooling."
+  }
+];
+
+/**
+ * Builds an adaptive, frontier-targeted arXiv query URL based on category and day-of-week rotation
+ */
+export function buildAdaptiveArxivQueryUrl(
+  category: "physics.optics" | "quant-ph",
+  dayOfWeek: number = 2
+): string {
+  const clusters = category === "physics.optics" ? OPTICS_KEYWORD_TAXONOMY : QUANT_PH_KEYWORD_TAXONOMY;
+  const clusterIndex = Math.abs(dayOfWeek) % clusters.length;
+  const activeCluster = clusters[clusterIndex];
+
+  // Pick primary keyword terms from the active cluster
+  const primaryTerms = activeCluster.keywords.slice(0, 2).map((k) => `all:%22${encodeURIComponent(k)}%22`).join("+OR+");
+  const baseCat = category === "physics.optics" ? "cat:physics.optics" : "cat:quant-ph";
+  const crossCat = category === "physics.optics" ? "cat:quant-ph" : "cat:physics.optics";
+
+  return `https://export.arxiv.org/api/query?search_query=(${baseCat}+OR+${crossCat})+AND+(${primaryTerms})&sortBy=submittedDate&sortOrder=descending&max_results=50`;
+}
+
 /**
  * Deeply analyzes all articles in the database to determine topic saturation
  * and recommend whether today's paper should be Optics or Quant-Ph.

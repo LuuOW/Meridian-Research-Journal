@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getGitHubSyncConfig, commitFileWithAutoShaRetry, isBadTokenCached } from "./githubSync.js";
+import { isArticleBlocked } from "./arxivBlocklist";
 
 export const OFFLINE_RECORD_FILE_PATH = "offline_blog_record";
 export const ART_TIMEZONE = "America/Argentina/Buenos_Aires";
@@ -53,9 +54,9 @@ export function getLatestArticleTitle(baseDir?: string): string {
       const raw = fs.readFileSync(customBlogsPath, "utf-8");
       const blogs = JSON.parse(raw);
       if (Array.isArray(blogs) && blogs.length > 0) {
-        // Find the first valid blog with a title
+        // Find the first valid, unblocked blog with a title
         for (const b of blogs) {
-          if (b && typeof b.title === "string" && b.title.trim()) {
+          if (b && typeof b.title === "string" && b.title.trim() && !isArticleBlocked(b)) {
             return b.title.trim();
           }
         }

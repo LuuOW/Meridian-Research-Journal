@@ -1,0 +1,27 @@
+{
+  "timestamp": 1789612668951,
+  "date": "2026-09-17T02:37:48.951Z",
+  "model": "grok-4.20-0309-non-reasoning",
+  "articlesIngested": 114,
+  "durationMs": 40876,
+  "usage": {
+    "prompt_tokens": 21625,
+    "completion_tokens": 3222,
+    "total_tokens": 24847,
+    "prompt_tokens_details": {
+      "text_tokens": 21625,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "cached_tokens": 128
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    },
+    "num_sources_used": 0,
+    "cost_in_usd_ticks": 349518500
+  },
+  "reportPath": "/app/applet/data/xai_keyword_query_audit_report.md"
+}

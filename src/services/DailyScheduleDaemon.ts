@@ -23,6 +23,7 @@ import {
   saveStagedDailyDispatch,
   generateStagedArticleDraft,
   buildCandidateDeck,
+  buildAdaptiveArxivQueryUrl,
   StagedDailyDispatch,
   EditorialCandidate
 } from "../lib/dailyEditorialEngine";
@@ -282,21 +283,35 @@ export class DailyScheduleDaemon implements IMicroservice {
     const corpus = analyzeCorpusHistory(existingBlogs);
     const selectedCategory = forceCategory || corpus.recommendedCategory;
 
-    // 1. Fetch real arXiv preprints for physics.optics and quant-ph
+    // 1. Fetch real arXiv preprints for physics.optics and quant-ph using adaptive taxonomy query
     let candidates: ArxivPaper[] = [];
     try {
-      const arxivQueryUrl = `https://export.arxiv.org/api/query?search_query=cat:physics.optics+OR+cat:quant-ph&sortBy=submittedDate&sortOrder=descending&max_results=30`;
-      console.log(`[${this.serviceName}] Querying arXiv XML API: ${arxivQueryUrl}`);
-      const res = await fetch(arxivQueryUrl, { signal: AbortSignal.timeout(4000) });
+      const adaptiveQueryUrl = buildAdaptiveArxivQueryUrl(selectedCategory, art.dayOfWeek);
+      console.log(`[${this.serviceName}] Querying adaptive frontier arXiv XML API: ${adaptiveQueryUrl}`);
+      const res = await fetch(adaptiveQueryUrl, { signal: AbortSignal.timeout(4000) });
       if (res.ok) {
         const xml = await res.text();
         candidates = parseArxivFeedXml(xml);
-        console.log(`[${this.serviceName}] Parsed ${candidates.length} arXiv preprints from XML feed.`);
-      } else {
-        console.warn(`[${this.serviceName}] arXiv XML feed returned HTTP ${res.status} (rate limit or gateway issue); falling back to direct recent listings.`);
+        console.log(`[${this.serviceName}] Parsed ${candidates.length} frontier preprints from adaptive XML feed.`);
       }
     } catch (fetchErr) {
-      console.warn(`[${this.serviceName}] Live arXiv query encountered network issue:`, fetchErr);
+      console.warn(`[${this.serviceName}] Adaptive arXiv query encountered network issue:`, fetchErr);
+    }
+
+    // Fallback to broad query if targeted terms yielded no candidates or timed out
+    if (candidates.length === 0) {
+      try {
+        const broadQueryUrl = `https://export.arxiv.org/api/query?search_query=cat:physics.optics+OR+cat:quant-ph&sortBy=submittedDate&sortOrder=descending&max_results=50`;
+        console.log(`[${this.serviceName}] Executing broad category arXiv XML query: ${broadQueryUrl}`);
+        const res = await fetch(broadQueryUrl, { signal: AbortSignal.timeout(4000) });
+        if (res.ok) {
+          const xml = await res.text();
+          candidates = parseArxivFeedXml(xml);
+          console.log(`[${this.serviceName}] Parsed ${candidates.length} arXiv preprints from broad XML feed.`);
+        }
+      } catch (broadErr) {
+        console.warn(`[${this.serviceName}] Broad arXiv query encountered network issue:`, broadErr);
+      }
     }
 
     // 2. High-speed Fastly CDN fallback scraping for current recent optics & quant-ph preprints
