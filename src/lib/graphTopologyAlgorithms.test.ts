@@ -3,7 +3,8 @@ import assert from "node:assert";
 import {
   buildArticleNetwork,
   extractTagCooccurrence,
-  findConnectedClusters
+  findConnectedClusters,
+  findShortestNetworkPath
 } from "./graphUtils.js";
 import { BlogPost } from "../types.js";
 
@@ -125,4 +126,26 @@ test("findConnectedClusters partitions disconnected components into clusters", (
   assert.strictEqual(clusters[1].length, 2);
   assert.strictEqual(clusters[2].length, 1);
   assert.strictEqual(clusters[2][0], "post-cosmo-1");
+});
+
+test("findShortestNetworkPath computes Dijkstra shortest path between connected articles", () => {
+  const network = buildArticleNetwork(samplePosts);
+  
+  // Within optics cluster
+  const opticsPath = findShortestNetworkPath(network, "post-optics-1", "post-optics-2");
+  assert.ok(opticsPath);
+  assert.strictEqual(opticsPath.sourceId, "post-optics-1");
+  assert.strictEqual(opticsPath.targetId, "post-optics-2");
+  assert.deepStrictEqual(opticsPath.path, ["post-optics-1", "post-optics-2"]);
+  assert.ok(opticsPath.totalDistance > 0);
+
+  // Across disconnected clusters (optics to quantum) -> unreachable, returns null
+  const unreachable = findShortestNetworkPath(network, "post-optics-1", "post-quantum-1");
+  assert.strictEqual(unreachable, null);
+
+  // Same node
+  const self = findShortestNetworkPath(network, "post-optics-1", "post-optics-1");
+  assert.ok(self);
+  assert.strictEqual(self.totalDistance, 0);
+  assert.deepStrictEqual(self.path, ["post-optics-1"]);
 });

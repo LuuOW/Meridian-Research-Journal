@@ -1,7 +1,7 @@
 import { BlogPost } from "./types";
 import { ensureAnimatedSvg } from "./lib/svgUtils";
 
-const RAW_PRELOADED_BLOGS: BlogPost[] = [
+export const RAW_PRELOADED_BLOGS: BlogPost[] = [
   {
     "id": "blog-1789613391006-pwjbf",
     "title": "Generic Spectral Determination of Semiclassical Schrödinger Operators with $\\mathbb Z_2$-Symmetry",

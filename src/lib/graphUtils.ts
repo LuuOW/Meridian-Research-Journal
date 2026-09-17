@@ -177,3 +177,103 @@ export function findConnectedClusters(network: ArticleNetwork): string[][] {
 
   return clusters.sort((a, b) => b.length - a.length);
 }
+
+export interface NetworkShortestPath {
+  sourceId: string;
+  targetId: string;
+  totalDistance: number;
+  path: string[];
+  nodesExplored: number;
+}
+
+/**
+ * Computes the shortest path between two nodes in the ArticleNetwork using Dijkstra's algorithm.
+ * Edge distances are derived inversely from edge weight (higher thematic weight = closer distance).
+ */
+export function findShortestNetworkPath(
+  network: ArticleNetwork,
+  sourceId: string,
+  targetId: string
+): NetworkShortestPath | null {
+  const { nodes, edges } = network;
+  const nodeSet = new Set(nodes.map(n => n.id));
+  if (!nodeSet.has(sourceId) || !nodeSet.has(targetId)) return null;
+  if (sourceId === targetId) {
+    return { sourceId, targetId, totalDistance: 0, path: [sourceId], nodesExplored: 1 };
+  }
+
+  // Build adjacency list: node -> array of { neighbor, distance }
+  const adjacency = new Map<string, Array<{ neighbor: string; distance: number }>>();
+  for (const n of nodes) {
+    adjacency.set(n.id, []);
+  }
+
+  for (const edge of edges) {
+    // Convert affinity weight to distance (min distance 0.1)
+    const distance = Math.max(0.1, 10 / (1 + (edge.weight || 1)));
+    adjacency.get(edge.source)?.push({ neighbor: edge.target, distance });
+    adjacency.get(edge.target)?.push({ neighbor: edge.source, distance });
+  }
+
+  const distances = new Map<string, number>();
+  const previous = new Map<string, string>();
+  const visited = new Set<string>();
+
+  for (const n of nodes) {
+    distances.set(n.id, Infinity);
+  }
+  distances.set(sourceId, 0);
+
+  // Simple priority queue using array
+  const queue: Array<{ id: string; dist: number }> = [{ id: sourceId, dist: 0 }];
+  let nodesExplored = 0;
+
+  while (queue.length > 0) {
+    // Extract min
+    queue.sort((a, b) => a.dist - b.dist);
+    const current = queue.shift()!;
+
+    if (visited.has(current.id)) continue;
+    visited.add(current.id);
+    nodesExplored++;
+
+    if (current.id === targetId) break;
+
+    const neighbors = adjacency.get(current.id) || [];
+    for (const { neighbor, distance } of neighbors) {
+      if (visited.has(neighbor)) continue;
+      const tentative = current.dist + distance;
+      const currentBest = distances.get(neighbor) ?? Infinity;
+
+      if (tentative < currentBest) {
+        distances.set(neighbor, tentative);
+        previous.set(neighbor, current.id);
+        queue.push({ id: neighbor, dist: tentative });
+      }
+    }
+  }
+
+  const finalDist = distances.get(targetId);
+  if (finalDist === undefined || finalDist === Infinity) {
+    return null;
+  }
+
+  // Reconstruct path
+  const path: string[] = [];
+  let curr: string | undefined = targetId;
+  while (curr && curr !== sourceId) {
+    path.unshift(curr);
+    curr = previous.get(curr);
+  }
+  if (!curr) return null;
+  path.unshift(sourceId);
+
+  return {
+    sourceId,
+    targetId,
+    totalDistance: parseFloat(finalDist.toFixed(3)),
+    path,
+    nodesExplored
+  };
+}
+

@@ -47,23 +47,28 @@ export function isWeekendInART(date: Date = new Date()): boolean {
  */
 export function getLatestArticleTitle(baseDir?: string): string {
   const root = baseDir || process.cwd();
-  const customBlogsPath = path.join(root, "custom_blogs.json");
+  const filePaths = [
+    path.join(root, "custom_blogs.json"),
+    path.join(root, "public", "custom_blogs.json")
+  ];
   
-  try {
-    if (fs.existsSync(customBlogsPath)) {
-      const raw = fs.readFileSync(customBlogsPath, "utf-8");
-      const blogs = JSON.parse(raw);
-      if (Array.isArray(blogs) && blogs.length > 0) {
-        // Find the first valid, unblocked blog with a title
-        for (const b of blogs) {
-          if (b && typeof b.title === "string" && b.title.trim() && !isArticleBlocked(b)) {
-            return b.title.trim();
+  for (const filePath of filePaths) {
+    try {
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, "utf-8");
+        const blogs = JSON.parse(raw);
+        if (Array.isArray(blogs) && blogs.length > 0) {
+          // Find the first valid, unblocked blog with a title
+          for (const b of blogs) {
+            if (b && typeof b.title === "string" && b.title.trim() && !isArticleBlocked(b)) {
+              return b.title.trim();
+            }
           }
         }
       }
+    } catch (err) {
+      console.log(`[offlineBlogRecord] Note reading ${filePath}:`, err);
     }
-  } catch (err) {
-    console.log("[offlineBlogRecord] Note reading custom_blogs.json:", err);
   }
 
   // Safe fallback if blogs catalog is empty or unavailable
@@ -116,9 +121,25 @@ export function appendOfflineRecordContent(
     if (dateIndex !== -1) {
       const entryLines = newEntry.split("\n");
       const newTitle = entryLines[1];
-      if (lines[dateIndex + 1] !== undefined && newTitle && lines[dateIndex + 1].trim() !== newTitle.trim()) {
-        lines[dateIndex + 1] = newTitle;
-        return { content: lines.join("\n"), appended: true };
+      const existingLineAfterDate = lines[dateIndex + 1];
+
+      // If existing record was a weekend ("- Weekend" or "-weekend") and new entry is also weekend, no-op
+      if (existingLineAfterDate && (existingLineAfterDate.trim() === "- Weekend" || existingLineAfterDate.trim() === "-weekend")) {
+        if (newTitle && (newTitle.trim() === "- Weekend" || newTitle.trim() === "-weekend")) {
+          return { content: existingContent, appended: false };
+        }
+      }
+
+      if (newTitle) {
+        if (existingLineAfterDate !== undefined && existingLineAfterDate.trim() !== "") {
+          if (existingLineAfterDate.trim() !== newTitle.trim()) {
+            lines[dateIndex + 1] = newTitle;
+            return { content: lines.join("\n"), appended: true };
+          }
+        } else {
+          lines.splice(dateIndex + 1, 0, newTitle);
+          return { content: lines.join("\n"), appended: true };
+        }
       }
       // Date and title are already recorded
       return { content: existingContent, appended: false };
@@ -189,6 +210,16 @@ export async function getRemoteOrLocalOfflineRecord(): Promise<string> {
           const data: any = await res.json();
           if (data && data.content) {
             const decoded = Buffer.from(data.content, "base64").toString("utf-8");
+            // Also sync down to local file if local exists and lacks recent entries
+            if (decoded && fs.existsSync(localFilePath)) {
+              try {
+                const local = fs.readFileSync(localFilePath, "utf-8");
+                if (local.trim() !== decoded.trim()) {
+                  fs.writeFileSync(localFilePath, decoded, "utf-8");
+                  console.log("[offlineBlogRecord] Synchronized remote offline_blog_record down to local file.");
+                }
+              } catch (_) {}
+            }
             return decoded;
           }
         }
@@ -442,6 +473,15 @@ class OfflineRecordScheduler {
           this.lastRunDateStr = todayDateStr;
         }
       } else {
+        // Ensure local file also has today's entry
+        const localFilePath = path.join(process.cwd(), OFFLINE_RECORD_FILE_PATH);
+        if (fs.existsSync(localFilePath)) {
+          const localContent = fs.readFileSync(localFilePath, "utf-8");
+          if (!localContent.split("\n").map(l => l.trim()).includes(todayDateStr)) {
+            fs.writeFileSync(localFilePath, content, "utf-8");
+            console.log(`[OfflineRecordScheduler] Mirrored remote entry for ${todayDateStr} into local ${OFFLINE_RECORD_FILE_PATH}`);
+          }
+        }
         console.log(`[OfflineRecordScheduler] Today (${todayDateStr}) is already recorded in ${OFFLINE_RECORD_FILE_PATH}.`);
         this.lastRunDateStr = todayDateStr;
       }
