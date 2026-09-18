@@ -1,7 +1,7 @@
 import { BlogPost } from "./types";
 import { ensureAnimatedSvg } from "./lib/svgUtils";
 
-export const RAW_PRELOADED_BLOGS: BlogPost[] = [
+const RAW_PRELOADED_BLOGS: BlogPost[] = [
   {
     "id": "blog-2609-20188v1-3829",
     "title": "Topological Soliton Frequency Combs in Anisotropic High-Q Microresonators",
