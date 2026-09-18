@@ -113,6 +113,7 @@ export interface StagedDailyDispatch {
   publishedAt?: number;
   publishedVia?: "manual_editor_accept" | "auto_timeout_publish";
   xPostResult?: XTweetResult;
+  pipelineReport?: any;
   corpusAnalysis: {
     totalArticlesAnalyzed: number;
     opticsRatio: number;
@@ -424,7 +425,7 @@ export function scoreArxivCandidate(
     return { score: -100, category: "quant-ph", relevanceReason: "Already published in journal" };
   }
 
-  // Strict domain safeguard: Reject papers strictly categorized under non-physics/non-quantum fields (e.g. cs.LG, cs.AI, econ, stat)
+  // Strict domain safeguard: Must explicitly match physics.optics or quant-ph
   const allPaperCats = [
     paper.primaryCategory,
     ...(paper.categories || [])
@@ -432,15 +433,28 @@ export function scoreArxivCandidate(
 
   const hasOpticsCategory = allPaperCats.some(c => c === "physics.optics" || c.includes("optics"));
   const hasQuantCategory = allPaperCats.some(c => c === "quant-ph" || c.includes("quant-ph"));
-  const isNonPhysicsOnly = allPaperCats.length > 0 &&
-    allPaperCats.every(c => c.startsWith("cs.") || c.startsWith("stat.") || c.startsWith("econ.") || c.startsWith("q-fin."));
 
-  if (isNonPhysicsOnly) {
+  // Disqualify papers that explicitly lack quant-ph or optics categories
+  if (allPaperCats.length > 0 && !hasOpticsCategory && !hasQuantCategory) {
     return {
       score: -1000,
       category: corpus.recommendedCategory,
-      relevanceReason: `Disqualified: Preprint category (${paper.primaryCategory || allPaperCats.join(", ")}) is non-physics (Computer Science / ML), incompatible with Meridian's optics & quantum scope.`
+      relevanceReason: `Disqualified: Preprint category (${paper.primaryCategory || allPaperCats.join(", ")}) is outside Meridian's mandatory disciplines (physics.optics and quant-ph).`
     };
+  }
+
+  // Freshness check: Disqualify papers from past months or stale submission cycles
+  const idMatch = cleanId.match(/^(\d{2})(\d{2})\.(\d{4,5})/);
+  if (idMatch) {
+    const year = parseInt(idMatch[1], 10);
+    const month = parseInt(idMatch[2], 10);
+    if (year < 26 || (year === 26 && month < 9)) {
+      return {
+        score: -2000,
+        category: corpus.recommendedCategory,
+        relevanceReason: `Disqualified: Preprint arXiv:${cleanId} is from an earlier submission period (${idMatch[1]}/${idMatch[2]}), failing mandatory date freshness.`
+      };
+    }
   }
 
   const titleLower = paper.title.toLowerCase();

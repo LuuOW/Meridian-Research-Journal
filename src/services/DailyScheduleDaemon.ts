@@ -30,6 +30,14 @@ import {
 import { parseArxivFeedXml, ArxivPaper } from "../lib/arxivUtils";
 import { postTweetToX, testXConnection, XTweetResult } from "../lib/xApi";
 import { BlogPost } from "../types";
+import { executeOfflineRecordPushToGitHub } from "../lib/offlineBlogRecord";
+import {
+  ArxivAutonomousPipeline,
+  ArxivPaperCandidate,
+  validateCategoryPolicy,
+  validatePreprintFreshness,
+  PipelineExecutionReport
+} from "../lib/arxivAutonomousPipeline";
 
 export class DailyScheduleDaemon implements IMicroservice {
   public readonly serviceName = "DailyScheduleDaemon";
@@ -253,6 +261,15 @@ export class DailyScheduleDaemon implements IMicroservice {
           await this.executePublish(dispatch, "auto_timeout_publish");
         }
       }
+
+      if (art.isWeekend) {
+        // On weekends, arXiv has no announcements; push "- Weekend" to offline_blog_record
+        try {
+          await executeOfflineRecordPushToGitHub({ date: new Date(), forceWeekend: true });
+        } catch (weekendErr) {
+          console.log(`[${this.serviceName}] Weekend offline record sync note:`, weekendErr);
+        }
+      }
     } catch (err) {
       console.error(`[${this.serviceName}] checkSchedule error:`, err);
     } finally {
@@ -389,8 +406,34 @@ export class DailyScheduleDaemon implements IMicroservice {
       }
     }
 
+    // Strictly filter candidates through policy guards
+    const validCandidates = candidates.filter((p) => {
+      const candidateObj: ArxivPaperCandidate = {
+        id: p.id,
+        title: p.title,
+        summary: p.summary,
+        authors: p.authors,
+        categories: p.categories && p.categories.length > 0 ? p.categories : [selectedCategory],
+        primaryCategory: p.primaryCategory || selectedCategory,
+      };
+      const catAudit = validateCategoryPolicy(candidateObj);
+      if (!catAudit.allowed) {
+        console.log(`[${this.serviceName}] Candidate ${p.id} rejected by Category Policy: ${catAudit.rejectedReason}`);
+        return false;
+      }
+      const targetDate = new Date(art.dateString);
+      const freshAudit = validatePreprintFreshness(candidateObj, targetDate, 4);
+      if (!freshAudit.valid) {
+        console.log(`[${this.serviceName}] Candidate ${p.id} rejected by Freshness Guard: ${freshAudit.reason}`);
+        return false;
+      }
+      return true;
+    });
+
+    const candidatesToScore = validCandidates.length > 0 ? validCandidates : candidates;
+
     // Score and rank all candidate papers
-    const scoredCandidates = candidates
+    const scoredCandidates = candidatesToScore
       .map((p) => {
         const scoring = scoreArxivCandidate(p, corpus, existingArxivIds);
         return {
@@ -411,6 +454,27 @@ export class DailyScheduleDaemon implements IMicroservice {
     };
 
     const alternateCandidates = scoredCandidates.slice(1, 4);
+
+    // Run primary candidate through ArxivAutonomousPipeline for telemetry logging & validation verification
+    let pipelineReport: PipelineExecutionReport | undefined;
+    try {
+      const pipeline = new ArxivAutonomousPipeline();
+      pipelineReport = await pipeline.executePipeline(
+        {
+          id: primaryCandidate.id,
+          title: primaryCandidate.title,
+          summary: primaryCandidate.summary,
+          authors: primaryCandidate.authors,
+          categories: primaryCandidate.categories || [primaryCandidate.category],
+          primaryCategory: primaryCandidate.primaryCategory || primaryCandidate.category,
+        },
+        existingBlogs,
+        { targetDate: new Date(art.dateString) }
+      );
+      console.log(`[${this.serviceName}] ArxivAutonomousPipeline finished with status: ${pipelineReport.status} in ${pipelineReport.totalDurationMs}ms`);
+    } catch (pipeErr) {
+      console.warn(`[${this.serviceName}] ArxivAutonomousPipeline execution note:`, pipeErr);
+    }
 
     // Generate Article Draft with Math & Animated SVG Banner (only if arXiv generation switch is enabled)
     let draftArticle: BlogPost;
@@ -452,6 +516,7 @@ export class DailyScheduleDaemon implements IMicroservice {
       xPost,
       candidatesDeck,
       activeCandidateIndex: 0,
+      pipelineReport,
       corpusAnalysis: {
         totalArticlesAnalyzed: corpus.totalArticles,
         opticsRatio: corpus.opticsRatio,
@@ -492,6 +557,17 @@ export class DailyScheduleDaemon implements IMicroservice {
         ? `Manual Editor Acceptance of 9 AM ART Dispatch (${dispatch.candidatePaper.id})`
         : `10 AM ART Auto-Publish Timeout (${dispatch.candidatePaper.id})`
     );
+
+    // 2b. Synchronize offline_blog_record for today's published edition
+    try {
+      const offlineRes = await executeOfflineRecordPushToGitHub({
+        date: new Date(),
+        customTitle: finalBlog.title,
+      });
+      console.log(`[${this.serviceName}] Offline blog record synchronized:`, offlineRes.message);
+    } catch (recordErr) {
+      console.error(`[${this.serviceName}] Failed to sync offline_blog_record on publish:`, recordErr);
+    }
 
     // 3. Post to X (Twitter) API v2 - respect xPostingEnabled switch
     const tweetText = (customTweetText || dispatch.xPost.postText).trim();

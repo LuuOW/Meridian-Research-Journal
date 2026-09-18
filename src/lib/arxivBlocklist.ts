@@ -8,6 +8,8 @@
 export const BLOCKED_ARXIV_IDS: readonly string[] = Object.freeze([
   "2608.12345", // Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists (CS / LLM)
   "2609.11042", // Terminal Agent Reinforcement Learning for Long-Horizon Tasks (CS / ML)
+  "2608.11111", // Generic Spectral Determination of Semiclassical Schrödinger Operators (math.DS - Mathematics / Aug 11 stale)
+  "2609.06542", // Recovering topological information of light by topological learning (Stale Sep 6 submission)
 ]);
 
 export const BLOCKED_SLUGS: readonly string[] = Object.freeze([
@@ -15,9 +17,14 @@ export const BLOCKED_SLUGS: readonly string[] = Object.freeze([
   "diagnostic-foundation-for-evaluating-llms-research-integrity",
   "diagnostic-foundation-for-evaluating-llms",
   "terminal-agent-reinforcement-learning-for-long-horizon-tasks",
+  "generic-spectral-determination-of-semiclassical-schr-dinger-",
+  "generic-spectral-determination-of-semiclassical-schrodinger",
+  "recovering-topological-information-of-light-by-topological-learning",
+  "2609-06542v1-5582",
   "2609-11042-8694",
   "2609-11042",
   "2608-12345",
+  "2608-11111",
 ]);
 
 export const BLOCKED_BLOG_IDS: readonly string[] = Object.freeze([
@@ -29,12 +36,17 @@ export const BLOCKED_BLOG_IDS: readonly string[] = Object.freeze([
   "blog-1788302160015-k0dkt",
   "blog-1788302136465-baot7",
   "blog-2609-11042-8694",
+  "blog-1789613391006-pwjbf",
+  "blog-2609-06542v1-5582",
 ]);
 
 export const BLOCKED_TITLE_KEYWORDS: readonly string[] = Object.freeze([
   "diagnostic foundation for evaluating llms",
   "terminal agent reinforcement learning",
   "integritybench",
+  "generic spectral determination of semiclassical",
+  "generic spectral determination of semiclassical schrödinger",
+  "generic spectral determination of semiclassical schrodinger",
 ]);
 
 /**

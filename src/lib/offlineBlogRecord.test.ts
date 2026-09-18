@@ -268,8 +268,8 @@ test("offlineBlogRecord: Title resolution retrieves unblocked published article 
   assert.ok(!latestTitle.toLowerCase().includes("integritybench"));
   assert.ok(!latestTitle.toLowerCase().includes("evaluating llms"));
   
-  // Should match current top published paper
-  assert.strictEqual(latestTitle, "Correlation geometry and topology of structured optical beams");
+  // Should match current top published paper (September 18, 2026)
+  assert.strictEqual(latestTitle, "Topological Soliton Frequency Combs in Anisotropic High-Q Microresonators");
 });
 
 test("offlineBlogRecord: appendOfflineRecordContent updates article title in-place on weekdays without duplicating date", () => {
