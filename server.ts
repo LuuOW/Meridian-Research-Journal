@@ -63,7 +63,8 @@ import {
   readPipelineRecords,
   createBlogSnapshot
 } from "./src/lib/persistenceManager";
-import { isArticleBlocked, filterBlockedArticles } from "./src/lib/arxivBlocklist";
+import { isArticleBlocked, checkArticleBlocked, logBlockedArticle, filterBlockedArticles } from "./src/lib/arxivBlocklist";
+import { validateCategoryPolicy } from "./src/lib/arxivAutonomousPipeline";
 import {
   createPipelineTracker,
   recordStepProgress,
@@ -282,11 +283,24 @@ const fetchArxivMetadata = async (id: string) => {
         : "";
 
       if (rawTitle) {
+        // Extract subjects/categories and submission date from arXiv abstract page
+        const subjectsMatch = text.match(/<td class="tablecell subjects">([\s\S]*?)<\/td>/i);
+        const subjectsText = subjectsMatch ? subjectsMatch[1] : "";
+        const primaryMatch = subjectsText.match(/<span class="primary-subject">([^<]+)<\/span>/i) || subjectsText.match(/\(([^)]+)\)/);
+        const primaryCat = primaryMatch ? primaryMatch[1].trim() : undefined;
+        const allCatMatches = [...subjectsText.matchAll(/\(([^)]+)\)/g)].map(m => m[1].trim());
+
+        const submissionMatch = text.match(/\[Submitted on ([^\]]+)\]/i);
+        const submittedDate = submissionMatch ? submissionMatch[1].trim() : undefined;
+
         return {
           title: decodeHtmlEntities(rawTitle),
           summary: decodeHtmlEntities(rawSummary) || "Scientific research publication registered on arXiv.",
           authors: decodeHtmlEntities(rawAuthors) || "arXiv Contributors",
-          arxivLink: `https://arxiv.org/abs/${cleanId}`
+          arxivLink: `https://arxiv.org/abs/${cleanId}`,
+          primaryCategory: primaryCat,
+          categories: allCatMatches.length > 0 ? allCatMatches : (primaryCat ? [primaryCat] : undefined),
+          submittedDate
         };
       }
     }
@@ -300,13 +314,16 @@ const fetchArxivMetadata = async (id: string) => {
     const res = await fetch(url, { signal: AbortSignal.timeout(3500), redirect: "follow" });
     if (res.ok) {
       const xml = await res.text();
-      const { title, summary, authors } = parseArxivXml(xml);
-      if (title && title !== "Unknown Paper Title" && summary) {
+      const xmlMeta = parseArxivXml(xml);
+      if (xmlMeta.title && xmlMeta.title !== "Unknown Paper Title" && xmlMeta.summary) {
         return {
-          title: decodeHtmlEntities(title),
-          summary: decodeHtmlEntities(summary),
-          authors: decodeHtmlEntities(authors) || "arXiv Contributors",
-          arxivLink: `https://arxiv.org/abs/${cleanId}`
+          title: decodeHtmlEntities(xmlMeta.title),
+          summary: decodeHtmlEntities(xmlMeta.summary),
+          authors: decodeHtmlEntities(xmlMeta.authors) || "arXiv Contributors",
+          arxivLink: `https://arxiv.org/abs/${cleanId}`,
+          primaryCategory: xmlMeta.primaryCategory,
+          categories: xmlMeta.categories,
+          submittedDate: xmlMeta.submittedDate
         };
       }
     }
@@ -1743,13 +1760,47 @@ app.post("/api/blog/generate", async (req, res) => {
     let paperAuthors = "ArXiv Authors";
     let arxivLink = "";
 
+    if (arxivInput) {
+      const inputCheck = checkArticleBlocked(arxivInput);
+      if (inputCheck.blocked) {
+        logBlockedArticle(arxivInput, "POST /api/blog/generate arxivInput");
+        tracker = finalizePipelineFailure(tracker, `Quarantined paper: ${inputCheck.reason}`);
+        broadcastPipelineUpdate(tracker);
+        return res.status(400).json({ error: inputCheck.reason, tracker });
+      }
+    }
+
     const arxivId = extractArxivId(arxivInput || "");
     if (arxivId) {
+      const idCheck = checkArticleBlocked(arxivId);
+      if (idCheck.blocked) {
+        logBlockedArticle(arxivId, "POST /api/blog/generate arxivId");
+        tracker = finalizePipelineFailure(tracker, `Quarantined paper arXiv:${arxivId}: ${idCheck.reason}`);
+        broadcastPipelineUpdate(tracker);
+        return res.status(400).json({ error: idCheck.reason, tracker });
+      }
+
       tracker = recordStepProgress(tracker, 1, "ArXiv Metadata Ingestion", "ingestion", `Querying export.arxiv.org for ID: ${arxivId}`);
       broadcastPipelineUpdate(tracker);
 
       const meta = await fetchArxivMetadata(arxivId);
       if (meta) {
+        const metaCheck = checkArticleBlocked({
+          id: arxivId,
+          title: meta.title,
+          summary: meta.summary,
+          authors: meta.authors,
+          arxivLink: meta.arxivLink,
+          primaryCategory: meta.primaryCategory,
+          categories: meta.categories
+        });
+        if (metaCheck.blocked) {
+          logBlockedArticle(meta, "POST /api/blog/generate meta");
+          tracker = finalizePipelineFailure(tracker, `Quarantined paper: ${metaCheck.reason}`);
+          broadcastPipelineUpdate(tracker);
+          return res.status(400).json({ error: metaCheck.reason, tracker });
+        }
+
         paperTitle = meta.title;
         paperSummary = meta.summary;
         paperAuthors = meta.authors;
@@ -2411,14 +2462,58 @@ app.get("/api/arxiv/preview", async (req, res) => {
     if (!input) {
       return res.status(400).json({ error: "Missing arXiv URL or ID query parameter" });
     }
+
+    const inputCheck = checkArticleBlocked(input);
+    if (inputCheck.blocked) {
+      logBlockedArticle(input, "GET /api/arxiv/preview input");
+      return res.status(400).json({
+        success: false,
+        error: `Preprint is quarantined from Meridian: ${inputCheck.reason}`,
+        reason: inputCheck.reason,
+        rule: inputCheck.rule
+      });
+    }
+
     const arxivId = extractArxivId(input);
     if (!arxivId) {
       return res.status(400).json({ error: `Could not parse valid arXiv ID from "${input}"` });
     }
+
+    const idCheck = checkArticleBlocked(arxivId);
+    if (idCheck.blocked) {
+      logBlockedArticle(arxivId, "GET /api/arxiv/preview arxivId");
+      return res.status(400).json({
+        success: false,
+        error: `Preprint arXiv:${arxivId} is quarantined from Meridian: ${idCheck.reason}`,
+        reason: idCheck.reason,
+        rule: idCheck.rule
+      });
+    }
+
     const metadata = await fetchArxivMetadata(arxivId);
     if (!metadata) {
       return res.status(404).json({ error: `Could not fetch arXiv metadata for "${arxivId}"` });
     }
+
+    const metaCheck = checkArticleBlocked({
+      id: arxivId,
+      title: metadata.title,
+      summary: metadata.summary,
+      authors: metadata.authors,
+      arxivLink: metadata.arxivLink,
+      primaryCategory: metadata.primaryCategory,
+      categories: metadata.categories
+    });
+    if (metaCheck.blocked) {
+      logBlockedArticle(metadata, "GET /api/arxiv/preview fetched metadata");
+      return res.status(400).json({
+        success: false,
+        error: `Preprint violates editorial blocklist: ${metaCheck.reason}`,
+        reason: metaCheck.reason,
+        rule: metaCheck.rule
+      });
+    }
+
     res.json({ success: true, metadata: { ...metadata, arxivId } });
   } catch (error: any) {
     console.error("Error previewing arXiv metadata:", error);
@@ -2432,14 +2527,58 @@ app.post("/api/arxiv/preview", async (req, res) => {
     if (!input) {
       return res.status(400).json({ error: "Missing arXiv URL or ID in body" });
     }
+
+    const inputCheck = checkArticleBlocked(input);
+    if (inputCheck.blocked) {
+      logBlockedArticle(input, "POST /api/arxiv/preview input");
+      return res.status(400).json({
+        success: false,
+        error: `Preprint is quarantined from Meridian: ${inputCheck.reason}`,
+        reason: inputCheck.reason,
+        rule: inputCheck.rule
+      });
+    }
+
     const arxivId = extractArxivId(input);
     if (!arxivId) {
       return res.status(400).json({ error: `Could not parse valid arXiv ID from "${input}"` });
     }
+
+    const idCheck = checkArticleBlocked(arxivId);
+    if (idCheck.blocked) {
+      logBlockedArticle(arxivId, "POST /api/arxiv/preview arxivId");
+      return res.status(400).json({
+        success: false,
+        error: `Preprint arXiv:${arxivId} is quarantined from Meridian: ${idCheck.reason}`,
+        reason: idCheck.reason,
+        rule: idCheck.rule
+      });
+    }
+
     const metadata = await fetchArxivMetadata(arxivId);
     if (!metadata) {
       return res.status(404).json({ error: `Could not fetch arXiv metadata for "${arxivId}"` });
     }
+
+    const metaCheck = checkArticleBlocked({
+      id: arxivId,
+      title: metadata.title,
+      summary: metadata.summary,
+      authors: metadata.authors,
+      arxivLink: metadata.arxivLink,
+      primaryCategory: metadata.primaryCategory,
+      categories: metadata.categories
+    });
+    if (metaCheck.blocked) {
+      logBlockedArticle(metadata, "POST /api/arxiv/preview fetched metadata");
+      return res.status(400).json({
+        success: false,
+        error: `Preprint violates editorial blocklist: ${metaCheck.reason}`,
+        reason: metaCheck.reason,
+        rule: metaCheck.rule
+      });
+    }
+
     res.json({ success: true, metadata: { ...metadata, arxivId } });
   } catch (error: any) {
     console.error("Error previewing arXiv metadata:", error);
@@ -2475,10 +2614,34 @@ app.post("/api/blog/inject-arxiv", async (req, res) => {
       return res.status(400).json({ error: "Missing required arxivInput (URL or paper ID)" });
     }
 
+    // 0. Pre-flight blocklist check on raw input
+    const inputBlockCheck = checkArticleBlocked(arxivInput);
+    if (inputBlockCheck.blocked) {
+      logBlockedArticle(arxivInput, "inject-arxiv raw input");
+      return res.status(400).json({
+        success: false,
+        error: `Preprint is quarantined from Meridian: ${inputBlockCheck.reason}`,
+        reason: inputBlockCheck.reason,
+        rule: inputBlockCheck.rule
+      });
+    }
+
     const arxivId = extractArxivId(arxivInput);
     if (!arxivId) {
       return res.status(400).json({
         error: `Could not parse valid arXiv identifier from input "${arxivInput}". Please provide a valid URL like https://arxiv.org/abs/2609.10535 or ID like 2609.10535.`
+      });
+    }
+
+    // Pre-flight blocklist check on extracted arXiv ID
+    const idBlockCheck = checkArticleBlocked(arxivId);
+    if (idBlockCheck.blocked) {
+      logBlockedArticle(arxivId, "inject-arxiv arxivId");
+      return res.status(400).json({
+        success: false,
+        error: `Preprint arXiv:${arxivId} is quarantined from Meridian: ${idBlockCheck.reason}`,
+        reason: idBlockCheck.reason,
+        rule: idBlockCheck.rule
       });
     }
 
@@ -2488,6 +2651,50 @@ app.post("/api/blog/inject-arxiv", async (req, res) => {
     let paperSummary = (customExcerpt || arxivMeta?.summary || "Comprehensive scholarly analysis of arXiv publication.").trim();
     let paperAuthors = (arxivMeta?.authors || "ArXiv Authors").trim();
     let fullArxivUrl = arxivMeta?.arxivLink || (arxivInput.startsWith("http") ? arxivInput : `https://arxiv.org/abs/${arxivId}`);
+
+    // Pre-flight blocklist check on fetched metadata (titles, authors, categories)
+    const metaCandidate = {
+      id: arxivId,
+      title: paperTitle,
+      summary: paperSummary,
+      authors: paperAuthors,
+      arxivLink: fullArxivUrl,
+      primaryCategory: arxivMeta?.primaryCategory,
+      categories: arxivMeta?.categories
+    };
+
+    const metaBlockCheck = checkArticleBlocked(metaCandidate);
+    if (metaBlockCheck.blocked) {
+      logBlockedArticle(metaCandidate, "inject-arxiv metadata candidate");
+      return res.status(400).json({
+        success: false,
+        error: `Paper rejected by editorial blocklist: ${metaBlockCheck.reason}`,
+        reason: metaBlockCheck.reason,
+        rule: metaBlockCheck.rule
+      });
+    }
+
+    // Category Policy Guard: enforce quant-ph or physics.optics scope
+    if (arxivMeta?.primaryCategory || (arxivMeta?.categories && arxivMeta.categories.length > 0)) {
+      const categoryAudit = validateCategoryPolicy({
+        id: arxivId,
+        title: paperTitle,
+        summary: paperSummary,
+        authors: paperAuthors,
+        primaryCategory: arxivMeta?.primaryCategory,
+        categories: arxivMeta?.categories
+      });
+
+      if (!categoryAudit.allowed) {
+        console.warn(`[Inject arXiv] Category violation for ${arxivId}: ${categoryAudit.rejectedReason}`);
+        return res.status(400).json({
+          success: false,
+          error: categoryAudit.rejectedReason || "Strict category violation: preprint does not match 'quant-ph' or 'physics.optics'.",
+          reason: categoryAudit.rejectedReason,
+          rawCategories: categoryAudit.rawCategories
+        });
+      }
+    }
 
     const triggerId = typeof seed === "number" ? seed : Date.now();
 
@@ -2697,6 +2904,18 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
       updatedBlog.content = refined.content;
       updatedBlog.tags = refined.tags;
       updatedBlog.excerpt = refined.excerpt;
+    }
+
+    // Pre-persistence blocklist check on the final generated blog object
+    const finalBlogCheck = checkArticleBlocked(updatedBlog);
+    if (finalBlogCheck.blocked) {
+      logBlockedArticle(updatedBlog, "inject-arxiv final blog check");
+      return res.status(400).json({
+        success: false,
+        error: `Generated article violates editorial blocklist: ${finalBlogCheck.reason}`,
+        reason: finalBlogCheck.reason,
+        rule: finalBlogCheck.rule
+      });
     }
 
     // 6. Update in localBlogs array

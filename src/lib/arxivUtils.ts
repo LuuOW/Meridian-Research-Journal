@@ -137,11 +137,14 @@ export const isWeekend = (date: Date): boolean => {
   return day === 0 || day === 6;
 };
 
-// Helper to parse arXiv XML payload and extract title, summary, and authors list
+// Helper to parse arXiv XML payload and extract title, summary, authors list, categories, and dates
 export interface ArxivMetadata {
   title: string;
   summary: string;
   authors: string;
+  primaryCategory?: string;
+  categories?: string[];
+  submittedDate?: string;
 }
 
 export const parseArxivXml = (xml: string): ArxivMetadata => {
@@ -153,11 +156,27 @@ export const parseArxivXml = (xml: string): ArxivMetadata => {
   const summaryMatch = searchContent.match(/<summary>([\s\S]*?)<\/summary>/);
   const authorMatches = [...searchContent.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>/g)];
   
+  const primaryCatMatch = searchContent.match(/<arxiv:primary_category[\s\S]*?term=["']([^"']+)["']/i);
+  const primaryCategory = primaryCatMatch ? primaryCatMatch[1].trim() : undefined;
+
+  const categoryMatches = [...searchContent.matchAll(/<category[\s\S]*?term=["']([^"']+)["']/gi)];
+  const categories = categoryMatches.map(m => m[1].trim()).filter(Boolean);
+
+  const publishedMatch = searchContent.match(/<published>([\s\S]*?)<\/published>/i);
+  const submittedDate = publishedMatch ? publishedMatch[1].trim() : undefined;
+
   const title = decodeHtmlEntities(titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "Unknown Paper Title");
   const summary = decodeHtmlEntities(summaryMatch ? summaryMatch[1].replace(/\s+/g, " ").trim() : "");
   const authors = decodeHtmlEntities(authorMatches.map(m => m[1].trim()).slice(0, 3).join(", "));
   
-  return { title, summary, authors };
+  return {
+    title,
+    summary,
+    authors,
+    primaryCategory,
+    categories: categories.length > 0 ? categories : (primaryCategory ? [primaryCategory] : undefined),
+    submittedDate
+  };
 };
 
 export interface ArxivPaper {

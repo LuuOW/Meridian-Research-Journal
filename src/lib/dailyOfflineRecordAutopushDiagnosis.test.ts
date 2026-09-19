@@ -177,7 +177,7 @@ test("Daily Offline Record Diagnosis 6: Blocklist enforcement prevents blocked p
   );
   assert.strictEqual(
     latestTitle,
-    "Topological Soliton Frequency Combs in Anisotropic High-Q Microresonators",
+    "Topological Argument for Robustness of Coherent States in Quantum Optics",
     "Latest title must resolve to today's valid unblocked paper"
   );
 });

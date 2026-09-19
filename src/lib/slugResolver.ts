@@ -32,10 +32,15 @@ export function extractArxivIdFromText(text: string): string | null {
   return match ? match[1] : null;
 }
 
+export const SLUG_LEGACY_ALIASES: Record<string, string> = {
+  "topological-soliton-frequency-combs-anisotropic-microresonators": "topological-argument-robustness-coherent-states-quantum-optics",
+};
+
 /**
  * Multi-Tier Resilient Slug & ID Resolver
  *
  * Checks in order:
+ * 0. Legacy Slug Aliases & BlogPost aliasSlugs match
  * 1. Exact ID match (e.g., "generated-1787570419854")
  * 2. Exact slug match (e.g., "towards-optimal-quantum-estimators-for-state-frame-potential-9854")
  * 3. Base slug match without timestamp suffix (e.g. "towards-optimal-quantum-estimators-for-state-frame-potential")
@@ -56,6 +61,27 @@ export function resolveBlogSlugOrId(
   const normalizedQuery = normalizeSlug(cleanQuery);
   const strippedQuery = stripSlugTimestampSuffix(normalizedQuery);
   const queryArxivId = extractArxivIdFromText(cleanQuery);
+
+  // 0a. Check explicit legacy slug aliases (e.g., redirecting fixed/migrated URL routes)
+  const legacyTarget = SLUG_LEGACY_ALIASES[normalizedQuery] || SLUG_LEGACY_ALIASES[strippedQuery] || SLUG_LEGACY_ALIASES[cleanQuery];
+  if (legacyTarget) {
+    for (const blog of blogList) {
+      if (blog && blog.slug && (normalizeSlug(blog.slug) === legacyTarget || blog.slug.toLowerCase() === legacyTarget)) {
+        return blog;
+      }
+    }
+  }
+
+  // 0b. Check blog.aliasSlugs list
+  for (const blog of blogList) {
+    if (blog && Array.isArray(blog.aliasSlugs)) {
+      const match = blog.aliasSlugs.some(alias => {
+        const normAlias = normalizeSlug(alias);
+        return normAlias === normalizedQuery || normAlias === strippedQuery;
+      });
+      if (match) return blog;
+    }
+  }
 
   // 1. Exact ID match
   for (const blog of blogList) {
