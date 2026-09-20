@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert";
 import { BlogPost } from "../types";
-import { RAW_PRELOADED_BLOGS } from "../data";
+import { PRELOADED_BLOGS as RAW_PRELOADED_BLOGS } from "../data";
 import {
   extractArxivSubmissionDate,
   diagnoseArticleOrdering,

@@ -45,6 +45,11 @@ import {
   isWeekendInART
 } from "./src/lib/offlineBlogRecord";
 import {
+  offlineRecordThreeTimesAuditor,
+  auditOfflineRecordPushStatus,
+  auditAndAutoHealOfflineRecord
+} from "./src/lib/offlineRecordThreeTimesAudit";
+import {
   resolveBlogSlugOrId,
   normalizeSlug,
   stripSlugTimestampSuffix
@@ -1035,6 +1040,37 @@ app.get("/api/automation/offline-record-content", async (req, res) => {
     res.type("text/plain").send(content);
   } catch (err: any) {
     res.status(500).send("Error reading offline_blog_record: " + err.message);
+  }
+});
+
+// API: 3-Times-Per-Day Offline Blog Record Autopush Audit Status
+app.get("/api/automation/offline-record-audit", async (req, res) => {
+  try {
+    const serviceStatus = offlineRecordThreeTimesAuditor.getStatus();
+    const liveAudit = await auditOfflineRecordPushStatus();
+    res.json({
+      success: true,
+      service: serviceStatus,
+      audit: liveAudit
+    });
+  } catch (err: any) {
+    console.error("Error executing offline record audit:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Trigger 3x Daily Audit Run and Auto-Heal Missing Pushes
+app.post("/api/automation/offline-record-audit/run", async (req, res) => {
+  try {
+    const { forcePush } = req.body || {};
+    const auditResult = await offlineRecordThreeTimesAuditor.runAuditCheck(Boolean(forcePush));
+    res.json({
+      success: true,
+      audit: auditResult
+    });
+  } catch (err: any) {
+    console.error("Error running offline record audit and heal:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -4449,8 +4485,9 @@ async function startServer() {
     console.log(`Server running on http://localhost:${PORT}`);
     try {
       offlineRecordScheduler.start();
+      offlineRecordThreeTimesAuditor.start();
     } catch (schedErr) {
-      console.error("Error starting offline record scheduler:", schedErr);
+      console.error("Error starting offline record scheduler / auditor:", schedErr);
     }
   });
 }

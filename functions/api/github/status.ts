@@ -8,8 +8,8 @@ export const onRequestGet = async (context: {
   const token = env.GITHUB_TOKEN || env.GH_TOKEN || (typeof process !== "undefined" ? process.env?.GITHUB_TOKEN || process.env?.GH_TOKEN : "") || "";
   const repo = env.GITHUB_REPO || env.GITHUB_REPOSITORY || "LuuOW/Meridian-Research-Journal";
   const branch = env.GITHUB_BRANCH || "main";
-  const authorName = env.GITHUB_AUTHOR_NAME || "Meridian Research";
-  const authorEmail = env.GITHUB_AUTHOR_EMAIL || "bot@ask-meridian.uk";
+  const authorName = env.GITHUB_AUTHOR_NAME || "Lucas Kempe";
+  const authorEmail = env.GITHUB_AUTHOR_EMAIL || "lucas.kempe@icloud.com";
 
   let connected = false;
   let user: any = null;

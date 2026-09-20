@@ -25,8 +25,8 @@ export function getGitHubSyncConfig(): GitHubSyncConfig {
   const rawRepo = process.env.GITHUB_REPO || process.env.GITHUB_REPOSITORY || "LuuOW/Meridian-Research-Journal";
   const cleanRepo = rawRepo.replace(/^https?:\/\/github\.com\//, "").replace(/\.git$/, "").trim();
   const branch = process.env.GITHUB_BRANCH || "main";
-  const authorName = process.env.GITHUB_AUTHOR_NAME || "Meridian Research";
-  const authorEmail = process.env.GITHUB_AUTHOR_EMAIL || "bot@ask-meridian.uk";
+  const authorName = process.env.GITHUB_AUTHOR_NAME || "Lucas Kempe";
+  const authorEmail = process.env.GITHUB_AUTHOR_EMAIL || "lucas.kempe@icloud.com";
 
   return {
     token,

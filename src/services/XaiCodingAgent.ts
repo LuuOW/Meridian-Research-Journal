@@ -192,7 +192,7 @@ export class XaiCodingAgent implements IMicroservice {
       description: "Git commit author name for automated sync commits.",
       required: false,
       associatedFiles: ["server.ts", "src/services/GithubIntegrationService.ts"],
-      examplePlaceholder: "Meridian Research"
+      examplePlaceholder: "Lucas Kempe"
     },
     {
       key: "GITHUB_AUTHOR_EMAIL",
@@ -200,7 +200,7 @@ export class XaiCodingAgent implements IMicroservice {
       description: "Git commit author email address.",
       required: false,
       associatedFiles: ["server.ts", "src/services/GithubIntegrationService.ts"],
-      examplePlaceholder: "bot@ask-meridian.uk"
+      examplePlaceholder: "lucas.kempe@icloud.com"
     },
     {
       key: "BINANCE_API_KEY",

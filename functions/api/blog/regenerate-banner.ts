@@ -253,8 +253,8 @@ export const onRequestPost = async (context: {
     const token = env.GITHUB_TOKEN || env.GH_TOKEN;
     const repo = env.GITHUB_REPO || env.GITHUB_REPOSITORY || "LuuOW/Meridian-Research-Journal";
     const branch = env.GITHUB_BRANCH || "main";
-    const authorName = env.GITHUB_AUTHOR_NAME || "Meridian Research";
-    const authorEmail = env.GITHUB_AUTHOR_EMAIL || "bot@ask-meridian.uk";
+    const authorName = env.GITHUB_AUTHOR_NAME || "Lucas Kempe";
+    const authorEmail = env.GITHUB_AUTHOR_EMAIL || "lucas.kempe@icloud.com";
 
     if (token) {
       const customBlogsJson = JSON.stringify(corpus, null, 2);
