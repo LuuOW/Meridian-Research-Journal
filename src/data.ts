@@ -1,7 +1,7 @@
 import { BlogPost } from "./types";
 import { ensureAnimatedSvg } from "./lib/svgUtils";
 
-export const RAW_PRELOADED_BLOGS: BlogPost[] = [
+const RAW_PRELOADED_BLOGS: BlogPost[] = [
   {
     "id": "blog-2609-12292v1-8401",
     "title": "Topological Argument for Robustness of Coherent States in Quantum Optics",
@@ -2512,26 +2512,6 @@ export const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "timestamp": 1725100000000,
     "createdAt": 1725100000000,
     "isEditorEdition": false
-  },
-  {
-    "id": "blog-test-1",
-    "title": "Non-Hermitian Quantum Mechanics & Exceptional Points",
-    "slug": "non-hermitian-quantum-mechanics",
-    "excerpt": "Comprehensive study of PT-symmetric open quantum systems.",
-    "content": "## Hamiltonian Dynamics\n\n$$\\hat{H} = \\begin{pmatrix} r e^{i\\theta} & J \\\\ J & r e^{-i\\theta} \\end{pmatrix}$$",
-    "author": "Lucas Kempe",
-    "date": "2026-08-30",
-    "readingTime": "9 min read",
-    "arxivLink": "https://arxiv.org/abs/2608.11111",
-    "bannerSvg": "<svg><text>Quantum</text></svg>",
-    "tags": [
-      "Quantum Mechanics",
-      "Spectral Theory",
-      "Optics"
-    ],
-    "views": 450,
-    "timestamp": 1725200000000,
-    "createdAt": 1725000000000
   }
 ];
 
