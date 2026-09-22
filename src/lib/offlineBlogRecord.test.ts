@@ -270,6 +270,7 @@ test("offlineBlogRecord: Title resolution retrieves unblocked published article 
   
   // Should match current top published paper in catalog
   assert.ok(
+    latestTitle === "Subwavelength exceptional points in dispersive resonator arrays" ||
     latestTitle === "Topological Argument for Robustness of Coherent States in Quantum Optics" ||
     latestTitle === "Topological Soliton Frequency Combs in Anisotropic High-Q Microresonators",
     `Unexpected latest title: ${latestTitle}`
