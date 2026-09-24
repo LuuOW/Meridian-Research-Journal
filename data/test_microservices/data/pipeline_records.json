@@ -1,5 +1,86 @@
 [
   {
+    "jobId": "gen_1790281113886",
+    "triggerId": 1790281118977,
+    "arxivInput": "2608.77777",
+    "arxivId": "2608.77777",
+    "paperTitle": "arXiv Paper 2608.77777: 2608 77777",
+    "authors": "Scholarly Research Group",
+    "status": "completed",
+    "startTime": 1790281113886,
+    "endTime": 1790281118977,
+    "totalDurationMs": 5091,
+    "modelUsed": "procedural-scholar-engine",
+    "provider": "procedural",
+    "tokenUsage": {
+      "promptTokens": 0,
+      "candidateTokens": 0,
+      "totalTokens": 0,
+      "estimatedCostUsd": 0
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "ArXiv Metadata Ingestion",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790281113886,
+        "endTime": 1790281113899,
+        "durationMs": 13,
+        "details": "Source: fallback_cache"
+      },
+      {
+        "stepId": 2,
+        "stepName": "Scholarly Article Synthesis",
+        "category": "ai_inference",
+        "status": "completed",
+        "startTime": 1790281113899,
+        "endTime": 1790281113901,
+        "durationMs": 2,
+        "details": "Model: procedural-scholar-engine"
+      },
+      {
+        "stepId": 3,
+        "stepName": "KaTeX AST & Formula Verification",
+        "category": "ast_validation",
+        "status": "completed",
+        "startTime": 1790281113901,
+        "endTime": 1790281113901,
+        "durationMs": 0,
+        "details": "Validated 4 formulas"
+      },
+      {
+        "stepId": 4,
+        "stepName": "Multi-Tier 6-Tier Persistence Sync",
+        "category": "persistence",
+        "status": "completed",
+        "startTime": 1790281113901,
+        "endTime": 1790281118977,
+        "durationMs": 5076
+      }
+    ],
+    "resultingBlog": {
+      "id": "blog-1790281113899-lkfnx",
+      "slug": "arxiv-paper-2608-77777-2608-77777",
+      "title": "arXiv Paper 2608.77777: 2608 77777",
+      "contentLength": 1374,
+      "latexFormulaCount": 4,
+      "tags": [
+        "Quantum Mechanics",
+        "Mathematical Physics",
+        "Algorithms"
+      ]
+    },
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": true,
+      "sitemapXml": true
+    }
+  },
+  {
     "jobId": "gen_1790183129288",
     "triggerId": 1790183134939,
     "arxivInput": "2608.77777",

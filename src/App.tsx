@@ -1308,6 +1308,7 @@ export default function App() {
         onOpenXaiAgent={() => setIsXaiAgentModalOpen(true)}
         hasPendingDispatch={hasPendingDispatch}
         activeJobs={jobs}
+        onStartManualGeneration={handleStartAsyncGeneration}
       />
 
       {/* Dynamic Scroll Progress Indicator for active blog reading */}

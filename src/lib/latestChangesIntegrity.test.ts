@@ -52,14 +52,14 @@ describe("Latest Changes Integrity: Navbar Config Minimalist Dropdown", () => {
     );
   });
 
-  test("Navbar switch count inside dropdown flyout is exactly 2 elements", () => {
+  test("Navbar switch count inside dropdown flyout is exactly 2 elements with WiFi-style manual URL field", () => {
     const navbarSrc = fs.readFileSync(navbarPath, "utf-8");
     
     // Extract dropdown menu snippet
     const menuStartIndex = navbarSrc.indexOf('role="menu"');
     assert.ok(menuStartIndex !== -1, "Dropdown menu must exist");
     
-    const menuSnippet = navbarSrc.substring(menuStartIndex, menuStartIndex + 1500);
+    const menuSnippet = navbarSrc.substring(menuStartIndex, menuStartIndex + 5000);
     
     // Count <Switch instances inside the dropdown menu
     const switchMatches = menuSnippet.match(/<Switch/g) || [];
@@ -69,12 +69,24 @@ describe("Latest Changes Integrity: Navbar Config Minimalist Dropdown", () => {
       "Dropdown flyout must contain exactly 2 switches (arXiv and X)"
     );
 
-    // Check that there are no additional buttons inside the dropdown menu
-    const buttonMatches = menuSnippet.match(/<button/g) || [];
-    assert.strictEqual(
-      buttonMatches.length,
-      0,
-      "Dropdown flyout must contain 0 extra buttons (only the 2 switch rows)"
+    // Verify WiFi-style URL field exists and does NOT hide URL when typing (not type="password")
+    assert.ok(
+      menuSnippet.includes('id="navbar-manual-url-input"'),
+      "Dropdown flyout must contain manual URL input field with id navbar-manual-url-input"
+    );
+    assert.ok(
+      menuSnippet.includes('type="text"'),
+      "Manual URL input field must be type='text' to keep URL visible while typing"
+    );
+    assert.ok(
+      !menuSnippet.includes('type="password"'),
+      "Manual URL field must NEVER use type='password'"
+    );
+
+    // Verify manual generate button is present
+    assert.ok(
+      menuSnippet.includes('id="navbar-manual-generate-btn"'),
+      "Dropdown flyout must contain manual generate button with id navbar-manual-generate-btn"
     );
   });
 });

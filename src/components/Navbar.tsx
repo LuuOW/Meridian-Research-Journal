@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, Compass, Sun, Moon, Activity, Loader2, ChevronDown, Wrench, ArrowUpRight, FileText, Coins, Heart, QrCode, Terminal, Layers, Sliders, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Sparkles, Compass, Sun, Moon, Activity, Loader2, ChevronDown, Wrench, ArrowUpRight, ArrowRight, FileText, Coins, Heart, QrCode, Terminal, Layers, Sliders, CheckCircle2, AlertTriangle, Link2, X as CloseIcon, Wifi } from "lucide-react";
 import { GenerationJob } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
 import { Switch } from "./Switch";
@@ -100,6 +100,7 @@ interface NavbarProps {
   onOpenXaiAgent?: () => void;
   hasPendingDispatch?: boolean;
   activeJobs?: GenerationJob[];
+  onStartManualGeneration?: (url: string) => Promise<void> | void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -120,11 +121,63 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenEditorConsole,
   onOpenXaiAgent,
   hasPendingDispatch = false,
-  activeJobs = []
+  activeJobs = [],
+  onStartManualGeneration
 }) => {
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [manualUrl, setManualUrl] = useState("");
+  const [isGeneratingManual, setIsGeneratingManual] = useState(false);
+  const [manualStatus, setManualStatus] = useState<{ text: string; error?: boolean } | null>(null);
   const toolsRef = useRef<HTMLDivElement>(null);
   const { config, toggleArxivGeneration, toggleXPosting } = useEditorConfig();
+
+  const handleGenerateManual = async () => {
+    const rawInput = manualUrl.trim();
+    if (!rawInput || isGeneratingManual) return;
+
+    setIsGeneratingManual(true);
+    setManualStatus(null);
+
+    try {
+      if (onStartManualGeneration) {
+        await onStartManualGeneration(rawInput);
+        setManualStatus({ text: "Post generation started!" });
+        setTimeout(() => {
+          setManualUrl("");
+          setManualStatus(null);
+          setIsToolsOpen(false);
+        }, 1200);
+      } else {
+        const activePassword = sessionStorage.getItem("meridian_editor_pwd") || "meridian";
+        const response = await fetch("/api/blog/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            arxivInput: rawInput,
+            rawText: "",
+            password: activePassword,
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${response.status}`);
+        }
+
+        setManualStatus({ text: "Post generated successfully!" });
+        setTimeout(() => {
+          setManualUrl("");
+          setManualStatus(null);
+          setIsToolsOpen(false);
+          if (onHome) onHome();
+        }, 1200);
+      }
+    } catch (err: any) {
+      setManualStatus({ text: err.message || "Generation failed", error: true });
+    } finally {
+      setIsGeneratingManual(false);
+    }
+  };
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -278,16 +331,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 text-slate-400 dark:text-slate-500 ${isToolsOpen ? "rotate-180 text-white dark:text-slate-950" : "group-hover:text-slate-700 dark:group-hover:text-slate-200"}`} />
                   </button>
 
-                  {/* Dropdown Menu Flyout - 2 Switches only: arXiv icon + switch, X icon + switch */}
+                  {/* Dropdown Menu Flyout - Autonomous Switches + WiFi-style Visible URL Field for Manual Post Generation */}
                   {isToolsOpen && (
                     <div 
-                      className="absolute right-0 mt-2 w-36 sm:w-40 rounded-2xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-slate-900/15 dark:shadow-black/60 p-2 z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150"
+                      className="absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-slate-900/15 dark:shadow-black/60 p-2.5 z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-150"
                       role="menu"
                       aria-label="Configuration Switches"
                     >
-                      {/* 1. arXiv switch (icon only next to switch) */}
-                      <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-900/70 transition-colors">
-                        <ArxivLogoIcon className="w-8 h-8" />
+                      {/* 1. arXiv switch */}
+                      <div className="flex items-center justify-between px-2 py-1 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-900/70 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <ArxivLogoIcon className="w-8 h-8" />
+                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">arXiv Ingestion</span>
+                        </div>
                         <Switch
                           id="navbar-switch-arxiv"
                           checked={config.arxivGenerationEnabled}
@@ -297,9 +353,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                         />
                       </div>
 
-                      {/* 2. X switch (icon only next to switch) */}
-                      <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-900/70 transition-colors">
-                        <XLogoIcon className="w-8 h-8" />
+                      {/* 2. X switch */}
+                      <div className="flex items-center justify-between px-2 py-1 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-900/70 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <XLogoIcon className="w-8 h-8" />
+                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">X Broadcast</span>
+                        </div>
                         <Switch
                           id="navbar-switch-x"
                           checked={config.xPostingEnabled}
@@ -307,6 +366,92 @@ export const Navbar: React.FC<NavbarProps> = ({
                           activeColor="cyan"
                           ariaLabel="Toggle X posting"
                         />
+                      </div>
+
+                      {/* Hairline Divider */}
+                      <div className="h-px bg-slate-200/80 dark:bg-slate-800/80 my-0.5" />
+
+                      {/* Manual Post URL Field (Wi-Fi password style: visible text, tactile connect/generate button) */}
+                      <div className="flex flex-col gap-1.5 px-0.5">
+                        <div className="flex items-center justify-between text-[10px] font-mono font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500 px-1">
+                          <span className="flex items-center gap-1.5">
+                            <Link2 className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                            Manual Post Generation
+                          </span>
+                          <span className="text-[9px] lowercase font-normal opacity-75">press enter</span>
+                        </div>
+
+                        {/* Wi-Fi style field container */}
+                        <div className="flex items-center rounded-xl bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 focus-within:border-cyan-500/70 focus-within:ring-2 focus-within:ring-cyan-500/20 transition-all p-1">
+                          <input
+                            id="navbar-manual-url-input"
+                            type="text"
+                            value={manualUrl}
+                            onChange={(e) => {
+                              setManualUrl(e.target.value);
+                              if (manualStatus) setManualStatus(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && manualUrl.trim() && !isGeneratingManual) {
+                                e.preventDefault();
+                                handleGenerateManual();
+                              }
+                            }}
+                            placeholder="Enter arXiv URL or ID..."
+                            autoComplete="off"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            className="flex-1 min-w-0 bg-transparent px-2.5 py-1 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none font-mono"
+                          />
+
+                          {manualUrl && !isGeneratingManual && (
+                            <button
+                              type="button"
+                              onClick={() => setManualUrl("")}
+                              className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded transition-colors mr-1 cursor-pointer"
+                              title="Clear URL"
+                              aria-label="Clear URL"
+                            >
+                              <CloseIcon className="w-3 h-3" />
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            id="navbar-manual-generate-btn"
+                            onClick={handleGenerateManual}
+                            disabled={!manualUrl.trim() || isGeneratingManual}
+                            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 transition-all flex items-center gap-1.5 disabled:opacity-30 disabled:pointer-events-none active:scale-95 shadow-xs shrink-0 cursor-pointer"
+                            title="Generate post from this URL"
+                          >
+                            {isGeneratingManual ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                                <span>Generating</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Generate</span>
+                                <ArrowRight className="w-3 h-3 text-cyan-400" />
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {manualStatus && (
+                          <div className={`text-[10px] font-mono px-2 py-1 rounded-lg flex items-center gap-1.5 transition-all ${
+                            manualStatus.error 
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" 
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          }`}>
+                            {manualStatus.error ? (
+                              <AlertTriangle className="w-3 h-3 shrink-0" />
+                            ) : (
+                              <CheckCircle2 className="w-3 h-3 shrink-0" />
+                            )}
+                            <span className="truncate">{manualStatus.text}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
