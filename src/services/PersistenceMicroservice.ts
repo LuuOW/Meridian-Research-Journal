@@ -151,9 +151,29 @@ export class PersistenceMicroservice implements IMicroservice {
    * Reads blogs from custom_blogs.json, falling back to data.ts or most recent snapshot
    */
   public readBlogs(): BlogPost[] {
-    const map = new Map<string, BlogPost>();
+    // 1. Primary source of truth: custom_blogs.json
+    try {
+      if (fs.existsSync(this.customBlogsFile)) {
+        const raw = fs.readFileSync(this.customBlogsFile, "utf-8");
+        const parsed: BlogPost[] = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const map = new Map<string, BlogPost>();
+          for (const b of parsed) {
+            if (isArticleBlocked(b)) continue;
+            const key = b.id || b.slug || b.title;
+            if (key && !map.has(key)) {
+              map.set(key, b);
+            }
+          }
+          return filterBlockedArticles(Array.from(map.values()));
+        }
+      }
+    } catch (err) {
+      console.error(`[${this.serviceName}] Error reading custom_blogs.json:`, err);
+    }
 
-    // 1. Read from snapshots (historical archive)
+    // 2. Fallback to most recent snapshot if custom_blogs.json is missing or empty
+    const map = new Map<string, BlogPost>();
     const snapshots = this.listSnapshots();
     for (const snap of snapshots) {
       try {
@@ -162,33 +182,13 @@ export class PersistenceMicroservice implements IMicroservice {
         if (Array.isArray(list)) {
           for (const b of list) {
             if (isArticleBlocked(b)) continue;
-            const key = b.slug || b.id || b.title;
+            const key = b.id || b.slug || b.title;
             if (key && !map.has(key)) {
               map.set(key, b);
             }
           }
         }
       } catch {}
-    }
-
-    // 2. Read from custom_blogs.json (overriding / augmenting)
-    try {
-      if (fs.existsSync(this.customBlogsFile)) {
-        const raw = fs.readFileSync(this.customBlogsFile, "utf-8");
-        const parsed: BlogPost[] = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          for (const b of parsed) {
-            if (isArticleBlocked(b)) continue;
-            const key = b.slug || b.id || b.title;
-            if (key) {
-              const existing = map.get(key);
-              map.set(key, { ...existing, ...b });
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error(`[${this.serviceName}] Error reading custom_blogs.json:`, err);
     }
 
     const all = filterBlockedArticles(Array.from(map.values()));

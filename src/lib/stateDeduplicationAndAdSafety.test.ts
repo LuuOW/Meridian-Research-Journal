@@ -156,15 +156,7 @@ test("In-article ad and bottom-of-page ad units coexist without DOM/attribute co
   const inArticleAd = fs.readFileSync(path.join(process.cwd(), "src/components/GoogleInArticleAd.tsx"), "utf-8");
   const bottomAd = fs.readFileSync(path.join(process.cwd(), "src/components/GoogleAdSlot.tsx"), "utf-8");
 
-  // Check different default slot IDs
-  assert.ok(inArticleAd.includes('slotId = "2342440882"'));
-  assert.ok(bottomAd.includes('slotId = "9736830690"'));
-
-  // Ensure ad formats are differentiated appropriately
-  assert.ok(inArticleAd.includes('data-ad-layout="in-article"'));
-  assert.ok(bottomAd.includes('data-ad-format={adFormat}') && bottomAd.includes('adFormat = "auto"'));
-
-  // Ensure both units use the publisher ID safely
-  assert.ok(inArticleAd.includes('ca-pub-7734562716191044'));
-  assert.ok(bottomAd.includes('ca-pub-7734562716191044'));
+  // In-article and bottom ad units are disabled for a clean, ad-free reading experience
+  assert.ok(inArticleAd.includes("return null") || inArticleAd.includes("disabled"));
+  assert.ok(bottomAd.includes("return null") || bottomAd.includes("disabled"));
 });

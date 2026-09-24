@@ -19,6 +19,7 @@ import { GoogleGenAI } from "@google/genai";
 import { cleanJsonText } from "../lib/arxivUtils";
 import { PRELOADED_BLOGS } from "../data";
 import { isArticleBlocked } from "../lib/arxivBlocklist";
+import { syncArticleDates } from "../lib/dateGenerationSync";
 
 export class ArxivPipelineMicroservice implements IMicroservice {
   public readonly serviceName = "ArxivPipelineMicroservice";
@@ -148,6 +149,15 @@ export class ArxivPipelineMicroservice implements IMicroservice {
           ? authMatch[1].replace(/<span class="descriptor">[\s\S]*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
           : "";
 
+        const dateMatch = text.match(/\[Submitted on\s+([0-9]{1,2}\s+[A-Za-z]+\s+[0-9]{4})\]/i);
+        let publishedDate: string | undefined;
+        if (dateMatch) {
+          const d = new Date(dateMatch[1]);
+          if (!isNaN(d.getTime())) {
+            publishedDate = d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+          }
+        }
+
         if (rawTitle) {
           return {
             arxivId,
@@ -155,6 +165,7 @@ export class ArxivPipelineMicroservice implements IMicroservice {
             summary: rawSummary || `Automated scholarly synthesis and mathematical breakdown of arXiv preprint ${arxivId}.`,
             authors: rawAuthors || "arXiv Researcher",
             arxivLink: `https://arxiv.org/abs/${arxivId}`,
+            publishedDate,
             source: "arxiv_api"
           };
         }
@@ -176,6 +187,15 @@ export class ArxivPipelineMicroservice implements IMicroservice {
         const titleMatch = xml.match(/<entry>[\s\S]*?<title>([\s\S]*?)<\/title>/i);
         const summaryMatch = xml.match(/<entry>[\s\S]*?<summary>([\s\S]*?)<\/summary>/i);
         const authorMatches = Array.from(xml.matchAll(/<author>[\s\S]*?<name>([\s\S]*?)<\/name>/gi));
+        const pubMatch = xml.match(/<entry>[\s\S]*?<published>([^<]+)<\/published>/i);
+
+        let publishedDate: string | undefined;
+        if (pubMatch) {
+          const d = new Date(pubMatch[1]);
+          if (!isNaN(d.getTime())) {
+            publishedDate = d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+          }
+        }
 
         if (titleMatch && summaryMatch) {
           const title = titleMatch[1].replace(/\s+/g, " ").trim();
@@ -188,6 +208,7 @@ export class ArxivPipelineMicroservice implements IMicroservice {
             summary,
             authors,
             arxivLink: `https://arxiv.org/abs/${arxivId}`,
+            publishedDate,
             source: "arxiv_api"
           };
         }
@@ -196,7 +217,18 @@ export class ArxivPipelineMicroservice implements IMicroservice {
       // Network timeout or blocked, use deterministic fallback
     }
 
-    // Fallback extraction
+    // Fallback extraction: infer year and month from modern arXiv identifier (YYMM.NNNNN)
+    let fallbackPublishedDate: string | undefined;
+    const yymmMatch = arxivId.match(/^(\d{2})(\d{2})\./);
+    if (yymmMatch) {
+      const year = 2000 + parseInt(yymmMatch[1], 10);
+      const monthIndex = parseInt(yymmMatch[2], 10) - 1;
+      const d = new Date(Date.UTC(year, monthIndex, 1));
+      if (!isNaN(d.getTime())) {
+        fallbackPublishedDate = d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+      }
+    }
+
     const derivedTitle = arxivId.replace(/[^a-zA-Z0-9]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     return {
       arxivId,
@@ -204,6 +236,7 @@ export class ArxivPipelineMicroservice implements IMicroservice {
       summary: `Automated scholarly synthesis and mathematical breakdown of arXiv preprint ${arxivId}.`,
       authors: "Scholarly Research Group",
       arxivLink: `https://arxiv.org/abs/${arxivId}`,
+      publishedDate: fallbackPublishedDate,
       source: "fallback_cache"
     };
   }
@@ -283,14 +316,14 @@ ArXiv ID: ${ingested.arxivId}
 
         const bannerSvg = this.generateProceduralBanner(parsed.title || ingested.title, parsed.tags || []);
 
-        blog = {
+        const rawBuiltBlog = {
           id: `blog-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           title: parsed.title || ingested.title,
           slug: parsed.slug || this.slugify(parsed.title || ingested.title),
           excerpt: parsed.excerpt || ingested.summary.slice(0, 180),
           content: parsed.content || `## Introduction\n\nDetailed analysis of ${ingested.title}.`,
           author: parsed.author || ingested.authors,
-          date: new Date().toISOString().split("T")[0],
+          date: ingested.publishedDate || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
           readingTime: parsed.readingTime || "7 min read",
           arxivLink: ingested.arxivLink,
           bannerSvg,
@@ -299,6 +332,8 @@ ArXiv ID: ${ingested.arxivId}
           timestamp: Date.now(),
           views: 1
         };
+
+        blog = syncArticleDates(rawBuiltBlog, { arxivSubmissionDate: ingested.publishedDate });
 
         modelUsed = options.forceModel || "gemini-2.5-pro";
         provider = "gemini";
@@ -409,14 +444,14 @@ $$\\epsilon_N \\le \\mathcal{O}\\left( \\frac{1}{\\sqrt{N}} \\exp(-\\gamma \\cdo
 
 *Synthesized autonomously by the Meridian Scholarly Ingestion Engine.*`;
 
-    return {
+    const fallbackBlog = {
       id,
       title: ingested.title,
       slug,
       excerpt: ingested.summary.slice(0, 190) + "...",
       content,
       author: ingested.authors || "Lucas Kempe",
-      date: new Date().toISOString().split("T")[0],
+      date: ingested.publishedDate || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
       readingTime: "8 min read",
       arxivLink: ingested.arxivLink,
       bannerSvg,
@@ -425,6 +460,8 @@ $$\\epsilon_N \\le \\mathcal{O}\\left( \\frac{1}{\\sqrt{N}} \\exp(-\\gamma \\cdo
       timestamp: Date.now(),
       views: 1
     };
+
+    return syncArticleDates(fallbackBlog, { arxivSubmissionDate: ingested.publishedDate });
   }
 
   public generateProceduralBanner(title: string, tags: string[]): string {

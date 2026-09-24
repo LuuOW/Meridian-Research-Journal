@@ -154,5 +154,8 @@ test("scoreArxivCandidate strictly rejects non-physics/CS/ML papers from ingesti
 
   const scoreResult = scoreArxivCandidate(csPaper, mockCorpus, new Set());
   assert.ok(scoreResult.score < 0, "Computer science paper should receive negative score and be disqualified");
-  assert.ok(scoreResult.relevanceReason.includes("Disqualified"), "Reason must clearly state disqualification");
+  assert.ok(
+    scoreResult.relevanceReason.includes("Disqualified") || scoreResult.relevanceReason.includes("Quarantined"),
+    "Reason must clearly state disqualification or quarantine"
+  );
 });

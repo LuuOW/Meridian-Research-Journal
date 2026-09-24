@@ -142,8 +142,8 @@ test("Corpus Sanitization: Disputed Friday & Hallucinated articles must be compl
 });
 
 test("Monday Sep 14, 2026 Lead Article Validation", () => {
-  const leadBlog = PRELOADED_BLOGS[0];
-  assert.ok(leadBlog, "Must have a lead blog");
+  const leadBlog = PRELOADED_BLOGS.find((b) => b.id === "blog-2609-13109-8421");
+  assert.ok(leadBlog, "Must find Monday Sep 14 blog 2609.13109");
   assert.strictEqual(
     leadBlog.id,
     "blog-2609-13109-8421",

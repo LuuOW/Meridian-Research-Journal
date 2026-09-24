@@ -19,18 +19,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/arxiv-paper-2608-77777-2608-77777</loc>
-    <lastmod>2026-09-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/2609-08748v1-6870</loc>
-    <lastmod>2026-09-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/2609-24017v1-8646</loc>
     <lastmod>2026-09-22</lastmod>
     <changefreq>monthly</changefreq>
@@ -63,12 +51,6 @@
   <url>
     <loc>https://ask-meridian.uk/blog/2507-11204-8747</loc>
     <lastmod>2026-09-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/2609-11809-3143</loc>
-    <lastmod>2026-09-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

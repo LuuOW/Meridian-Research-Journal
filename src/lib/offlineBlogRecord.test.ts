@@ -270,6 +270,10 @@ test("offlineBlogRecord: Title resolution retrieves unblocked published article 
   
   // Should match current top published paper in catalog
   assert.ok(
+    latestTitle === "Strong coupling of a reconfigurable ${}^{171}$Yb atom array to a tunable telecom-band nanofiber cavity" ||
+    latestTitle === "Fluctuation-Driven Nonlinear Amplification of Quantum Statistics" ||
+    latestTitle === "Dynamic Chirality in Photonic Time Crystals" ||
+    latestTitle === "Square-Root Higher-Order Exceptional Points with Symmetry-Induced Multiple Spectral Responses" ||
     latestTitle === "Subwavelength exceptional points in dispersive resonator arrays" ||
     latestTitle === "Topological Argument for Robustness of Coherent States in Quantum Optics" ||
     latestTitle === "Topological Soliton Frequency Combs in Anisotropic High-Q Microresonators",

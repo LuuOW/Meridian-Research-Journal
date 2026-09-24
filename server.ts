@@ -63,6 +63,11 @@ import {
   getArtTime
 } from "./src/lib/dailyEditorialEngine";
 import {
+  extractSubmissionDateFromText,
+  syncArticleDates,
+  auditAndSynchronizeAllArticles
+} from "./src/lib/dateGenerationSync";
+import {
   persistMultiTierBlogs,
   appendGenerationJournal,
   readPipelineRecords,
@@ -1795,6 +1800,7 @@ app.post("/api/blog/generate", async (req, res) => {
     let paperSummary = "";
     let paperAuthors = "ArXiv Authors";
     let arxivLink = "";
+    let paperSubmittedDate: string | undefined = undefined;
 
     if (arxivInput) {
       const inputCheck = checkArticleBlocked(arxivInput);
@@ -1841,6 +1847,7 @@ app.post("/api/blog/generate", async (req, res) => {
         paperSummary = meta.summary;
         paperAuthors = meta.authors;
         arxivLink = meta.arxivLink;
+        paperSubmittedDate = meta.submittedDate;
         tracker.paperTitle = paperTitle;
         tracker.authors = paperAuthors;
         tracker.arxivId = arxivId;
@@ -2063,7 +2070,7 @@ Requirements:
     const timestamp = Date.now();
     const slug = generateSlug(parsedBlog.title || paperTitle || "meridian-research");
 
-    const newBlog = {
+    const initialBlog = {
       ...parsedBlog,
       id: `generated-${timestamp}`,
       slug: `${slug}-${timestamp.toString().slice(-4)}`,
@@ -2076,6 +2083,10 @@ Requirements:
       timestamp: timestamp,
       views: getBlogViews(`generated-${timestamp}`)
     };
+
+    // Synchronize generation date with arXiv submission date (e.g. [Submitted on 21 Sep 2026])
+    const rawSubmittedDate = paperSubmittedDate || extractSubmissionDateFromText(parsedBlog.content)?.raw;
+    const newBlog = syncArticleDates(initialBlog, { arxivSubmissionDate: rawSubmittedDate });
 
     // Always save generated blog across 6 redundant storage tiers
     const saveResult = await saveBlog(newBlog, "AI Studio Pipeline Generation");
@@ -2417,7 +2428,7 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
     const targetId = existingIndex >= 0 ? localBlogs[existingIndex].id : (blogId || `blog-${Date.now()}`);
     const targetSlug = existingIndex >= 0 ? localBlogs[existingIndex].slug : (generatedBlogData.title || paperTitle).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60);
 
-    const updatedBlog = {
+    const rawUpdated = {
       ...(existingIndex >= 0 ? localBlogs[existingIndex] : {}),
       id: targetId,
       slug: targetSlug,
@@ -2432,6 +2443,9 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
       tags: Array.isArray(generatedBlogData.tags) ? generatedBlogData.tags : ["Optics", "Quantum Computing"],
       updatedAt: now.toISOString()
     };
+    const updatedBlog = syncArticleDates(rawUpdated, {
+      arxivSubmissionDate: extractSubmissionDateFromText(rawUpdated.content)?.raw
+    });
 
     // Run automated post-generation arXiv alignment and anti-boilerplate audit
     let auditReport = auditArticleAgainstArxiv(updatedBlog, {
@@ -3220,6 +3234,22 @@ app.post("/api/blogs/publish-draft", async (req, res) => {
   } catch (error: any) {
     console.error("Error publishing draft:", error);
     res.status(500).json({ error: error.message || "Failed to publish draft option" });
+  }
+});
+
+// API: Review and synchronize publication dates with generation dates for all articles
+app.post("/api/articles/sync-generation-dates", async (req, res) => {
+  try {
+    const blogs = await getBlogs();
+    const { articles: syncedBlogs, report } = auditAndSynchronizeAllArticles(blogs);
+    await saveBlogs(syncedBlogs);
+    res.json({
+      success: true,
+      report
+    });
+  } catch (err: any) {
+    console.error("[API] Error synchronizing article generation dates:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

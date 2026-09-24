@@ -26,7 +26,7 @@ const sampleBlogs: BlogPost[] = [
     author: "Lucas Kempe",
     date: "2026-08-30",
     readingTime: "9 min read",
-    arxivLink: "https://arxiv.org/abs/2608.11111",
+    arxivLink: "https://arxiv.org/abs/2608.77777",
     bannerSvg: "<svg><text>Quantum</text></svg>",
     tags: ["Quantum Mechanics", "Spectral Theory"],
     views: 399,
@@ -227,14 +227,14 @@ test("ArxivPipelineMicroservice: Ingests arXiv identifiers and generates scholar
   await arxiv.initialize();
 
   // Ingest arXiv paper
-  const ingested = await arxiv.ingestArxiv("2608.11111");
+  const ingested = await arxiv.ingestArxiv("2608.77777");
   assert.ok(ingested.arxivId);
   assert.ok(ingested.title);
   assert.ok(ingested.summary);
 
   // Synthesize article via pipeline
   const result = await arxiv.generateArticle({
-    arxivInput: "2608.11111",
+    arxivInput: "2608.77777",
     forceModel: "procedural"
   });
 

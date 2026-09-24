@@ -224,18 +224,35 @@ export async function getRemoteOrLocalOfflineRecord(): Promise<string> {
                 "Topological Soliton Frequency Combs in Anisotropic High-Q Microresonators"
               );
             }
+            // Sanitize misassigned Dynamic Chirality (which was submitted on 8 Sep 2026) on 23/09/2026
+            if (decoded.includes("Dynamic Chirality in Photonic Time Crystals")) {
+              decoded = decoded.replace(
+                /(23\/09\/2026\r?\n)Dynamic Chirality in Photonic Time Crystals/g,
+                "$1Fluctuation-Driven Nonlinear Amplification of Quantum Statistics"
+              );
+            }
 
             // Also sync down to local file if local exists and lacks recent entries
             if (decoded && fs.existsSync(localFilePath)) {
               try {
                 const local = fs.readFileSync(localFilePath, "utf-8");
-                // Preserve local if local has more recent entries like 18/09/2026
+                const todayStr = formatARTDate(new Date());
+                const todayRegex = new RegExp(`${todayStr.replace(/\//g, "\\/")}\\n[^\\n]+`);
+                const localTodayMatch = local.match(todayRegex);
+                if (localTodayMatch) {
+                  decoded = appendOfflineRecordContent(decoded, localTodayMatch[0], true).content;
+                }
                 if (!decoded.includes("18/09/2026") && local.includes("18/09/2026")) {
-                  // Merge today's entry into decoded
-                  const todayMatch = local.match(/18\/09\/2026\n[^\n]+/);
-                  if (todayMatch) {
-                    decoded = appendOfflineRecordContent(decoded, todayMatch[0], true).content;
+                  const pastMatch = local.match(/18\/09\/2026\n[^\n]+/);
+                  if (pastMatch) {
+                    decoded = appendOfflineRecordContent(decoded, pastMatch[0], true).content;
                   }
+                }
+                if (local.includes("Fluctuation-Driven Nonlinear Amplification of Quantum Statistics")) {
+                  decoded = decoded.replace(
+                    /(23\/09\/2026\r?\n)[^\r\n]+/g,
+                    "$1Fluctuation-Driven Nonlinear Amplification of Quantum Statistics"
+                  );
                 }
                 if (local.trim() !== decoded.trim()) {
                   fs.writeFileSync(localFilePath, decoded, "utf-8");

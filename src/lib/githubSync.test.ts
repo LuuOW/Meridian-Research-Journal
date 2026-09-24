@@ -43,7 +43,7 @@ test("getGitHubSyncConfig resolves default repository and branch", () => {
   assert.ok(config.repo.length > 0);
   assert.strictEqual(config.branch, "main");
   assert.ok(typeof config.configured === "boolean");
-  assert.strictEqual(config.authorName, "Meridian Research");
+  assert.strictEqual(config.authorName, "Lucas Kempe");
 });
 
 test("generateDataTsContent produces valid TypeScript code with imports and PRELOADED_BLOGS", () => {

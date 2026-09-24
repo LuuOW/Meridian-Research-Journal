@@ -1,9 +1,6 @@
-import { BlogPost } from "./types";
-import { ensureAnimatedSvg } from "./lib/svgUtils";
-
-const RAW_PRELOADED_BLOGS: BlogPost[] = [
+[
   {
-    "id": "blog-1790183129301-ostov",
+    "id": "blog-1790182927519-zfusv",
     "title": "arXiv Paper 2608.77777: 2608 77777",
     "slug": "arxiv-paper-2608-77777-2608-77777",
     "excerpt": "Automated scholarly synthesis and mathematical breakdown of arXiv preprint 2608.77777....",
@@ -18,8 +15,8 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
       "Mathematical Physics",
       "Algorithms"
     ],
-    "createdAt": 1790183129301,
-    "timestamp": 1790183129301,
+    "createdAt": 1790182927519,
+    "timestamp": 1790182927519,
     "views": 1
   },
   {
@@ -99,30 +96,4 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     "timestamp": 1725200000000,
     "createdAt": 1725000000000
   }
-];
-
-const today = new Date();
-const formatDate = (d: Date) => {
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-};
-
-export const PRELOADED_BLOGS: BlogPost[] = RAW_PRELOADED_BLOGS.map((blog, index) => {
-  const d = new Date(today);
-  if (index === 0) {
-    // Today
-  } else if (index === 1 || index === 2) {
-    // Yesterday
-    d.setDate(today.getDate() - 1);
-  } else if (index === 3 || index === 4) {
-    // 2 days ago
-    d.setDate(today.getDate() - 2);
-  } else {
-    // Older
-    d.setDate(today.getDate() - (index - 1));
-  }
-  return {
-    ...blog,
-    bannerSvg: ensureAnimatedSvg(blog.bannerSvg),
-    date: blog.date || formatDate(d)
-  };
-});
+]

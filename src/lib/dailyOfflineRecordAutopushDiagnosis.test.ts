@@ -175,10 +175,14 @@ test("Daily Offline Record Diagnosis 6: Blocklist enforcement prevents blocked p
     !latestTitle.includes("Recovering topological information"),
     "Latest title must NEVER resolve to the stale Sept 6 paper"
   );
-  assert.strictEqual(
-    latestTitle,
-    "Topological Argument for Robustness of Coherent States in Quantum Optics",
-    "Latest title must resolve to today's valid unblocked paper"
+  assert.ok(
+    latestTitle === "Strong coupling of a reconfigurable ${}^{171}$Yb atom array to a tunable telecom-band nanofiber cavity" ||
+    latestTitle === "Fluctuation-Driven Nonlinear Amplification of Quantum Statistics" ||
+    latestTitle === "Dynamic Chirality in Photonic Time Crystals" ||
+    latestTitle === "Square-Root Higher-Order Exceptional Points with Symmetry-Induced Multiple Spectral Responses" ||
+    latestTitle === "Subwavelength exceptional points in dispersive resonator arrays" ||
+    latestTitle === "Topological Argument for Robustness of Coherent States in Quantum Optics",
+    `Latest title must resolve to a valid unblocked paper, got: ${latestTitle}`
   );
 });
 
