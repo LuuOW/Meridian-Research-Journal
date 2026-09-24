@@ -19,18 +19,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/arxiv-paper-2608-77777-2608-77777</loc>
-    <lastmod>2026-09-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/2609-08748v1-6870</loc>
-    <lastmod>2026-09-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/2609-24017v1-8646</loc>
     <lastmod>2026-09-22</lastmod>
     <changefreq>monthly</changefreq>
@@ -67,12 +55,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/2609-11809-3143</loc>
-    <lastmod>2026-09-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/2609-13109-8421</loc>
     <lastmod>2026-09-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -85,13 +67,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/2609-10533-3121</loc>
+    <loc>https://ask-meridian.uk/blog/2609-11868-7268</loc>
     <lastmod>2026-09-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/2609-11868-7268</loc>
+    <loc>https://ask-meridian.uk/blog/2609-10533-3121</loc>
     <lastmod>2026-09-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -313,6 +295,24 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://ask-meridian.uk/blog/topological-insulators-chern</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/symplectic-manifolds-neural-control</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/non-hermitian-quantum-mechanics</loc>
+    <lastmod>2026-08-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://ask-meridian.uk/blog/quantum-state-simulation</loc>
     <lastmod>2026-08-30</lastmod>
     <changefreq>monthly</changefreq>
@@ -361,12 +361,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/topological-symmetry-breaking-and-the-quantized-conservation-of-pseudoangular-momentum-in-valley-polarized-lattice-resonances-2988</loc>
-    <lastmod>2026-08-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/algebraic-resilience-in-the-adversarial-regime-a-formal-framework-for-fault-tolerant-quantum-circuits-5719</loc>
     <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
@@ -379,8 +373,8 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/synthesizing-quantum-confinement-with-far-field-photonic-dynamics-a-tcmt-deconstruction-of-stark-tuned-polaritonic-metasurfaces-6532</loc>
-    <lastmod>2026-08-13</lastmod>
+    <loc>https://ask-meridian.uk/blog/topological-symmetry-breaking-and-the-quantized-conservation-of-pseudoangular-momentum-in-valley-polarized-lattice-resonances-2988</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -392,6 +386,12 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/architecting-quantum-advantage-diffractive-neural-networks-for-ultimate-imaging-precision-at-the-quantum-limit-8390</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/synthesizing-quantum-confinement-with-far-field-photonic-dynamics-a-tcmt-deconstruction-of-stark-tuned-polaritonic-metasurfaces-6532</loc>
     <lastmod>2026-08-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -409,13 +409,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/unpacking-qaoa-s-performance-on-spin-glasses-a-semiclassical-journey-into-the-sherrington-kirkpatrick-model-8103</loc>
+    <loc>https://ask-meridian.uk/blog/quantum-approximate-optimization-on-the-sherrington-kirkpatrick-model-a-semiclassical-perspective-0216</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/quantum-approximate-optimization-on-the-sherrington-kirkpatrick-model-a-semiclassical-perspective-0216</loc>
+    <loc>https://ask-meridian.uk/blog/unpacking-qaoa-s-performance-on-spin-glasses-a-semiclassical-journey-into-the-sherrington-kirkpatrick-model-8103</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -427,13 +427,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/unlocking-near-field-topology-rigorous-multiple-scattering-and-poynting-vector-dynamics-in-nanowire-clusters-0573</loc>
+    <loc>https://ask-meridian.uk/blog/predicting-chaos-in-latent-spaces-quantum-reservoir-networks-enhanced-by-metrological-states-9912</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/predicting-chaos-in-latent-spaces-quantum-reservoir-networks-enhanced-by-metrological-states-9912</loc>
+    <loc>https://ask-meridian.uk/blog/unlocking-near-field-topology-rigorous-multiple-scattering-and-poynting-vector-dynamics-in-nanowire-clusters-0573</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -445,13 +445,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/unifying-quantum-magic-a-field-theoretic-framework-for-many-body-non-gaussianity-0491</loc>
+    <loc>https://ask-meridian.uk/blog/geometric-torsion-breaking-selection-rules-in-spin-to-oam-conversion-6995</loc>
     <lastmod>2026-07-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/geometric-torsion-breaking-selection-rules-in-spin-to-oam-conversion-6995</loc>
+    <loc>https://ask-meridian.uk/blog/unifying-quantum-magic-a-field-theoretic-framework-for-many-body-non-gaussianity-0491</loc>
     <lastmod>2026-07-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -487,13 +487,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/unveiling-the-manifold-structure-a-geometric-approach-to-high-dimensional-latent-spaces-9854</loc>
+    <loc>https://ask-meridian.uk/blog/deep-wavefronts-hard-constraining-neural-operators-on-stiefel-manifolds-for-electromagnetic-inverse-design-4471</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/deep-wavefronts-hard-constraining-neural-operators-on-stiefel-manifolds-for-electromagnetic-inverse-design-4471</loc>
+    <loc>https://ask-meridian.uk/blog/unveiling-the-manifold-structure-a-geometric-approach-to-high-dimensional-latent-spaces-9854</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -511,13 +511,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/unveiling-the-neural-manifold-advances-in-latent-space-dynamics-0959</loc>
+    <loc>https://ask-meridian.uk/blog/closing-the-loop-a-hybrid-neuro-numerical-approach-to-adaptive-optics-calibration-4109</loc>
     <lastmod>2026-06-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/closing-the-loop-a-hybrid-neuro-numerical-approach-to-adaptive-optics-calibration-4109</loc>
+    <loc>https://ask-meridian.uk/blog/unveiling-the-neural-manifold-advances-in-latent-space-dynamics-0959</loc>
     <lastmod>2026-06-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -723,24 +723,6 @@
   <url>
     <loc>https://ask-meridian.uk/blog/cloudflare-ai-gateway-vectorize-rag</loc>
     <lastmod>2026-05-04</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/topological-insulators-chern</loc>
-    <lastmod>2026-09-01</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/symplectic-manifolds-neural-control</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/non-hermitian-quantum-mechanics</loc>
-    <lastmod>2026-08-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
