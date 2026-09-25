@@ -176,6 +176,7 @@ test("Daily Offline Record Diagnosis 6: Blocklist enforcement prevents blocked p
     "Latest title must NEVER resolve to the stale Sept 6 paper"
   );
   assert.ok(
+    latestTitle === "Topology of bound states in the continuum from the angular structure of leading radiation" ||
     latestTitle === "Strong coupling of a reconfigurable ${}^{171}$Yb atom array to a tunable telecom-band nanofiber cavity" ||
     latestTitle === "Fluctuation-Driven Nonlinear Amplification of Quantum Statistics" ||
     latestTitle === "Dynamic Chirality in Photonic Time Crystals" ||

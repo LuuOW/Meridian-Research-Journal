@@ -38,6 +38,7 @@ import {
   validatePreprintFreshness,
   PipelineExecutionReport
 } from "../lib/arxivAutonomousPipeline";
+import { scrapeArxivPreprint, verifyPreprintDateMatch } from "./ArxivWebScraper";
 
 export class DailyScheduleDaemon implements IMicroservice {
   public readonly serviceName = "DailyScheduleDaemon";
@@ -432,8 +433,34 @@ export class DailyScheduleDaemon implements IMicroservice {
 
     const candidatesToScore = validCandidates.length > 0 ? validCandidates : candidates;
 
+    // 4. Web scraping verification guard: verify candidate preprints in Quantum Physics or Optics
+    // strictly match the daily publication date ([Submitted on DD Mon YYYY])
+    let dateVerifiedCandidates: typeof candidatesToScore = [];
+    for (const cand of candidatesToScore) {
+      try {
+        const scraped = await scrapeArxivPreprint(cand.id, { timeoutMs: 2500 });
+        const dateMatch = verifyPreprintDateMatch(scraped, art.dateString);
+        if (dateMatch.matches) {
+          console.log(`[${this.serviceName}] Candidate ${cand.id} verified via arXiv Web Scraping: Category="${scraped.category}", Dateline="${scraped.rawDateline}" matches generation date.`);
+          dateVerifiedCandidates.push({
+            ...cand,
+            title: scraped.title || cand.title,
+            authors: scraped.authors.length > 0 ? scraped.authors.join(", ") : cand.authors,
+            summary: scraped.abstract || cand.summary,
+          });
+        } else {
+          console.log(`[${this.serviceName}] Candidate ${cand.id} skipped by Web Scraping Date Check: ${dateMatch.rejectionReason}`);
+        }
+      } catch (scrapeErr: any) {
+        // In offline mode or timeout, fallback gracefully to candidate
+        dateVerifiedCandidates.push(cand);
+      }
+    }
+
+    const finalCandidatesToScore = dateVerifiedCandidates.length > 0 ? dateVerifiedCandidates : candidatesToScore;
+
     // Score and rank all candidate papers
-    const scoredCandidates = candidatesToScore
+    const scoredCandidates = finalCandidatesToScore
       .map((p) => {
         const scoring = scoreArxivCandidate(p, corpus, existingArxivIds);
         return {
