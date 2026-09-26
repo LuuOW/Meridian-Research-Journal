@@ -6,9 +6,9 @@ import { getSearchSuggestions, AutocompleteSuggestion } from "../lib/autocomplet
 interface SearchFilterBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  selectedTag: string | null;
-  onSelectTag: (tag: string | null) => void;
-  allTags: string[];
+  selectedTag?: string | null;
+  onSelectTag?: (tag: string | null) => void;
+  allTags?: string[];
   blogs: BlogPost[];
   onSelectArticle?: (blog: BlogPost) => void;
   isSearching?: boolean;
@@ -80,8 +80,8 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
     }
 
     if (suggestion.type === "tag") {
-      onSelectTag(suggestion.queryValue);
-      onSearchChange("");
+      if (onSelectTag) onSelectTag(suggestion.queryValue);
+      onSearchChange(suggestion.queryValue);
     } else {
       onSearchChange(suggestion.queryValue);
     }
@@ -99,9 +99,9 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
       ref={containerRef}
       className="relative mb-12 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shadow-sm hover:shadow-md transition-all duration-200"
     >
-      <div className="p-4 sm:p-5 flex flex-col lg:flex-row items-center gap-4">
+      <div className="p-3 sm:p-4">
         {/* Search Input Box with Autocomplete and Micro Loading */}
-        <div className="relative w-full lg:flex-1">
+        <div className="relative w-full">
           {/* Left Icon (Search or Loading Spinner) */}
           <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none text-neutral-400 dark:text-neutral-500">
             {isSearching ? (
@@ -223,33 +223,6 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
               </div>
             </div>
           )}
-        </div>
-
-        {/* Scrollable Topic Filter Tags */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto no-scrollbar py-1 shrink-0">
-          <button
-            onClick={() => onSelectTag(null)}
-            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
-              !selectedTag
-                ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
-                : "bg-neutral-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-750"
-            }`}
-          >
-            All Topics
-          </button>
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => onSelectTag(tag === selectedTag ? null : tag)}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all cursor-pointer ${
-                selectedTag === tag
-                  ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
-                  : "bg-neutral-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-750"
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
         </div>
       </div>
     </div>

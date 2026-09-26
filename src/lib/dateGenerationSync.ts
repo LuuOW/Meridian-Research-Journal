@@ -117,8 +117,24 @@ export function syncArticleDates(
   let targetDate: Date | null = null;
   const preferShortMonth = article.date?.startsWith("Sep 14, 2026") || false;
 
+  // Manual generated articles via this tool: chronological backdating to past arXiv dates DOES NOT apply.
+  if (
+    (article as any).isManual ||
+    (article as any).isManualGeneration ||
+    (article as any).source === "manual_tool" ||
+    article.id === "generated-1790281414849" ||
+    article.id === "generated-1790432374898"
+  ) {
+    if (article.date) {
+      const p = new Date(article.date);
+      if (!isNaN(p.getTime())) {
+        targetDate = new Date(Date.UTC(p.getUTCFullYear(), p.getUTCMonth(), p.getUTCDate(), 12, 0, 0));
+      }
+    }
+  }
+
   // 1. Explicit submission date parameter passed in
-  if (options?.arxivSubmissionDate) {
+  if (!targetDate && options?.arxivSubmissionDate) {
     if (options.arxivSubmissionDate instanceof Date) {
       targetDate = options.arxivSubmissionDate;
     } else {
@@ -296,11 +312,34 @@ export function auditAndSynchronizeAllArticles(articles: BlogPost[]): {
     return synced;
   });
 
-  // Sort articles strictly by publication/generation date descending
-  updatedArticles.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  // Manual generated articles via this tool are prioritized at the top of the feed;
+  // others are sorted strictly chronologically.
+  const manual = updatedArticles.filter(
+    (b) =>
+      (b as any).isManual ||
+      (b as any).isManualGeneration ||
+      (b as any).source === "manual_tool" ||
+      b.id === "generated-1790281414849" ||
+      b.id === "generated-1790432374898"
+  );
+  const standard = updatedArticles.filter(
+    (b) =>
+      !(
+        (b as any).isManual ||
+        (b as any).isManualGeneration ||
+        (b as any).source === "manual_tool" ||
+        b.id === "generated-1790281414849" ||
+        b.id === "generated-1790432374898"
+      )
+  );
+
+  manual.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  standard.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+  const sortedArticles = [...manual, ...standard];
 
   return {
-    articles: updatedArticles,
+    articles: sortedArticles,
     report: {
       total: articles.length,
       synchronizedCount,

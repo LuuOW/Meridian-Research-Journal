@@ -17,6 +17,9 @@ export interface BlogPost {
   createdAt?: number;
   views?: number;
   isEditorEdition?: boolean;
+  isManual?: boolean;
+  isManualGeneration?: boolean;
+  source?: string;
   aliasSlugs?: string[];
   updatedAt?: string;
 }

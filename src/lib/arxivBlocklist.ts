@@ -8,6 +8,8 @@
 export const BLOCKED_ARXIV_IDS: readonly string[] = Object.freeze([
   "2608.12345", // Diagnostic Foundation for Evaluating LLMs' Research Integrity as Co-Scientists (CS / LLM)
   "2609.11042", // Terminal Agent Reinforcement Learning for Long-Horizon Tasks (CS / ML)
+  "2609.11809", // Designing metallo-dielectric antennas for cryogenic applications (disputed preprint)
+  "2608.77777", // Synthetic test artifact
   "2608.11111", // Generic Spectral Determination of Semiclassical Schrödinger Operators (math.DS - Mathematics / Aug 11 stale)
   "2609.06542", // Recovering topological information of light by topological learning (Stale Sep 6 submission)
   "2609.20188", // Jay Barach ResumeShield indirect prompt injection benchmark (CS / Cryptography and Security, July 24 stale)
@@ -42,9 +44,12 @@ export const BLOCKED_BLOG_IDS: readonly string[] = Object.freeze([
   "blog-1788302160015-k0dkt",
   "blog-1788302136465-baot7",
   "blog-2609-11042-8694",
+  "blog-2609-11809-3143",
   "blog-1789613391006-pwjbf",
   "blog-2609-06542v1-5582",
   "blog-2609-20188v1-3829",
+  "blog-1790181898483-98vez",
+  "blog-2609-08748v1-6870",
 ]);
 
 export const BLOCKED_TITLE_KEYWORDS: readonly string[] = Object.freeze([

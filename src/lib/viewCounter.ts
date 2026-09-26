@@ -164,14 +164,51 @@ export function getBlogTimestamp(blog: {
 }
 
 /**
+ * Determines whether an article was generated manually via the arXiv generation tool.
+ */
+export function isManualGeneratedBlog(blog: any): boolean {
+  if (!blog) return false;
+  return Boolean(
+    blog.isManual === true ||
+    blog.isManualGeneration === true ||
+    blog.source === "manual_tool" ||
+    (typeof blog.id === "string" && (
+      blog.id === "generated-1790281414849" ||
+      blog.id === "generated-1790432374898"
+    ))
+  );
+}
+
+/**
  * Chronologically sorts blog posts by exact generation/publication date.
  * Guarantees newest articles appear first deterministically.
+ * EXCEPTION: Chronological sorting does NOT apply to articles manually generated via this tool;
+ * they are prioritized and kept at the top of the publication feed.
  */
 export function sortBlogsByPublicationDate(
   blogs: BlogPost[],
   direction: "desc" | "asc" = "desc"
 ): BlogPost[] {
-  return [...blogs].sort((a, b) => {
+  const manualBlogs: BlogPost[] = [];
+  const standardBlogs: BlogPost[] = [];
+
+  for (const b of blogs) {
+    if (isManualGeneratedBlog(b)) {
+      manualBlogs.push(b);
+    } else {
+      standardBlogs.push(b);
+    }
+  }
+
+  // Sort manual blogs by creation timestamp (newest manual article first)
+  manualBlogs.sort((a, b) => {
+    const timeA = getBlogTimestamp(a);
+    const timeB = getBlogTimestamp(b);
+    return timeB - timeA;
+  });
+
+  // Standard chronological sorting applies to all other articles
+  standardBlogs.sort((a, b) => {
     const timeA = getBlogTimestamp(a);
     const timeB = getBlogTimestamp(b);
     if (timeA !== timeB) {
@@ -179,6 +216,8 @@ export function sortBlogsByPublicationDate(
     }
     return (a.title || "").localeCompare(b.title || "");
   });
+
+  return [...manualBlogs, ...standardBlogs];
 }
 
 /**

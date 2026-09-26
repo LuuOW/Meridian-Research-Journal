@@ -1,5 +1,147 @@
 [
   {
+    "jobId": "job-1790432374834-h34l3",
+    "triggerId": 1790432374834,
+    "arxivInput": "2609.26773",
+    "paperTitle": "Resonant neutrino flavor conversion within dark matter spikes",
+    "authors": "P. S. Bhupal Dev , Elisa Gaido , Alejandro Ibarra , Yago Porto",
+    "status": "completed",
+    "startTime": 1790432374834,
+    "tokenUsage": {
+      "promptTokens": 576,
+      "candidateTokens": 2767,
+      "totalTokens": 3343,
+      "estimatedCostUsd": 0.000873
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790432374834,
+        "details": "Parsing input: 2609.26773",
+        "endTime": 1790432374835,
+        "durationMs": 1
+      },
+      {
+        "stepId": 2,
+        "stepName": "ArXiv Metadata Ingestion",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790432374835,
+        "details": "Querying export.arxiv.org for ID: 2609.26773",
+        "endTime": 1790432374854,
+        "durationMs": 19
+      },
+      {
+        "stepId": 3,
+        "stepName": "Angle Synthesis & Token Budgeting",
+        "category": "prompt_prep",
+        "status": "completed",
+        "startTime": 1790432374854,
+        "details": "Formulating perspective angle for: \"Resonant neutrino flavor conversion within dark ma...\"",
+        "endTime": 1790432374856,
+        "durationMs": 2
+      },
+      {
+        "stepId": 4,
+        "stepName": "Model Inference & Response Streaming",
+        "category": "ai_inference",
+        "status": "completed",
+        "startTime": 1790432374856,
+        "details": "Executing AI synthesis (~1254 input tokens)",
+        "endTime": 1790432374896,
+        "durationMs": 40
+      },
+      {
+        "stepId": 5,
+        "stepName": "AST Validation & LaTeX Proof Check",
+        "category": "ast_validation",
+        "status": "completed",
+        "startTime": 1790432374896,
+        "details": "Parsing JSON response and verifying mathematical structure",
+        "endTime": 1790432374898,
+        "durationMs": 2
+      },
+      {
+        "stepId": 6,
+        "stepName": "6-Tier Multi-Storage Replication",
+        "category": "persistence",
+        "status": "completed",
+        "startTime": 1790432374898,
+        "details": "Replicating article to custom_blogs.json, src/data.ts, snapshot archive, and GitHub",
+        "endTime": 1790432382047,
+        "durationMs": 7149
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": true,
+      "sitemapXml": true
+    },
+    "arxivId": "2609.26773",
+    "endTime": 1790432382047,
+    "totalDurationMs": 7213,
+    "modelUsed": "procedural-scholarly-engine-v2",
+    "provider": "procedural",
+    "resultingBlog": {
+      "id": "generated-1790432374898",
+      "slug": "resonant-neutrino-flavor-conversion-within-dark-matter-spikes-4898",
+      "title": "Resonant neutrino flavor conversion within dark matter spikes",
+      "contentLength": 5078,
+      "latexFormulaCount": 19,
+      "tags": [
+        "Quantum Electrodynamics",
+        "Vacuum Birefringence",
+        "Squeezed Light",
+        "Photon-Photon Scattering",
+        "Quantum Metrology"
+      ]
+    }
+  },
+  {
+    "jobId": "test-job-1790431872015",
+    "triggerId": 1790431872015,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1790431867015,
+    "endTime": 1790431872015,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790431867015,
+        "endTime": 1790431868015,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
     "jobId": "test-job-1790183095703",
     "triggerId": 1790183095703,
     "arxivInput": "2608.99999",

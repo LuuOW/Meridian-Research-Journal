@@ -7,18 +7,6 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/collapse-to-extremality-the-third-law-of-black-hole-thermodynamics-in-quantum-gravity-4849</loc>
-    <lastmod>2026-09-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/resonant-neutrino-flavor-conversion-within-dark-matter-spikes-4898</loc>
-    <lastmod>2026-09-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/2609-29074v1-2364</loc>
     <lastmod>2026-09-25</lastmod>
     <changefreq>monthly</changefreq>
@@ -37,8 +25,32 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://ask-meridian.uk/blog/arxiv-paper-2608-77777-2608-77777</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/2609-08748v1-6870</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://ask-meridian.uk/blog/fluctuation-driven-nonlinear-amplification-quantum-statistics</loc>
     <lastmod>2026-09-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/collapse-to-extremality-the-third-law-of-black-hole-thermodynamics-in-quantum-gravity-4849</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/resonant-neutrino-flavor-conversion-within-dark-matter-spikes-4898</loc>
+    <lastmod>2026-09-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -75,6 +87,12 @@
   <url>
     <loc>https://ask-meridian.uk/blog/2507-11204-8747</loc>
     <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/2609-11809-3143</loc>
+    <lastmod>2026-09-14</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -741,6 +759,12 @@
   <url>
     <loc>https://ask-meridian.uk/blog/symplectic-manifolds-neural-control</loc>
     <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/non-hermitian-quantum-mechanics</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

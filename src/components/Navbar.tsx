@@ -83,7 +83,7 @@ const XLogoIcon: React.FC<{ className?: string }> = ({ className = "w-8 h-8" }) 
 
 interface NavbarProps {
   onOpenCreate: () => void;
-  onOpenAbout: () => void;
+  onOpenAbout?: () => void;
   onOpenResume?: () => void;
   onOpenBinance?: () => void;
   onOpenDonations?: () => void;
@@ -255,19 +255,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Navigation Links */}
         <div className="hidden md:flex gap-8 text-xs font-bold tracking-widest uppercase text-gray-400 dark:text-neutral-500 justify-center shrink-0">
           <span className="text-black dark:text-white border-b-2 border-black dark:border-white pb-1 cursor-pointer transition-colors" onClick={handleHomeClick}>Blog</span>
-          <span className="hover:text-black dark:hover:text-white cursor-pointer transition-colors pb-1 text-neutral-500 dark:text-neutral-400 hover:border-b-2 hover:border-black dark:hover:border-white" onClick={onOpenAbout}>About</span>
         </div>
 
         {/* Action Button & Theme/Editor Toggles */}
         <div className="flex justify-end items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Mobile About Button */}
-          <button
-            onClick={onOpenAbout}
-            className="md:hidden px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
-            title="About Meridian Journal"
-          >
-            About
-          </button>
           {isEditorMode && (
             <div className="flex items-center gap-2 sm:gap-2.5 animate-fade-in">
               {/* Grouped Editor Tools Dropdown - Config with arXiv & X Switches */}

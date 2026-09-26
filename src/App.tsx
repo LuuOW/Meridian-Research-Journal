@@ -32,7 +32,6 @@ import { XShareModal } from "./components/XShareModal";
 import { FormattedMathText } from "./components/FormattedMathText";
 import { XTestModal } from "./components/XTestModal";
 import { DeletePasswordModal } from "./components/DeletePasswordModal";
-import { AboutModal } from "./components/AboutModal";
 import { ResumeViewModal } from "./components/ResumeViewModal";
 import { EditorPasswordModal } from "./components/EditorPasswordModal";
 import { DailyEditorialPromptModal } from "./components/DailyEditorialPromptModal";
@@ -63,7 +62,6 @@ export default function App() {
   const [activeBlog, setActiveBlog] = useState<BlogPost | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [initialArxivId, setInitialArxivId] = useState<string>("");
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
   const [isEditorMode, setIsEditorMode] = useState<boolean>(false);
   const [hiddenBlogIds, setHiddenBlogIds] = useState<string[]>([]);
@@ -1183,6 +1181,8 @@ export default function App() {
           prevJobs.map((j) => (j.id === newJob.id ? completeJob(j, data.blog) : j))
         );
         handleBlogGenerated(data.blog);
+        setActiveBlog(data.blog);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         throw new Error("Invalid response format received from generator.");
       }
@@ -1275,7 +1275,6 @@ export default function App() {
 
       <Navbar 
         onOpenCreate={() => setIsCreateOpen(true)} 
-        onOpenAbout={() => setIsAboutOpen(true)} 
         onOpenResume={() => setIsResumeOpen(true)}
         isEditorMode={isEditorMode}
         onToggleEditorMode={handleToggleEditorMode}
@@ -1941,14 +1940,6 @@ export default function App() {
           if (!deleteBlogId) return false;
           return await handleRemoveBlog(deleteBlogId, password);
         }}
-      />
-
-      {/* ABOUT MODAL DETAIL */}
-      <AboutModal
-        isOpen={isAboutOpen}
-        onClose={() => setIsAboutOpen(false)}
-        isEditorMode={isEditorMode}
-        onOpenResume={() => setIsResumeOpen(true)}
       />
 
       {/* CURRICULUM VITAE / RESUME MODAL & EXPORTER */}
