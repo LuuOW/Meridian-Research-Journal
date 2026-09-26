@@ -7,6 +7,18 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://ask-meridian.uk/blog/collapse-to-extremality-the-third-law-of-black-hole-thermodynamics-in-quantum-gravity-4849</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/resonant-neutrino-flavor-conversion-within-dark-matter-spikes-4898</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://ask-meridian.uk/blog/2609-29074v1-2364</loc>
     <lastmod>2026-09-25</lastmod>
     <changefreq>monthly</changefreq>
@@ -27,18 +39,6 @@
   <url>
     <loc>https://ask-meridian.uk/blog/fluctuation-driven-nonlinear-amplification-quantum-statistics</loc>
     <lastmod>2026-09-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/collapse-to-extremality-the-third-law-of-black-hole-thermodynamics-in-quantum-gravity-4849</loc>
-    <lastmod>2026-09-22</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/resonant-neutrino-flavor-conversion-within-dark-matter-spikes-4898</loc>
-    <lastmod>2026-09-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
