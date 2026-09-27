@@ -47,12 +47,12 @@ export const onRequestPost = async (context: {
     let generatedContent = "";
     let provider = "procedural";
 
-    const geminiKey = env.GEMINI_API_KEY || (typeof process !== "undefined" ? process.env?.GEMINI_API_KEY : "");
+    const githubToken = env.GITHUB_TOKEN || (typeof process !== "undefined" ? process.env?.GITHUB_TOKEN : "");
     const xaiKey = env.XAI_API_KEY || (typeof process !== "undefined" ? process.env?.XAI_API_KEY : "");
 
-    if (geminiKey) {
+    if (githubToken) {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+        const ghUrl = "https://models.github.ai/inference/chat/completions";
         const prompt = `You are a world-class academic science blogger writing for Ask Meridian (https://ask-meridian.uk).
 Translate this paper/topic into an in-depth, rigorous scholarly article with LaTeX math, structured sections, and deep insights.
 Paper / Topic: ${inputClean}
@@ -63,27 +63,32 @@ Respond strictly in JSON format with two keys:
 "excerpt": "A two-sentence scholarly abstract",
 "content": "The full markdown article with LaTeX formulas ($...$ and $$...$$), structured headers (## Introduction, ## Mathematical Formulation, ## Empirical Results, ## Horizon), and thorough analysis."`;
 
-        const resp = await fetch(geminiUrl, {
+        const resp = await fetch(ghUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${githubToken}`,
+            "User-Agent": "AskMeridian-Edge/1.0"
+          },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" },
+            model: "gpt-4o-mini",
+            response_format: { type: "json_object" },
+            messages: [{ role: "user", content: prompt }]
           }),
         });
 
         if (resp.ok) {
           const data = (await resp.json()) as any;
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          const text = data?.choices?.[0]?.message?.content;
           if (text) {
             const parsed = JSON.parse(text);
             if (parsed.title) generatedTitle = parsed.title;
             if (parsed.content) generatedContent = parsed.content;
-            provider = "gemini";
+            provider = "github_models";
           }
         }
-      } catch (geminiErr) {
-        console.warn("[Cloudflare Backend] Gemini call fallback:", geminiErr);
+      } catch (ghErr) {
+        console.warn("[Cloudflare Backend] GitHub Models call fallback:", ghErr);
       }
     }
 

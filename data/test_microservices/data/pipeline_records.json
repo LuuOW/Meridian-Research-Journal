@@ -1,5 +1,167 @@
 [
   {
+    "jobId": "gen_1790519913111",
+    "triggerId": 1790519918290,
+    "arxivInput": "2608.99991",
+    "arxivId": "2608.99991",
+    "paperTitle": "arXiv Paper 2608.99991: 2608 99991",
+    "authors": "Scholarly Research Group",
+    "status": "completed",
+    "startTime": 1790519913111,
+    "endTime": 1790519918290,
+    "totalDurationMs": 5179,
+    "modelUsed": "procedural-scholar-engine",
+    "provider": "procedural",
+    "tokenUsage": {
+      "promptTokens": 0,
+      "candidateTokens": 0,
+      "totalTokens": 0,
+      "estimatedCostUsd": 0
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "ArXiv Metadata Ingestion",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790519913111,
+        "endTime": 1790519913124,
+        "durationMs": 13,
+        "details": "Source: fallback_cache"
+      },
+      {
+        "stepId": 2,
+        "stepName": "Scholarly Article Synthesis",
+        "category": "ai_inference",
+        "status": "completed",
+        "startTime": 1790519913124,
+        "endTime": 1790519913125,
+        "durationMs": 1,
+        "details": "Model: procedural-scholar-engine"
+      },
+      {
+        "stepId": 3,
+        "stepName": "KaTeX AST & Formula Verification",
+        "category": "ast_validation",
+        "status": "completed",
+        "startTime": 1790519913125,
+        "endTime": 1790519913125,
+        "durationMs": 0,
+        "details": "Validated 4 formulas"
+      },
+      {
+        "stepId": 4,
+        "stepName": "Multi-Tier 6-Tier Persistence Sync",
+        "category": "persistence",
+        "status": "completed",
+        "startTime": 1790519913125,
+        "endTime": 1790519918290,
+        "durationMs": 5165
+      }
+    ],
+    "resultingBlog": {
+      "id": "blog-1790519913124-ukyw9",
+      "slug": "arxiv-paper-2608-99991-2608-99991",
+      "title": "arXiv Paper 2608.99991: 2608 99991",
+      "contentLength": 1374,
+      "latexFormulaCount": 4,
+      "tags": [
+        "Quantum Mechanics",
+        "Mathematical Physics",
+        "Algorithms"
+      ]
+    },
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": true,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "gen_1790514833152",
+    "triggerId": 1790514838150,
+    "arxivInput": "2608.99991",
+    "arxivId": "2608.99991",
+    "paperTitle": "arXiv Paper 2608.99991: 2608 99991",
+    "authors": "Scholarly Research Group",
+    "status": "completed",
+    "startTime": 1790514833152,
+    "endTime": 1790514838150,
+    "totalDurationMs": 4998,
+    "modelUsed": "procedural-scholar-engine",
+    "provider": "procedural",
+    "tokenUsage": {
+      "promptTokens": 0,
+      "candidateTokens": 0,
+      "totalTokens": 0,
+      "estimatedCostUsd": 0
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "ArXiv Metadata Ingestion",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790514833152,
+        "endTime": 1790514833163,
+        "durationMs": 11,
+        "details": "Source: fallback_cache"
+      },
+      {
+        "stepId": 2,
+        "stepName": "Scholarly Article Synthesis",
+        "category": "ai_inference",
+        "status": "completed",
+        "startTime": 1790514833164,
+        "endTime": 1790514833165,
+        "durationMs": 1,
+        "details": "Model: procedural-scholar-engine"
+      },
+      {
+        "stepId": 3,
+        "stepName": "KaTeX AST & Formula Verification",
+        "category": "ast_validation",
+        "status": "completed",
+        "startTime": 1790514833165,
+        "endTime": 1790514833165,
+        "durationMs": 0,
+        "details": "Validated 4 formulas"
+      },
+      {
+        "stepId": 4,
+        "stepName": "Multi-Tier 6-Tier Persistence Sync",
+        "category": "persistence",
+        "status": "completed",
+        "startTime": 1790514833165,
+        "endTime": 1790514838150,
+        "durationMs": 4985
+      }
+    ],
+    "resultingBlog": {
+      "id": "blog-1790514833164-mizjl",
+      "slug": "arxiv-paper-2608-99991-2608-99991",
+      "title": "arXiv Paper 2608.99991: 2608 99991",
+      "contentLength": 1374,
+      "latexFormulaCount": 4,
+      "tags": [
+        "Quantum Mechanics",
+        "Mathematical Physics",
+        "Algorithms"
+      ]
+    },
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": true,
+      "sitemapXml": true
+    }
+  },
+  {
     "jobId": "gen_1790431912224",
     "triggerId": 1790431917028,
     "arxivInput": "2608.77777",

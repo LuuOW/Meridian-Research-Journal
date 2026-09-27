@@ -15,11 +15,11 @@ import {
   ArticleGenerationResult
 } from "./types";
 import { PersistenceMicroservice } from "./PersistenceMicroservice";
-import { GoogleGenAI } from "@google/genai";
 import { cleanJsonText } from "../lib/arxivUtils";
 import { PRELOADED_BLOGS } from "../data";
 import { isArticleBlocked } from "../lib/arxivBlocklist";
 import { syncArticleDates } from "../lib/dateGenerationSync";
+import { defaultModelEngine } from "../lib/modelEngine";
 
 export class ArxivPipelineMicroservice implements IMicroservice {
   public readonly serviceName = "ArxivPipelineMicroservice";
@@ -54,7 +54,7 @@ export class ArxivPipelineMicroservice implements IMicroservice {
         activeJobsCount: this.activeJobs.size,
         totalGeneratedCount: this.totalGeneratedCount,
         failedGeneratedCount: this.failedGeneratedCount,
-        geminiConfigured: Boolean(process.env.GEMINI_API_KEY)
+        githubModelsConfigured: Boolean(process.env.GITHUB_TOKEN)
       }
     };
   }
@@ -282,9 +282,9 @@ export class ArxivPipelineMicroservice implements IMicroservice {
     let provider: "gemini" | "github_models" | "procedural" = "procedural";
     let tokenUsage = { promptTokens: 0, candidateTokens: 0, totalTokens: 0, estimatedCostUsd: 0 };
 
-    if (process.env.GEMINI_API_KEY && options.forceModel !== "procedural") {
+    if (process.env.GITHUB_TOKEN && options.forceModel !== "procedural") {
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const ghToken = process.env.GITHUB_TOKEN;
         const prompt = `You are an elite theoretical physicist and quantitative researcher writing for the Meridian Research Journal.
 Analyze this paper and return a complete JSON response strictly formatted as:
 {
@@ -302,44 +302,47 @@ Paper Abstract: ${ingested.summary}
 ArXiv ID: ${ingested.arxivId}
 `;
 
-        const response = await ai.models.generateContent({
-          model: options.forceModel || "gemini-2.5-pro",
-          contents: prompt,
-          config: {
-            temperature: 0.2
-          }
+        const modelToUse = options.forceModel || "gpt-4o-mini";
+        const engineRes = await defaultModelEngine.executeChat({
+          userPrompt: prompt,
+          model: modelToUse,
+          jsonMode: true,
+          timeoutMs: 12000
         });
 
-        const text = response.text || "";
-        const cleaned = cleanJsonText(text);
-        const parsed = JSON.parse(cleaned);
+        if (engineRes && engineRes.content) {
+          const cleaned = cleanJsonText(engineRes.content);
+          const parsed = JSON.parse(cleaned);
 
-        const bannerSvg = this.generateProceduralBanner(parsed.title || ingested.title, parsed.tags || []);
+          const bannerSvg = this.generateProceduralBanner(parsed.title || ingested.title, parsed.tags || []);
 
-        const rawBuiltBlog = {
-          id: `blog-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          title: parsed.title || ingested.title,
-          slug: parsed.slug || this.slugify(parsed.title || ingested.title),
-          excerpt: parsed.excerpt || ingested.summary.slice(0, 180),
-          content: parsed.content || `## Introduction\n\nDetailed analysis of ${ingested.title}.`,
-          author: parsed.author || ingested.authors,
-          date: ingested.publishedDate || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
-          readingTime: parsed.readingTime || "7 min read",
-          arxivLink: ingested.arxivLink,
-          bannerSvg,
-          tags: Array.isArray(parsed.tags) ? parsed.tags : ["Quantum", "Mathematics", "arXiv"],
-          createdAt: Date.now(),
-          timestamp: Date.now(),
-          views: 1
-        };
+          const rawBuiltBlog = {
+            id: `blog-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            title: parsed.title || ingested.title,
+            slug: parsed.slug || this.slugify(parsed.title || ingested.title),
+            excerpt: parsed.excerpt || ingested.summary.slice(0, 180),
+            content: parsed.content || `## Introduction\n\nDetailed analysis of ${ingested.title}.`,
+            author: parsed.author || ingested.authors,
+            date: ingested.publishedDate || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+            readingTime: parsed.readingTime || "7 min read",
+            arxivLink: ingested.arxivLink,
+            bannerSvg,
+            tags: Array.isArray(parsed.tags) ? parsed.tags : ["Quantum", "Mathematics", "arXiv"],
+            createdAt: Date.now(),
+            timestamp: Date.now(),
+            views: 1
+          };
 
-        blog = syncArticleDates(rawBuiltBlog, { arxivSubmissionDate: ingested.publishedDate });
+          blog = syncArticleDates(rawBuiltBlog, { arxivSubmissionDate: ingested.publishedDate });
 
-        modelUsed = options.forceModel || "gemini-2.5-pro";
-        provider = "gemini";
-        tokenUsage = { promptTokens: 650, candidateTokens: 1450, totalTokens: 2100, estimatedCostUsd: 0.00045 };
+          modelUsed = engineRes.model || modelToUse;
+          provider = (engineRes.provider as any) || "github_models";
+          tokenUsage = engineRes.tokenUsage || { promptTokens: 650, candidateTokens: 1450, totalTokens: 2100, estimatedCostUsd: 0.00045 };
+        } else {
+          blog = this.generateProceduralBlog(ingested);
+        }
       } catch (err) {
-        console.warn(`[${this.serviceName}] Gemini API error, falling back to procedural engine:`, err);
+        console.warn(`[${this.serviceName}] GitHub Models API error, falling back to procedural engine:`, err);
         blog = this.generateProceduralBlog(ingested);
       }
     } else {

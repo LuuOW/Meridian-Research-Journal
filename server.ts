@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { initializeApp } from "firebase/app";
 import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
@@ -29,6 +28,7 @@ import {
   validateAndSanitizeDistributionNote,
   cleanTextForDistributionNote
 } from "./src/lib/distributionNotePipeline";
+import { defaultModelEngine } from "./src/lib/modelEngine";
 import {
   syncAllBlogsToGitHub,
   testGitHubConnection,
@@ -233,34 +233,42 @@ app.get(["/auth/callback", "/auth/callback.html"], (req, res) => {
 
 app.use(express.json({ limit: "10mb" }));
 
-// Initialize Google GenAI client safely
-const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.log("Notice: GEMINI_API_KEY is not defined. Procedural generation fallback will be used.");
-  }
-  return new GoogleGenAI({
-    apiKey: apiKey || "MOCK_KEY",
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
-      },
-    },
-  });
-};
-
-// Cached availability check for GitHub Models (Azure AI Inference) endpoint
+// Cached availability check for GitHub Models endpoint
 let isGitHubModelsSupported: boolean | null = null;
 async function checkGitHubModelsAvailability(): Promise<boolean> {
   if (isGitHubModelsSupported !== null) return isGitHubModelsSupported;
+  return Boolean(process.env.GITHUB_TOKEN);
+}
+
+interface GitHubModelsRequestOptions {
+  systemPrompt?: string;
+  userPrompt: string;
+  model?: string;
+  jsonMode?: boolean;
+}
+
+// Primary Model Engine chat completion executor across all pipelines
+async function executeGitHubModelsChatCompletion(options: GitHubModelsRequestOptions): Promise<{
+  content: string;
+  model: string;
+} | null> {
   try {
-    const dns = await import("dns/promises");
-    await dns.lookup("models.inference.ai.azure.com");
-    isGitHubModelsSupported = true;
-  } catch {
-    isGitHubModelsSupported = false;
+    const res = await defaultModelEngine.executeChat({
+      systemPrompt: options.systemPrompt,
+      userPrompt: options.userPrompt,
+      model: options.model,
+      jsonMode: options.jsonMode,
+      timeoutMs: 12000
+    });
+
+    if (res && res.content && res.content.trim().length > 0) {
+      return { content: res.content.trim(), model: res.model };
+    }
+  } catch (err: any) {
+    console.log("[ModelEngine] Note during AI execution:", err?.message || err);
   }
-  return isGitHubModelsSupported;
+
+  return null;
 }
 
 // Robust arXiv API fetcher prioritizing high-speed CDN abs page with XML API fallback
@@ -1901,7 +1909,6 @@ app.post("/api/blog/generate", async (req, res) => {
     );
     broadcastPipelineUpdate(tracker);
 
-    const ai = getGeminiClient();
     const processTriggerId = Date.now();
     const anglePerspectives = [
       "Focus on the fundamental theoretical physics & mechanism",
@@ -1956,104 +1963,25 @@ Requirements:
     );
     broadcastPipelineUpdate(tracker);
 
-    const modelsToTry = [
-      "gemini-2.5-flash",
-      "gemini-flash-latest",
-      "gemini-3.7-flash"
-    ];
-
-    let response: any = null;
-    let lastError: any = null;
-    let modelUsed = "procedural";
-    let provider: "gemini" | "github_models" | "procedural" = "procedural";
-
-    if (process.env.GEMINI_API_KEY) {
-      for (const modelName of modelsToTry) {
-        try {
-          console.log(`Attempting blog generation with model: ${modelName}`);
-          const genPromise = ai.models.generateContent({
-            model: modelName,
-            contents: prompt,
-            config: {
-              systemInstruction,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING, description: "A carefully considered, paper-specific academic blog title. MUST be fresh, unique, creative, and distinct for this generation trigger run." },
-                  excerpt: { type: Type.STRING, description: "A highly polished, captivating 1-sentence excerpt summarizing the post" },
-                  readingTime: { type: Type.STRING, description: "Reading time estimate, e.g. '8 min read'" },
-                  arxivLink: { type: Type.STRING, description: "Link to the source Arxiv paper" },
-                  bannerSvg: { type: Type.STRING, description: "Complete responsive SVG code string starting with <svg viewBox='0 0 800 400'> and ending with </svg>. Dark space/navy background (#0a1128) with neon-glow geometric accents." },
-                  content: { type: Type.STRING, description: "Comprehensive, publication-grade scholarly blog content in Markdown format, containing sections, paragraphs, bullet points, and at least 3 typeset LaTeX formulas." },
-                  author: { type: Type.STRING, description: "Author name, default to 'Meridian Research'" },
-                  tags: { 
-                    type: Type.ARRAY, 
-                    items: { type: Type.STRING },
-                    description: "3-5 relevant technical tags, e.g., ['Quantum Computing', 'Physics']"
-                  }
-                },
-                required: ["title", "excerpt", "readingTime", "arxivLink", "bannerSvg", "content", "author", "tags"]
-              }
-            }
-          });
-
-          // Timeout after 14 seconds per model attempt to prevent hanging
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini generation timed out")), 14000));
-          response = await Promise.race([genPromise, timeoutPromise]);
-          
-          if (response && response.text) {
-            console.log(`Successfully generated content using model: ${modelName}`);
-            modelUsed = modelName;
-            provider = "gemini";
-            break;
-          }
-        } catch (err: any) {
-          console.warn(`Model ${modelName} failed or timed out:`, err.message || err);
-          lastError = err;
-        }
-      }
-    }
-
     let resultText = "";
-    if (response && response.text) {
-      resultText = response.text;
-    } else if (process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
-      console.log("Attempting fallback via GitHub Models (Azure AI Inference)...");
-      try {
-        const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
-          method: "POST",
-          signal: AbortSignal.timeout(10000),
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
-          },
-          body: JSON.stringify({
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: prompt }
-            ],
-            model: "gpt-4o-mini",
-            response_format: { type: "json_object" }
-          })
-        });
+    let modelUsed = "procedural-scholar-engine";
+    let provider: "github_models" | "procedural" = "procedural";
 
-        if (githubResponse.ok) {
-          const data: any = await githubResponse.json();
-          if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-            resultText = data.choices[0].message.content;
-            modelUsed = "gpt-4o-mini";
-            provider = "github_models";
-            console.log("Successfully generated content using GitHub Models (gpt-4o-mini)");
-          } else {
-            console.log("Invalid response structure from GitHub Models:", data);
-          }
-        } else {
-          const errText = await githubResponse.text();
-          console.log(`GitHub Models API returned status ${githubResponse.status}: ${errText}`);
-        }
-      } catch (githubErr: any) {
-        console.log("GitHub Models API unavailable or failed:", githubErr?.message || githubErr);
+    // 1. Primary Inference: GitHub Models (OpenAI GPT-4o-mini / GPT-4o)
+    if (process.env.GITHUB_TOKEN) {
+      console.log("[Pipeline Ingestion] Attempting primary synthesis via GitHub Models...");
+      const ghRes = await executeGitHubModelsChatCompletion({
+        systemPrompt: systemInstruction,
+        userPrompt: prompt,
+        model: "gpt-4o-mini",
+        jsonMode: true
+      });
+
+      if (ghRes && ghRes.content) {
+        resultText = ghRes.content;
+        modelUsed = ghRes.model;
+        provider = "github_models";
+        console.log(`[Pipeline Ingestion] Successfully generated publication via GitHub Models (${modelUsed})`);
       }
     }
 
@@ -2335,88 +2263,24 @@ Existing Tags: ${tagList}
 
 Generate a fresh, in-depth academic synthesis with unique mathematical derivations and clean markdown formatting. Output strictly valid JSON matching the schema.`;
 
-    const modelsToTry = [
-      "gemini-2.5-flash",
-      "gemini-flash-latest",
-      "gemini-3.7-flash"
-    ];
+    // Primary Inference: GitHub Models (OpenAI GPT-4o-mini / GPT-4o)
+    if (process.env.GITHUB_TOKEN) {
+      console.log("[Regenerate Article] Attempting primary article regeneration via GitHub Models...");
+      const ghRes = await executeGitHubModelsChatCompletion({
+        systemPrompt: systemInstruction,
+        userPrompt: prompt,
+        model: "gpt-4o-mini",
+        jsonMode: true
+      });
 
-    if (process.env.GEMINI_API_KEY) {
-      const ai = getGeminiClient();
-      for (const modelName of modelsToTry) {
+      if (ghRes && ghRes.content) {
         try {
-          console.log(`Attempting article regeneration with model: ${modelName}`);
-          const genPromise = ai.models.generateContent({
-            model: modelName,
-            contents: prompt,
-            config: {
-              systemInstruction,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  excerpt: { type: Type.STRING },
-                  readingTime: { type: Type.STRING },
-                  arxivLink: { type: Type.STRING },
-                  content: { type: Type.STRING },
-                  tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  author: { type: Type.STRING },
-                  bannerSvg: { type: Type.STRING, nullable: true }
-                },
-                required: ["title", "excerpt", "readingTime", "arxivLink", "content", "tags", "author"]
-              }
-            }
-          });
-
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`Timeout with model ${modelName}`)), 22000)
-          );
-
-          const response = (await Promise.race([genPromise, timeoutPromise])) as any;
-          const text = response.text ? response.text.trim() : "";
-          if (text) {
-            generatedBlogData = JSON.parse(text);
-            console.log(`Successfully regenerated article via Gemini (${modelName})`);
-            break;
-          }
-        } catch (err: any) {
-          console.warn(`Gemini article regeneration failed on ${modelName}:`, err.message || err);
+          const sanitized = cleanJsonText(ghRes.content);
+          generatedBlogData = JSON.parse(sanitized);
+          console.log(`[Regenerate Article] Successfully regenerated article via GitHub Models (${ghRes.model})`);
+        } catch (e: any) {
+          console.warn("[Regenerate Article] Failed to parse JSON from GitHub Models:", e.message);
         }
-      }
-    }
-
-    // Fallback to GitHub Models if Gemini failed
-    if (!generatedBlogData && process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
-      try {
-        console.log("Attempting article regeneration via GitHub Models (gpt-4o-mini)...");
-        const ghResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: prompt }
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.7
-          })
-        });
-
-        if (ghResponse.ok) {
-          const ghData = await ghResponse.json();
-          const ghContent = ghData?.choices?.[0]?.message?.content;
-          if (ghContent) {
-            generatedBlogData = JSON.parse(ghContent);
-            console.log("Successfully regenerated article via GitHub Models");
-          }
-        }
-      } catch (ghErr: any) {
-        console.log("GitHub Models article regeneration unavailable:", ghErr?.message || ghErr);
       }
     }
 
@@ -2837,91 +2701,24 @@ Abstract / Summary: ${paperSummary}
 
 Generate a fresh, in-depth academic synthesis with unique mathematical derivations and clean markdown formatting. Output strictly valid JSON matching the schema.`;
 
-    const modelsToTry = [
-      "gemini-2.5-flash",
-      "gemini-flash-latest"
-    ];
+    // Primary Inference: GitHub Models (OpenAI GPT-4o-mini / GPT-4o)
+    if (process.env.GITHUB_TOKEN) {
+      console.log("[Inject arXiv] Attempting primary synthesis via GitHub Models...");
+      const ghRes = await executeGitHubModelsChatCompletion({
+        systemPrompt: systemInstruction,
+        userPrompt: prompt,
+        model: "gpt-4o-mini",
+        jsonMode: true
+      });
 
-    if (process.env.GEMINI_API_KEY) {
-      const ai = getGeminiClient();
-      for (const modelName of modelsToTry) {
+      if (ghRes && ghRes.content) {
         try {
-          console.log(`[Inject arXiv] Synthesizing paper with Gemini (${modelName})...`);
-          const genPromise = ai.models.generateContent({
-            model: modelName,
-            contents: prompt,
-            config: {
-              systemInstruction,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  excerpt: { type: Type.STRING },
-                  readingTime: { type: Type.STRING },
-                  arxivLink: { type: Type.STRING },
-                  content: { type: Type.STRING },
-                  tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  author: { type: Type.STRING },
-                  bannerSvg: { type: Type.STRING, nullable: true }
-                },
-                required: ["title", "excerpt", "readingTime", "arxivLink", "content", "tags", "author"]
-              }
-            }
-          });
-
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`Timeout with model ${modelName}`)), 18000)
-          );
-
-          const response = (await Promise.race([genPromise, timeoutPromise])) as any;
-          const text = response.text ? response.text.trim() : "";
-          if (text) {
-            generatedBlogData = JSON.parse(text);
-            console.log(`[Inject arXiv] Successfully generated via Gemini (${modelName})`);
-            break;
-          }
-        } catch (err: any) {
-          console.warn(`[Inject arXiv] Gemini failed on ${modelName}:`, err.message || err);
-          if (err.message && (err.message.includes("quota") || err.message.includes("RESOURCE_EXHAUSTED") || err.message.includes("429"))) {
-            console.log("[Inject arXiv] Gemini quota reached; fast fallback to procedural synthesis.");
-            break;
-          }
+          const sanitized = cleanJsonText(ghRes.content);
+          generatedBlogData = JSON.parse(sanitized);
+          console.log(`[Inject arXiv] Successfully generated article via GitHub Models (${ghRes.model})`);
+        } catch (e: any) {
+          console.warn("[Inject arXiv] Failed to parse JSON from GitHub Models:", e.message);
         }
-      }
-    }
-
-    // Fallback to GitHub Models if Gemini failed
-    if (!generatedBlogData && process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
-      try {
-        console.log("[Inject arXiv] Attempting generation via GitHub Models (gpt-4o-mini)...");
-        const ghResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: prompt }
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.7
-          })
-        });
-
-        if (ghResponse.ok) {
-          const ghData = await ghResponse.json();
-          const ghContent = ghData?.choices?.[0]?.message?.content;
-          if (ghContent) {
-            generatedBlogData = JSON.parse(ghContent);
-            console.log("[Inject arXiv] Successfully generated via GitHub Models");
-          }
-        }
-      } catch (ghErr: any) {
-        console.log("[Inject arXiv] GitHub Models unavailable:", ghErr?.message || ghErr);
       }
     }
 
@@ -3111,9 +2908,7 @@ app.post("/api/blog/predict", async (req, res) => {
       return res.status(404).json({ error: "No papers found in optics or quantum physics categories on arXiv." });
     }
     
-    // 3. Call Gemini to predict/recommend the best paper
-    const ai = getGeminiClient();
-    
+    // 3. Call GitHub Models to predict/recommend the best paper
     const systemInstruction = `You are "Meridian AI Advisor", a state-of-the-art predictive scientific recommendation agent.
 Your goal is to analyze the user's reading/writing history of academic blog publications, and select the single most compelling and mathematically fitting next paper from a list of recent arXiv papers.
 Your recommended paper must belong strictly to the Optics (physics.optics) or Quantum Physics (quant-ph) categories.
@@ -3130,46 +2925,37 @@ Generate a personalized, highly inspiring, and technical AI reasoning explanatio
 
 The response must be valid JSON according to the schema.`;
 
-    const modelsToTry = [
-      "gemini-3.7-flash",
-      "gemini-flash-latest",
-      "gemini-3.1-flash-lite",
-      "gemini-3.1-pro-preview"
-    ];
+    let parsedPrediction: any = null;
 
-    let modelResult: any = null;
-    let lastErr: any = null;
-    for (const modelName of modelsToTry) {
-      try {
-        modelResult = await ai.models.generateContent({
-          model: modelName,
-          contents: prompt,
-          config: {
-            systemInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                selectedIndex: { type: Type.INTEGER, description: "The index of the selected paper in the provided arXiv list (0-based)" },
-                reasoning: { type: Type.STRING, description: "A beautifully composed, technically mature 3-4 sentence explanation of why this paper is recommended, citing specific concepts from their past articles." }
-              },
-              required: ["selectedIndex", "reasoning"]
-            }
-          }
-        });
-        if (modelResult && modelResult.text) break;
-      } catch (err: any) {
-        lastErr = err;
+    // 1. Primary Inference: GitHub Models (OpenAI GPT-4o-mini / GPT-4o)
+    if (process.env.GITHUB_TOKEN) {
+      console.log("[Editorial Recommend] Attempting primary paper recommendation via GitHub Models...");
+      const ghRes = await executeGitHubModelsChatCompletion({
+        systemPrompt: systemInstruction,
+        userPrompt: prompt,
+        model: "gpt-4o-mini",
+        jsonMode: true
+      });
+
+      if (ghRes && ghRes.content) {
+        try {
+          const sanitized = cleanJsonText(ghRes.content);
+          parsedPrediction = JSON.parse(sanitized);
+          console.log(`[Editorial Recommend] Successfully recommended paper via GitHub Models (${ghRes.model})`);
+        } catch (e: any) {
+          console.warn("[Editorial Recommend] Failed to parse JSON from GitHub Models:", e.message);
+        }
       }
     }
 
-    const resultText = modelResult?.text;
-    if (!resultText) {
-      throw lastErr || new Error("Empty response from prediction model");
+    // 2. Procedural heuristic fallback
+    if (!parsedPrediction || typeof parsedPrediction.selectedIndex !== "number") {
+      console.log("[Editorial Recommend] Using procedural recommendation heuristics fallback.");
+      parsedPrediction = {
+        selectedIndex: 0,
+        reasoning: `Based on your recent focus on topological quantum phenomena and photonic lattices, this preprint presents essential mathematical continuity and immediate experimental relevance to your published findings.`
+      };
     }
-
-    const sanitizedText = cleanJsonText(resultText);
-    const parsedPrediction = JSON.parse(sanitizedText);
     const selectedIdx = parsedPrediction.selectedIndex;
     
     if (selectedIdx < 0 || selectedIdx >= candidates.length) {
@@ -3309,8 +3095,7 @@ app.post("/api/dispatch/generate-options", async (req, res) => {
       return res.status(404).json({ error: "No recent preprints found on arXiv." });
     }
 
-    // 3. Call Gemini to predict/recommend and write TWO distinct blog drafts
-    const ai = getGeminiClient();
+    // 3. Call GitHub Models to predict/recommend and write TWO distinct blog drafts
     const systemInstruction = `You are "Meridian AI Advisor", a state-of-the-art predictive scientific recommendation and authoring agent.
 Your task is to review the user's publication history, and today's arXiv papers feed in Optics (physics.optics) and Quantum Physics (quant-ph).
 You must select exactly TWO papers from the feed and author two full publication-ready blog drafts:
@@ -3342,68 +3127,53 @@ For each option, generate:
 
 Respond strictly with valid JSON conforming to the response schema.`;
 
-    const modelsToTry = [
-      "gemini-3.7-flash",
-      "gemini-flash-latest",
-      "gemini-3.1-flash-lite",
-      "gemini-3.1-pro-preview"
-    ];
+    let parsedData: any = null;
 
-    let modelResult: any = null;
-    let lastErr: any = null;
-    for (const modelName of modelsToTry) {
-      try {
-        modelResult = await ai.models.generateContent({
-          model: modelName,
-          contents: prompt,
-          config: {
-            systemInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                optionA: {
-                  type: Type.OBJECT,
-                  properties: {
-                    arxivId: { type: Type.STRING },
-                    title: { type: Type.STRING },
-                    excerpt: { type: Type.STRING },
-                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    ragAlignment: { type: Type.STRING },
-                    content: { type: Type.STRING }
-                  },
-                  required: ["arxivId", "title", "excerpt", "tags", "ragAlignment", "content"]
-                },
-                optionB: {
-                  type: Type.OBJECT,
-                  properties: {
-                    arxivId: { type: Type.STRING },
-                    title: { type: Type.STRING },
-                    excerpt: { type: Type.STRING },
-                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    ragAlignment: { type: Type.STRING },
-                    content: { type: Type.STRING }
-                  },
-                  required: ["arxivId", "title", "excerpt", "tags", "ragAlignment", "content"]
-                }
-              },
-              required: ["optionA", "optionB"]
-            }
-          }
-        });
-        if (modelResult && modelResult.text) break;
-      } catch (err: any) {
-        lastErr = err;
+    // 1. Primary Inference: GitHub Models (OpenAI GPT-4o-mini / GPT-4o)
+    if (process.env.GITHUB_TOKEN) {
+      console.log("[Editorial Drafts] Attempting primary draft options generation via GitHub Models...");
+      const ghRes = await executeGitHubModelsChatCompletion({
+        systemPrompt: systemInstruction,
+        userPrompt: prompt,
+        model: "gpt-4o-mini",
+        jsonMode: true
+      });
+
+      if (ghRes && ghRes.content) {
+        try {
+          const sanitized = cleanJsonText(ghRes.content);
+          parsedData = JSON.parse(sanitized);
+          console.log(`[Editorial Drafts] Successfully generated draft options via GitHub Models (${ghRes.model})`);
+        } catch (e: any) {
+          console.warn("[Editorial Drafts] Failed to parse JSON from GitHub Models:", e.message);
+        }
       }
     }
 
-    const resultText = modelResult?.text;
-    if (!resultText) {
-      throw lastErr || new Error("Empty response from prediction model");
+    // 2. Procedural heuristic fallback if model response not available
+    if (!parsedData || !parsedData.optionA || !parsedData.optionB) {
+      console.log("[Editorial Drafts] Using procedural dual draft generation fallback.");
+      const candA = candidates[0] || { id: "2609.25232", title: "Topological Photonic Crystals", summary: "Optics focus" };
+      const candB = candidates[1] || { id: "2609.24017", title: "Non-Hermitian Quantum Dynamics", summary: "Algebra focus" };
+      parsedData = {
+        optionA: {
+          arxivId: candA.id,
+          title: candA.title,
+          excerpt: `A rigorous investigation into ${candA.title} revealing deep wavevector dynamics.`,
+          tags: ["Optics", "Quantum Photonics", "Waveguides"],
+          ragAlignment: "Direct continuation of your recent publications in topological boundary modes.",
+          content: `## Executive Overview\n\nRecent experimental advances presented in arXiv:${candA.id} demonstrate unprecedented fidelity in photon confinement.\n\n## Mathematical Formulation\n\n$$\\mathcal{H} = \\sum_{k} \\omega_k a_k^\\dagger a_k + \\int d^3r \\, \\epsilon(r) |\\mathbf{E}(r)|^2$$\n\n## Horizons\n\nThese findings establish foundational benchmarks for integrated photonic circuits.`
+        },
+        optionB: {
+          arxivId: candB.id,
+          title: candB.title,
+          excerpt: `Algebraic classification of non-Hermitian Hamiltonian invariants across exceptional points.`,
+          tags: ["Algebra", "Non-Hermitian Physics", "Matrix Theory"],
+          ragAlignment: "Deepens your algebraic inquiries into Lie algebra representations of dissipative quantum systems.",
+          content: `## Executive Overview\n\nIn this treatise based on arXiv:${candB.id}, the algebraic geometry of non-Hermitian spectrum singularities is rigorously mapped.\n\n## Mathematical Formulation\n\n$$\\det(\\mathbf{H} - \\lambda \\mathbf{I}) = 0, \\quad \\nabla_\\lambda \\det(\\mathbf{H} - \\lambda \\mathbf{I}) = 0$$\n\n## Horizons\n\nThis framework resolves longstanding degeneracies in quantum sensor calibration.`
+        }
+      };
     }
-
-    const sanitizedText = cleanJsonText(resultText);
-    const parsedData = JSON.parse(sanitizedText);
 
     // Create Draft Objects
     const timestamp = Date.now();
@@ -3733,110 +3503,33 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
   const blogUrl = clientArticleUrl || (blogId ? `https://ask-meridian.uk/blog/${blogId.replace(/^\/+/, "")}` : "https://ask-meridian.uk/blog");
 
   try {
-    const ai = getGeminiClient();
-
     const systemInstruction = buildLinkedInSystemInstruction(blogUrl);
     const promptText = buildLinkedInUserPrompt({ title, excerpt, content, tags, tone, customPrompt });
 
-    const modelsToTry = [
-      "gemini-3.7-flash",
-      "gemini-flash-latest"
-    ];
+    // 1. Primary Inference: GitHub Models (OpenAI GPT-4o-mini / GPT-4o)
+    if (process.env.GITHUB_TOKEN) {
+      console.log("[LinkedIn Post] Attempting primary synthesis via GitHub Models...");
+      const ghRes = await executeGitHubModelsChatCompletion({
+        systemPrompt: `${systemInstruction}\nReturn JSON with schema: {"postText": string, "headline": string, "hashtags": string[]}`,
+        userPrompt: promptText,
+        model: "gpt-4o-mini",
+        jsonMode: true
+      });
 
-    let response: any = null;
-    let lastError = null;
-
-    if (process.env.GEMINI_API_KEY) {
-      for (const modelName of modelsToTry) {
+      if (ghRes && ghRes.content) {
         try {
-          console.log(`Attempting LinkedIn post generation with model: ${modelName}`);
-          const genPromise = ai.models.generateContent({
-            model: modelName,
-            contents: promptText,
-            config: {
-              systemInstruction,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  postText: { type: Type.STRING, description: "The full, beautifully formatted LinkedIn post text ready for sharing." },
-                  headline: { type: Type.STRING, description: "A catchy 1-line preview title for the LinkedIn post." },
-                  hashtags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-5 relevant hashtags" }
-                },
-                required: ["postText", "headline", "hashtags"]
-              }
-            }
+          const parsed = JSON.parse(cleanJsonText(ghRes.content));
+          console.log(`[LinkedIn Post] Successfully generated LinkedIn post via GitHub Models (${ghRes.model})`);
+          return res.json({
+            success: true,
+            postText: parsed.postText,
+            headline: parsed.headline,
+            hashtags: sanitizeHashtags(parsed.hashtags),
+            tone
           });
-
-          // Timeout after 10 seconds per attempt to prevent hanging
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini LinkedIn generation timed out")), 10000));
-          response = await Promise.race([genPromise, timeoutPromise]);
-
-          if (response && response.text) {
-            console.log(`Successfully generated LinkedIn post using model: ${modelName}`);
-            break;
-          }
-        } catch (err: any) {
-          console.warn(`Model ${modelName} failed for LinkedIn post generation:`, err.message || err);
-          lastError = err;
+        } catch (parseErr) {
+          console.warn("[LinkedIn Post] Failed to parse JSON from GitHub Models:", parseErr);
         }
-      }
-    }
-
-    if (response && response.text) {
-      try {
-        const sanitized = cleanJsonText(response.text);
-        const parsed = JSON.parse(sanitized);
-        return res.json({
-          success: true,
-          postText: parsed.postText,
-          headline: parsed.headline,
-          hashtags: sanitizeHashtags(parsed.hashtags),
-          tone
-        });
-      } catch (parseErr) {
-        console.warn("Failed to parse Gemini response for LinkedIn post:", parseErr);
-      }
-    }
-
-    // Fallback to GitHub Models if Gemini failed
-    if (process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
-      console.log("Attempting fallback to GitHub Models for LinkedIn post generation...");
-      try {
-        const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
-          method: "POST",
-          signal: AbortSignal.timeout(8000),
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            response_format: { type: "json_object" },
-            messages: [
-              { role: "system", content: `${systemInstruction}\nReturn JSON with schema: {"postText": string, "headline": string, "hashtags": string[]}` },
-              { role: "user", content: promptText }
-            ],
-            temperature: 0.7
-          })
-        });
-
-        if (githubResponse.ok) {
-          const data: any = await githubResponse.json();
-          if (data.choices && data.choices[0] && data.choices[0].message?.content) {
-            const parsed = JSON.parse(cleanJsonText(data.choices[0].message.content));
-            console.log("Successfully generated LinkedIn post via GitHub Models");
-            return res.json({
-              success: true,
-              postText: parsed.postText,
-              headline: parsed.headline,
-              hashtags: sanitizeHashtags(parsed.hashtags),
-              tone
-            });
-          }
-        }
-      } catch (githubErr: any) {
-        console.log("GitHub Models fallback unavailable for LinkedIn post:", githubErr?.message || githubErr);
       }
     }
 
@@ -3851,7 +3544,7 @@ app.post("/api/linkedin/generate-post", async (req, res) => {
   }
 });
 
-// API: AI-Enhanced X Companion Post Generator (Futuristic Vision) powered by Gemini
+// API: AI-Enhanced X Companion Post Generator (Futuristic Vision) powered by GitHub Models
 app.post("/api/x/generate-post", async (req, res) => {
   const { title, excerpt, content, tags, arxivLink, blogId, articleUrl: clientArticleUrl, customPrompt } = req.body;
 
@@ -3862,111 +3555,34 @@ app.post("/api/x/generate-post", async (req, res) => {
   const blogUrl = clientArticleUrl || (blogId ? `https://ask-meridian.uk/blog/${blogId.replace(/^\/+/, "")}` : "https://ask-meridian.uk/blog");
 
   try {
-    const ai = getGeminiClient();
-
     const systemInstruction = buildXSystemInstruction(blogUrl);
     const promptText = buildXUserPrompt({ title, excerpt, content, tags, customPrompt });
 
-    const modelsToTry = [
-      "gemini-3.7-flash",
-      "gemini-flash-latest"
-    ];
+    // 1. Primary Inference: GitHub Models (OpenAI GPT-4o-mini / GPT-4o)
+    if (process.env.GITHUB_TOKEN) {
+      console.log("[X Post] Attempting primary synthesis via GitHub Models...");
+      const ghRes = await executeGitHubModelsChatCompletion({
+        systemPrompt: `${systemInstruction}\nReturn JSON with schema: {"postText": string, "headline": string, "hashtags": string[]}`,
+        userPrompt: promptText,
+        model: "gpt-4o-mini",
+        jsonMode: true
+      });
 
-    let response: any = null;
-    let lastError = null;
-
-    if (process.env.GEMINI_API_KEY) {
-      for (const modelName of modelsToTry) {
+      if (ghRes && ghRes.content) {
         try {
-          console.log(`Attempting X companion post generation with model: ${modelName}`);
-          const genPromise = ai.models.generateContent({
-            model: modelName,
-            contents: promptText,
-            config: {
-              systemInstruction,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  postText: { type: Type.STRING, description: "The full, visionary 3-sentence X post text ready for sharing." },
-                  headline: { type: Type.STRING, description: "A catchy 1-line futuristic preview title for the X post." },
-                  hashtags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-4 relevant cutting-edge hashtags" }
-                },
-                required: ["postText", "headline", "hashtags"]
-              }
-            }
+          const parsed = JSON.parse(cleanJsonText(ghRes.content));
+          const validated = validateAndSanitizeDistributionNote(parsed.postText);
+          console.log(`[X Post] Successfully generated X post via GitHub Models (${ghRes.model})`);
+          return res.json({
+            success: true,
+            postText: validated.sanitizedText,
+            headline: cleanTextForDistributionNote(parsed.headline || "Futuristic Vision Synthesis"),
+            hashtags: sanitizeXHashtags(parsed.hashtags),
+            tone: "future"
           });
-
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Gemini X post generation timed out")), 10000));
-          response = await Promise.race([genPromise, timeoutPromise]);
-
-          if (response && response.text) {
-            console.log(`Successfully generated X post using model: ${modelName}`);
-            break;
-          }
-        } catch (err: any) {
-          console.warn(`Model ${modelName} failed for X post generation:`, err.message || err);
-          lastError = err;
+        } catch (parseErr) {
+          console.warn("[X Post] Failed to parse JSON from GitHub Models:", parseErr);
         }
-      }
-    }
-
-    if (response && response.text) {
-      try {
-        const sanitized = cleanJsonText(response.text);
-        const parsed = JSON.parse(sanitized);
-        const validated = validateAndSanitizeDistributionNote(parsed.postText);
-        return res.json({
-          success: true,
-          postText: validated.sanitizedText,
-          headline: cleanTextForDistributionNote(parsed.headline || "Futuristic Vision Synthesis"),
-          hashtags: sanitizeXHashtags(parsed.hashtags),
-          tone: "future"
-        });
-      } catch (parseErr) {
-        console.warn("Failed to parse Gemini response for X post:", parseErr);
-      }
-    }
-
-    // Fallback to GitHub Models if Gemini failed
-    if (process.env.GITHUB_TOKEN && (await checkGitHubModelsAvailability())) {
-      console.log("Attempting fallback to GitHub Models for X post generation...");
-      try {
-        const githubResponse = await fetch("https://models.inference.ai.azure.com/chat/completions", {
-          method: "POST",
-          signal: AbortSignal.timeout(8000),
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            response_format: { type: "json_object" },
-            messages: [
-              { role: "system", content: `${systemInstruction}\nReturn JSON with schema: {"postText": string, "headline": string, "hashtags": string[]}` },
-              { role: "user", content: promptText }
-            ],
-            temperature: 0.7
-          })
-        });
-
-        if (githubResponse.ok) {
-          const data: any = await githubResponse.json();
-          if (data.choices && data.choices[0] && data.choices[0].message?.content) {
-            const parsed = JSON.parse(cleanJsonText(data.choices[0].message.content));
-            const validated = validateAndSanitizeDistributionNote(parsed.postText);
-            console.log("Successfully generated X post via GitHub Models");
-            return res.json({
-              success: true,
-              postText: validated.sanitizedText,
-              headline: cleanTextForDistributionNote(parsed.headline || "Futuristic Vision Synthesis"),
-              hashtags: sanitizeXHashtags(parsed.hashtags),
-              tone: "future"
-            });
-          }
-        }
-      } catch (githubErr: any) {
-        console.log("GitHub Models fallback unavailable for X post:", githubErr?.message || githubErr);
       }
     }
 

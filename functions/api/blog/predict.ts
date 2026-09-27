@@ -9,32 +9,39 @@ export const onRequestPost = async (context: {
     const body = (await request.json().catch(() => ({}))) as { topic?: string };
     const topic = body?.topic || "Topological Quantum Computing & Squeezed Light Waveguides";
 
-    const geminiKey = env.GEMINI_API_KEY || (typeof process !== "undefined" ? process.env?.GEMINI_API_KEY : "");
+    const githubToken = env.GITHUB_TOKEN || (typeof process !== "undefined" ? process.env?.GITHUB_TOKEN : "");
 
-    if (geminiKey) {
+    if (githubToken) {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+        const ghUrl = "https://models.github.ai/inference/chat/completions";
         const prompt = `Provide a rapid scholarly prediction and roadmap for the following scientific domain: "${topic}". Outline 3 breakthrough milestones expected within 18-36 months with technical rigor.`;
 
-        const resp = await fetch(geminiUrl, {
+        const resp = await fetch(ghUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${githubToken}`,
+            "User-Agent": "AskMeridian-Edge/1.0"
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }]
+          }),
         });
 
         if (resp.ok) {
           const data = (await resp.json()) as any;
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          const text = data?.choices?.[0]?.message?.content;
           if (text) {
             return jsonResponse({
               success: true,
               prediction: text,
-              source: "gemini-api",
+              source: "github-models",
             });
           }
         }
       } catch (err) {
-        console.warn("[Cloudflare Backend] Gemini predict fallback:", err);
+        console.warn("[Cloudflare Backend] GitHub Models predict fallback:", err);
       }
     }
 

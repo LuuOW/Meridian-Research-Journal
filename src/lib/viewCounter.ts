@@ -173,6 +173,8 @@ export function isManualGeneratedBlog(blog: any): boolean {
     blog.isManualGeneration === true ||
     blog.source === "manual_tool" ||
     (typeof blog.id === "string" && (
+      blog.id.startsWith("generated-") ||
+      blog.id.startsWith("manual-") ||
       blog.id === "generated-1790281414849" ||
       blog.id === "generated-1790432374898"
     ))
