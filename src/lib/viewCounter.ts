@@ -168,24 +168,15 @@ export function getBlogTimestamp(blog: {
  */
 export function isManualGeneratedBlog(blog: any): boolean {
   if (!blog) return false;
-  return Boolean(
-    blog.isManual === true ||
-    blog.isManualGeneration === true ||
-    blog.source === "manual_tool" ||
-    (typeof blog.id === "string" && (
-      blog.id.startsWith("generated-") ||
-      blog.id.startsWith("manual-") ||
-      blog.id === "generated-1790281414849" ||
-      blog.id === "generated-1790432374898"
-    ))
-  );
+  return blog.isManual === true;
 }
 
 /**
  * Chronologically sorts blog posts by exact generation/publication date.
  * Guarantees newest articles appear first deterministically.
- * EXCEPTION: Chronological sorting does NOT apply to articles manually generated via this tool;
- * they are prioritized and kept at the top of the publication feed.
+ * Active manual generation in the current session (with explicit isManual/manual_tool)
+ * is kept at the top if present, while all historical articles are strictly sorted
+ * by publication date descending with zero jumps or disorders.
  */
 export function sortBlogsByPublicationDate(
   blogs: BlogPost[],
@@ -202,22 +193,22 @@ export function sortBlogsByPublicationDate(
     }
   }
 
-  // Sort manual blogs by creation timestamp (newest manual article first)
-  manualBlogs.sort((a, b) => {
-    const timeA = getBlogTimestamp(a);
-    const timeB = getBlogTimestamp(b);
-    return timeB - timeA;
-  });
-
-  // Standard chronological sorting applies to all other articles
-  standardBlogs.sort((a, b) => {
+  const sortFn = (a: BlogPost, b: BlogPost) => {
+    const dateA = parsePublicationDate(a.date)?.getTime() || 0;
+    const dateB = parsePublicationDate(b.date)?.getTime() || 0;
+    if (dateA !== dateB) {
+      return direction === "desc" ? dateB - dateA : dateA - dateB;
+    }
     const timeA = getBlogTimestamp(a);
     const timeB = getBlogTimestamp(b);
     if (timeA !== timeB) {
       return direction === "desc" ? timeB - timeA : timeA - timeB;
     }
     return (a.title || "").localeCompare(b.title || "");
-  });
+  };
+
+  manualBlogs.sort(sortFn);
+  standardBlogs.sort(sortFn);
 
   return [...manualBlogs, ...standardBlogs];
 }

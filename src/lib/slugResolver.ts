@@ -34,6 +34,7 @@ export function extractArxivIdFromText(text: string): string | null {
 
 export const SLUG_LEGACY_ALIASES: Record<string, string> = {
   "topological-soliton-frequency-combs-anisotropic-microresonators": "topological-argument-robustness-coherent-states-quantum-optics",
+  "resonant-neutrino-flavor-conversion-within-dark-matter-spikes-4898": "resonant-neutrino-flavor-conversion-within-dark-matter-spikes-2945",
 };
 
 /**

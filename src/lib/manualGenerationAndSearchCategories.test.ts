@@ -130,4 +130,34 @@ describe("Search Categories Removal & Manual Generation Resilience Suite", () =>
       "Manual generated article MUST appear at index 0, exempt from chronological sorting"
     );
   });
+
+  test("Preprint 2609.26773 is uniquely published with NO duplicate entries in custom_blogs.json", () => {
+    const customBlogs: BlogPost[] = JSON.parse(fs.readFileSync(customBlogsPath, "utf-8"));
+    const matchingNeutrino = customBlogs.filter(
+      (b) => b.arxivLink?.includes("2609.26773") || b.title?.toLowerCase().includes("resonant neutrino")
+    );
+
+    assert.strictEqual(
+      matchingNeutrino.length,
+      1,
+      `Expected exactly 1 article for 2609.26773, found ${matchingNeutrino.length}`
+    );
+    assert.strictEqual(
+      matchingNeutrino[0].id,
+      "generated-1790432374898",
+      "Original publication generated-1790432374898 must be preserved"
+    );
+  });
+
+  test("Server API /api/blog/generate includes duplicate paper prevention guard", () => {
+    const serverSrc = fs.readFileSync(serverPath, "utf-8");
+    assert.ok(
+      serverSrc.includes("Duplicate Prevention Check"),
+      "server.ts /api/blog/generate must have Duplicate Prevention Check"
+    );
+    assert.ok(
+      serverSrc.includes("isDuplicate: true"),
+      "server.ts must return isDuplicate: true when paper is already published"
+    );
+  });
 });

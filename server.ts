@@ -1900,6 +1900,36 @@ app.post("/api/blog/generate", async (req, res) => {
       arxivLink = arxivInput.startsWith("http") ? arxivInput : `https://arxiv.org/abs/${arxivInput}`;
     }
 
+    // Duplicate Prevention Check:
+    // Ensure an already published arXiv paper is not published twice under different IDs or dates
+    const { forceRegenerate } = req.body || {};
+    if (!forceRegenerate) {
+      const allExistingBlogs = await getBlogs();
+      const existingMatch = allExistingBlogs.find((b: any) => {
+        if (!b) return false;
+        if (arxivId) {
+          const bArxivId = extractArxivId(b.arxivLink || "") || extractArxivId(b.title || "") || extractArxivId(b.slug || "");
+          if (bArxivId && bArxivId === arxivId) return true;
+        }
+        if (arxivLink && b.arxivLink && b.arxivLink.toLowerCase().trim() === arxivLink.toLowerCase().trim()) return true;
+        if (paperTitle && b.title && b.title.trim().toLowerCase() === paperTitle.trim().toLowerCase()) return true;
+        return false;
+      });
+
+      if (existingMatch) {
+        console.log(`[Duplicate Prevention] ArXiv paper ${arxivId || paperTitle} is already published as "${existingMatch.title}" (${existingMatch.slug}). Returning existing article.`);
+        tracker = recordStepProgress(tracker, 1, "Duplicate Verification", "ingestion", `Paper already published: "${existingMatch.title}" on ${existingMatch.date}`);
+        tracker = finalizePipelineSuccess(tracker, existingMatch, "cache", "procedural", "", "");
+        broadcastPipelineUpdate(tracker);
+        return res.json({
+          blog: existingMatch,
+          executionRecord: tracker,
+          isDuplicate: true,
+          message: `This paper is already published on Ask Meridian (${existingMatch.date}).`
+        });
+      }
+    }
+
     tracker = recordStepProgress(
       tracker,
       2,
@@ -2895,8 +2925,8 @@ app.post("/api/blog/predict", async (req, res) => {
       tags: b.tags || []
     })).slice(0, 10); // Take top 10 most recent for context to stay within token limits cleanly
     
-    // 2. Fetch recent papers in optics and quantum physics from arXiv
-    const arxivUrl = `http://export.arxiv.org/api/query?search_query=cat:physics.optics+OR+cat:quant-ph&sortBy=submittedDate&sortOrder=descending&max_results=25`;
+    // 2. Fetch recent papers in High Energy Physics (hep-ex, hep-lat, hep-th, hep-ph) from arXiv
+    const arxivUrl = `http://export.arxiv.org/api/query?search_query=(cat:hep-ex+OR+cat:hep-lat+OR+cat:hep-th+OR+cat:hep-ph)+AND+all:%22neutrino%22&sortBy=submittedDate&sortOrder=descending&max_results=25`;
     const response = await fetch(arxivUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch recent papers from arXiv: ${response.statusText}`);
@@ -2905,19 +2935,22 @@ app.post("/api/blog/predict", async (req, res) => {
     const candidates = parseArxivFeedXml(xml);
     
     if (candidates.length === 0) {
-      return res.status(404).json({ error: "No papers found in optics or quantum physics categories on arXiv." });
+      return res.status(404).json({ error: "No papers found in High Energy Physics categories on arXiv." });
     }
     
     // 3. Call GitHub Models to predict/recommend the best paper
     const systemInstruction = `You are "Meridian AI Advisor", a state-of-the-art predictive scientific recommendation agent.
 Your goal is to analyze the user's reading/writing history of academic blog publications, and select the single most compelling and mathematically fitting next paper from a list of recent arXiv papers.
-Your recommended paper must belong strictly to the Optics (physics.optics) or Quantum Physics (quant-ph) categories.
+Your recommended paper must belong strictly to High Energy Physics (hep-ex, hep-lat, hep-th, or hep-ph).
+EDITORIAL REQUIREMENTS:
+1. The title MUST contain "neutrino" or "neutrinos".
+2. The article content or paragraph description MUST contain the keyword "photon" or "photons" (e.g. discussing neutrino-photon scattering, Cherenkov photons, or loop-induced electromagnetic couplings).
 You must generate a captivating, intellectually mature scientific explanation of why this specific paper is today's top predicted article, explaining how it bridges or extends the theories, math, or models found in their past publications.`;
 
     const prompt = `Here is the user's publication history (recent articles they have read or written reviews for):
 ${JSON.stringify(historyList, null, 2)}
 
-And here is the feed of today's recent, real arXiv papers in Optics and Quantum Physics:
+And here is the feed of today's recent, real arXiv papers in High Energy Physics (hep-ex, hep-lat, hep-th, hep-ph):
 ${JSON.stringify(candidates.map((c, idx) => ({ index: idx, id: c.id, title: c.title, summary: c.summary, authors: c.authors })), null, 2)}
 
 Analyze the user's history, find common research interest themes (e.g., specific math structures, physical phenomena, machine learning techniques applied to physics), and select the single BEST matching paper from the arXiv feed.
@@ -3082,8 +3115,8 @@ app.post("/api/dispatch/generate-options", async (req, res) => {
       contentSnippet: b.content ? b.content.slice(0, 400) : ""
     })).slice(0, 6);
 
-    // 2. Fetch recent arXiv preprints from cat:physics.optics and cat:quant-ph
-    const arxivUrl = `http://export.arxiv.org/api/query?search_query=cat:physics.optics+OR+cat:quant-ph&sortBy=submittedDate&sortOrder=descending&max_results=15`;
+    // 2. Fetch recent arXiv preprints from High Energy Physics: hep-ex, hep-lat, hep-th, hep-ph
+    const arxivUrl = `http://export.arxiv.org/api/query?search_query=(cat:hep-ex+OR+cat:hep-lat+OR+cat:hep-th+OR+cat:hep-ph)+AND+all:%22neutrino%22&sortBy=submittedDate&sortOrder=descending&max_results=15`;
     const response = await fetch(arxivUrl);
     if (!response.ok) {
       throw new Error(`arXiv API fetch failed: ${response.statusText}`);
@@ -3097,12 +3130,14 @@ app.post("/api/dispatch/generate-options", async (req, res) => {
 
     // 3. Call GitHub Models to predict/recommend and write TWO distinct blog drafts
     const systemInstruction = `You are "Meridian AI Advisor", a state-of-the-art predictive scientific recommendation and authoring agent.
-Your task is to review the user's publication history, and today's arXiv papers feed in Optics (physics.optics) and Quantum Physics (quant-ph).
+Your task is to review the user's publication history, and today's arXiv papers feed in High Energy Physics (hep-ex, hep-lat, hep-th, hep-ph).
 You must select exactly TWO papers from the feed and author two full publication-ready blog drafts:
-- Option A (Optics/Quantum Focus): Select a paper focusing on optics or quantum optics. Write a highly detailed academic blog post with deep technical reasoning, equations, and insights.
-- Option B (Algebra/Mathematical Focus): Select a different paper focusing on mathematical foundations, algebraic structures, operator algebras, or linear algebra in optics/quantum physics. Write a deeply mathematical analysis, showing full derivations and equations.
+- Option A (Theory & Phenomenology Focus): Select a paper focusing on neutrino oscillations, matter effects, flavor conversion, or dark matter interactions. Write a highly detailed academic blog post with deep technical reasoning, equations, and insights.
+- Option B (Experiment & Lattice QCD Focus): Select a paper focusing on neutrino experimental observatories, cross-sections, lattice matrix elements, or multi-messenger detection. Write a deeply mathematical analysis, showing full derivations and equations.
 
-CRITICAL TITLE REQUIREMENT:
+CRITICAL EDITORIAL REQUIREMENTS:
+1. TITLE MUST INCLUDE NEUTRINOS: The title of each blog post MUST explicitly contain the word "neutrino" or "neutrinos".
+2. CONTENT/DESCRIPTION MUST INCLUDE PHOTONS: The excerpt and markdown content MUST explicitly discuss "photon" or "photons" (e.g. electromagnetic field couplings, Cherenkov photons, or loop-induced radiative processes).
 For both options, carefully consider the core scientific discovery, mathematical framework, or physical breakthrough of each selected paper and craft a unique, deeply thoughtful, highly compelling academic title. Every time this process triggers, create fresh, distinct titles that explore the unique novelty of the paper and never reuse generic template titles.
 
 For both options, you must write a comprehensive, long-form academic blog post (content) in markdown format. You must embed rich, professionally-crafted KaTeX/LaTeX math equations (use inline $...$ and block $$...$$) to describe the physics and derivations.`;

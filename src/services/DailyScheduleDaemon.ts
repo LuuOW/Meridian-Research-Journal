@@ -283,7 +283,7 @@ export class DailyScheduleDaemon implements IMicroservice {
    * ranking candidates, generating KaTeX draft, animated SVG banner, and 3-sentence X post.
    */
   public async stageTodayDispatch(
-    forceCategory?: "physics.optics" | "quant-ph",
+    forceCategory?: any,
     allowLateStaging: boolean = false
   ): Promise<StagedDailyDispatch> {
     const art = getArtTime();
@@ -301,7 +301,7 @@ export class DailyScheduleDaemon implements IMicroservice {
     const corpus = analyzeCorpusHistory(existingBlogs);
     const selectedCategory = forceCategory || corpus.recommendedCategory;
 
-    // 1. Fetch real arXiv preprints for physics.optics and quant-ph using adaptive taxonomy query
+    // 1. Fetch real arXiv preprints for High Energy Physics (hep-ex, hep-lat, hep-th, hep-ph)
     let candidates: ArxivPaper[] = [];
     try {
       const adaptiveQueryUrl = buildAdaptiveArxivQueryUrl(selectedCategory, art.dayOfWeek);
@@ -319,7 +319,7 @@ export class DailyScheduleDaemon implements IMicroservice {
     // Fallback to broad query if targeted terms yielded no candidates or timed out
     if (candidates.length === 0) {
       try {
-        const broadQueryUrl = `https://export.arxiv.org/api/query?search_query=cat:physics.optics+OR+cat:quant-ph&sortBy=submittedDate&sortOrder=descending&max_results=50`;
+        const broadQueryUrl = `https://export.arxiv.org/api/query?search_query=(cat:hep-ex+OR+cat:hep-lat+OR+cat:hep-th+OR+cat:hep-ph)+AND+all:%22neutrino%22&sortBy=submittedDate&sortOrder=descending&max_results=50`;
         console.log(`[${this.serviceName}] Executing broad category arXiv XML query: ${broadQueryUrl}`);
         const res = await fetch(broadQueryUrl, { signal: AbortSignal.timeout(4000) });
         if (res.ok) {
@@ -332,9 +332,9 @@ export class DailyScheduleDaemon implements IMicroservice {
       }
     }
 
-    // 2. High-speed Fastly CDN fallback scraping for current recent optics & quant-ph preprints
+    // 2. High-speed Fastly CDN fallback scraping for current recent HEP preprints
     if (candidates.length === 0) {
-      const categoriesToScrape = [selectedCategory, selectedCategory === "physics.optics" ? "quant-ph" : "physics.optics"];
+      const categoriesToScrape = ["hep-ph", "hep-th", "hep-ex", "hep-lat"];
       for (const cat of categoriesToScrape) {
         try {
           console.log(`[${this.serviceName}] Fetching recent papers directly from arXiv list: https://arxiv.org/list/${cat}/recent`);

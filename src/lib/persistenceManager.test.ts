@@ -84,6 +84,11 @@ test("createBlogSnapshot creates timestamped snapshot file on disk", () => {
   const data = JSON.parse(fs.readFileSync(snapshotPath, "utf-8"));
   assert.strictEqual(data.length, 1);
   assert.strictEqual(data[0].id, "test-snapshot-blog-1");
+
+  // Clean up test artifact immediately so production snapshot directory remains pristine
+  if (fs.existsSync(snapshotPath)) {
+    fs.unlinkSync(snapshotPath);
+  }
 });
 
 test("readCustomBlogs returns array of blog posts from filesystem", () => {

@@ -7,7 +7,7 @@ export const onRequestPost = async (context: {
   try {
     const { request, env } = context;
     const body = (await request.json().catch(() => ({}))) as { topic?: string };
-    const topic = body?.topic || "Topological Quantum Computing & Squeezed Light Waveguides";
+    const topic = body?.topic || "Neutrino Oscillations, Flavor Conversion & Multi-Messenger Astrophysical Photons";
 
     const githubToken = env.GITHUB_TOKEN || (typeof process !== "undefined" ? process.env?.GITHUB_TOKEN : "");
 

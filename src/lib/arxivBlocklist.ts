@@ -224,6 +224,8 @@ export function checkArticleBlocked(item: any): BlockcheckResult {
 
   if (allCats.length > 0) {
     const hasAllowedPhysics = allCats.some(c => 
+      c.startsWith("hep-") ||
+      c === "hep-ex" || c === "hep-lat" || c === "hep-th" || c === "hep-ph" ||
       c === "physics.optics" || 
       c.includes("optics") || 
       c === "quant-ph" || 
@@ -240,7 +242,7 @@ export function checkArticleBlocked(item: any): BlockcheckResult {
     if (isDisallowedDiscipline && !hasAllowedPhysics) {
       return {
         blocked: true,
-        reason: `Article categories [${allCats.join(", ")}] are out-of-scope for Meridian ('quant-ph' or 'physics.optics' required).`,
+        reason: `Article categories [${allCats.join(", ")}] are out-of-scope for Meridian ('hep-ex', 'hep-lat', 'hep-th', or 'hep-ph' required).`,
         rule: "DISALLOWED_CATEGORY"
       };
     }

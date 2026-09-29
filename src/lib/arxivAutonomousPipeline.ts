@@ -1,6 +1,15 @@
 import { BlogPost, PipelineExecutionRecord, PipelineStepMetric } from "../types";
 
-export const ALLOWED_CATEGORIES = ["quant-ph", "physics.optics"] as const;
+export const MANDATORY_HEP_DISCIPLINES = [
+  "hep-ex", // High Energy Physics - Experiment
+  "hep-lat", // High Energy Physics - Lattice
+  "hep-th", // High Energy Physics - Theory
+  "hep-ph" // High Energy Physics - Phenomenology
+] as const;
+
+export type MandatoryHepDiscipline = typeof MANDATORY_HEP_DISCIPLINES[number];
+
+export const ALLOWED_CATEGORIES = ["quant-ph", "physics.optics", ...MANDATORY_HEP_DISCIPLINES] as const;
 export type AllowedCategory = (typeof ALLOWED_CATEGORIES)[number];
 
 export interface ArxivPaperCandidate {
@@ -69,9 +78,9 @@ export interface PipelineExecutionReport {
 // -----------------------------------------------------------------------------
 
 /**
- * Validates that an arXiv candidate belongs strictly to 'quant-ph' or 'physics.optics'
- * (either as its primary category or an explicitly declared cross-list).
- * All other categories (e.g. math.DS, cs.AI, hep-th, cond-mat) are rejected.
+ * Validates that an arXiv candidate belongs strictly to the mandatory High Energy Physics categories:
+ * 'hep-ex', 'hep-lat', 'hep-th', or 'hep-ph'.
+ * All previous categories (e.g. physics.optics, quant-ph, cs.AI, math.DS) are rejected under the new editorial mandate.
  */
 export function validateCategoryPolicy(candidate: ArxivPaperCandidate): CategoryValidationResult {
   const allCats = [
@@ -80,26 +89,107 @@ export function validateCategoryPolicy(candidate: ArxivPaperCandidate): Category
   ].map((c) => c.trim().toLowerCase()).filter(Boolean);
 
   for (const cat of allCats) {
-    if (cat === "quant-ph" || cat.startsWith("quant-ph")) {
-      return {
-        allowed: true,
-        matchedCategory: "quant-ph",
-        rawCategories: allCats
-      };
-    }
-    if (cat === "physics.optics" || cat.startsWith("physics.optics")) {
-      return {
-        allowed: true,
-        matchedCategory: "physics.optics",
-        rawCategories: allCats
-      };
+    for (const discipline of MANDATORY_HEP_DISCIPLINES) {
+      if (cat === discipline || cat.startsWith(discipline)) {
+        return {
+          allowed: true,
+          matchedCategory: discipline,
+          rawCategories: allCats
+        };
+      }
     }
   }
 
   return {
     allowed: false,
-    rejectedReason: `Strict category violation: preprint categories [${allCats.join(", ")}] do not match mandatory journal disciplines ('quant-ph' or 'physics.optics').`,
+    rejectedReason: `Strict category violation: preprint categories [${allCats.join(", ")}] do not match mandatory HEP disciplines ('hep-ex', 'hep-lat', 'hep-th', or 'hep-ph').`,
     rawCategories: allCats
+  };
+}
+
+/**
+ * Validates the editorial content keywords:
+ * 1. MUST include "neutrino" or "neutrinos" in the title.
+ * 2. MUST include "photon" or "photons" somewhere in the article content or description/excerpt.
+ */
+export function validateEditorialKeywordsPolicy(paper: {
+  title?: string;
+  summary?: string;
+  excerpt?: string;
+  content?: string;
+}): {
+  allowed: boolean;
+  hasNeutrinoInTitle: boolean;
+  hasPhotonInBodyOrDescription: boolean;
+  rejectedReason?: string;
+} {
+  const title = (paper.title || "").toLowerCase();
+  const bodyAndDesc = `${paper.summary || ""} ${paper.excerpt || ""} ${paper.content || ""}`.toLowerCase();
+
+  const hasNeutrinoInTitle = /\bneutrinos?\b/i.test(title);
+  const hasPhotonInBodyOrDescription = /\bphotons?\b/i.test(bodyAndDesc);
+
+  if (!hasNeutrinoInTitle) {
+    return {
+      allowed: false,
+      hasNeutrinoInTitle,
+      hasPhotonInBodyOrDescription,
+      rejectedReason: `Editorial policy violation: Title "${paper.title || ""}" must include "neutrino" or "neutrinos".`
+    };
+  }
+
+  if (!hasPhotonInBodyOrDescription) {
+    return {
+      allowed: false,
+      hasNeutrinoInTitle,
+      hasPhotonInBodyOrDescription,
+      rejectedReason: `Editorial policy violation: Article content or paragraph description must include "photon" or "photons".`
+    };
+  }
+
+  return {
+    allowed: true,
+    hasNeutrinoInTitle: true,
+    hasPhotonInBodyOrDescription: true
+  };
+}
+
+/**
+ * Validates the strict daily cadence policy:
+ * Exactly 1 article will go out every day.
+ */
+export function validateDailyCadencePolicy(
+  targetDate: string | Date,
+  existingBlogs: BlogPost[]
+): {
+  allowed: boolean;
+  publishedTodayCount: number;
+  existingTodayBlog?: BlogPost;
+  rejectedReason?: string;
+} {
+  const targetDateStr = typeof targetDate === "string"
+    ? new Date(targetDate).toISOString().split("T")[0]
+    : targetDate.toISOString().split("T")[0];
+
+  const todayBlogs = (existingBlogs || []).filter((b) => {
+    if (!b || !b.date) return false;
+    const bDate = new Date(b.date);
+    if (isNaN(bDate.getTime())) return false;
+    return bDate.toISOString().split("T")[0] === targetDateStr;
+  });
+
+  if (todayBlogs.length >= 1) {
+    return {
+      allowed: false,
+      publishedTodayCount: todayBlogs.length,
+      existingTodayBlog: todayBlogs[0],
+      rejectedReason: `Daily cadence limit: Exactly 1 article allowed per day. Already published for ${targetDateStr}: "${todayBlogs[0].title}".`
+    };
+  }
+
+  return {
+    allowed: true,
+    publishedTodayCount: 0
   };
 }
 
