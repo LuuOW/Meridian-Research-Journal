@@ -107,8 +107,47 @@ test("Pipeline Ingestion Guard: telemetry logger outputs formatted warning with 
   }
 });
 
-test("Pipeline Category Validation: strictly allows quant-ph and physics.optics, rejecting CS/math", () => {
-  // 1. quant-ph paper should pass
+test("Pipeline Category Validation: strictly allows hep-ex, hep-lat, hep-th, and hep-ph, rejecting optics/quant-ph/CS/math", () => {
+  // 1. hep-th paper should pass
+  const hepThPaper = {
+    id: "2609.55551",
+    title: "Neutrino mass generation in electroweak theory",
+    summary: "Electromagnetic photon interaction channels with neutrinos.",
+    authors: "H. Bethe, W. Pauli",
+    primaryCategory: "hep-th",
+    categories: ["hep-th"]
+  };
+  const hepThResult = validateCategoryPolicy(hepThPaper);
+  assert.strictEqual(hepThResult.allowed, true);
+  assert.strictEqual(hepThResult.matchedCategory, "hep-th");
+
+  // 2. hep-ph paper should pass
+  const hepPhPaper = {
+    id: "2609.55552",
+    title: "Phenomenological bounds on sterile neutrinos",
+    summary: "Radiative photon signatures in high energy decays.",
+    authors: "Dr. Marcus Vance",
+    primaryCategory: "hep-ph",
+    categories: ["hep-ph"]
+  };
+  const hepPhResult = validateCategoryPolicy(hepPhPaper);
+  assert.strictEqual(hepPhResult.allowed, true);
+  assert.strictEqual(hepPhResult.matchedCategory, "hep-ph");
+
+  // 3. Cross-listed paper containing hep-ex should pass
+  const crossPaper = {
+    id: "2609.55553",
+    title: "Experimental search for neutrino-induced photon showers",
+    summary: "Cherenkov detector data on neutrino interactions.",
+    authors: "Dr. Jane Doe",
+    primaryCategory: "physics.ins-det",
+    categories: ["physics.ins-det", "hep-ex"]
+  };
+  const crossResult = validateCategoryPolicy(crossPaper);
+  assert.strictEqual(crossResult.allowed, true);
+  assert.strictEqual(crossResult.matchedCategory, "hep-ex");
+
+  // 4. quant-ph paper is now rejected under new mandate
   const quantPaper = {
     id: "2609.10535",
     title: "Coherent Quantum State Manipulation",
@@ -118,9 +157,9 @@ test("Pipeline Category Validation: strictly allows quant-ph and physics.optics,
     categories: ["quant-ph"]
   };
   const quantResult = validateCategoryPolicy(quantPaper);
-  assert.strictEqual(quantResult.allowed, true);
+  assert.strictEqual(quantResult.allowed, false);
 
-  // 2. physics.optics paper should pass
+  // 5. physics.optics paper is now rejected under new mandate
   const opticsPaper = {
     id: "2609.10533",
     title: "Microcavity Topological Solitons",
@@ -130,21 +169,9 @@ test("Pipeline Category Validation: strictly allows quant-ph and physics.optics,
     categories: ["physics.optics"]
   };
   const opticsResult = validateCategoryPolicy(opticsPaper);
-  assert.strictEqual(opticsResult.allowed, true);
+  assert.strictEqual(opticsResult.allowed, false);
 
-  // 3. Cross-listed paper containing quant-ph should pass
-  const crossPaper = {
-    id: "2609.10534",
-    title: "Quantum Information Channels",
-    summary: "Information bounds on quantum channels.",
-    authors: "Dr. Jane Doe",
-    primaryCategory: "cs.IT",
-    categories: ["cs.IT", "quant-ph"]
-  };
-  const crossResult = validateCategoryPolicy(crossPaper);
-  assert.strictEqual(crossResult.allowed, true);
-
-  // 4. Computer science paper (cs.CR) without physics must fail
+  // 6. Computer science paper (cs.CR) must fail
   const cryptoPaper = {
     id: "2407.20188",
     title: "ResumeShield: Indirect Prompt Injection",
@@ -157,7 +184,7 @@ test("Pipeline Category Validation: strictly allows quant-ph and physics.optics,
   assert.strictEqual(cryptoResult.allowed, false);
   assert.ok(cryptoResult.rejectedReason?.includes("Strict category violation"));
 
-  // 5. Pure mathematics paper (math.DS) without physics must fail
+  // 7. Pure mathematics paper (math.DS) must fail
   const mathPaper = {
     id: "2608.11111",
     title: "Generic Spectral Determination",

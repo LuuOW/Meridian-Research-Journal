@@ -186,7 +186,7 @@ test("Newly generated article dynamically prepends and sorts to position 0 (top 
     id: `generated-${Date.now() + 100000}`,
     title: "Breakthrough Discovery in Non-Hermitian Photonic Lattices",
     slug: "breakthrough-non-hermitian-photonic-lattices",
-    date: "August 31, 2026",
+    date: "September 30, 2026",
     excerpt: "New dynamic synthesis article",
     content: "## Formulas\n$$\\mathcal{H} \\ne \\mathcal{H}^\\dagger$$",
     author: "Lucas Kempe",

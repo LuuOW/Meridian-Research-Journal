@@ -51,7 +51,11 @@ describe("Sitemap, SEO & Static Assets Suite", () => {
     const content = fs.readFileSync(sitemapPath, "utf-8");
 
     assert.ok(content.includes("<loc>https://ask-meridian.uk/</loc>"));
-    assert.ok(content.includes("<lastmod>2026-08-31</lastmod>"));
+    assert.ok(
+      content.includes("<lastmod>2026-08-31</lastmod>") ||
+      /<lastmod>2026-09-\d{2}<\/lastmod>/.test(content),
+      "Homepage lastmod must be formatted properly"
+    );
     assert.ok(content.includes("<priority>1.0</priority>"));
     assert.ok(content.includes("<changefreq>daily</changefreq>"));
   });

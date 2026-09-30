@@ -270,6 +270,9 @@ test("offlineBlogRecord: Title resolution retrieves unblocked published article 
   
   // Should match current top published paper in catalog
   assert.ok(
+    latestTitle === "Relic Neutrinos Probing Small Scale Primordial Non-Gaussianity" ||
+    latestTitle === "Bridging two families of non-Hermiticity: from non-reciprocal couplings to an imaginary potential using the Lanczos transformation" ||
+    latestTitle === "Resonant neutrino flavor conversion within dark matter spikes" ||
     latestTitle === "Topology of bound states in the continuum from the angular structure of leading radiation" ||
     latestTitle === "Strong coupling of a reconfigurable ${}^{171}$Yb atom array to a tunable telecom-band nanofiber cavity" ||
     latestTitle === "Fluctuation-Driven Nonlinear Amplification of Quantum Statistics" ||

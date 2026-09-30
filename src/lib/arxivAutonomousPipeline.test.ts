@@ -66,48 +66,48 @@ describe("ArXiv Autonomous Ingestion Pipeline - Category & Date Guards", () => {
     submittedDate: "2026-08-11T14:32:00Z"
   };
 
-  // Test Case 2: The stale September 6 Optics paper reported by the user
+  // Test Case 2: The stale September 6 HEP paper reported by the user
   const STALE_OPTICS_SEP6: ArxivPaperCandidate = {
     id: "2609.06542",
-    title: "Recovering topological information of light by topological learning",
-    summary: "Reconstruction of topological invariants from complex optical intensity patterns.",
+    title: "Recovering neutrino mass matrices by topological learning",
+    summary: "Reconstruction of neutrino mixing angles and photon coupling parameters.",
     authors: "Benquan Wang, Trishita Das, Yuhan Peng, Yijie Shen",
-    categories: ["physics.optics"],
-    primaryCategory: "physics.optics",
+    categories: ["hep-ph"],
+    primaryCategory: "hep-ph",
     submittedDate: "2026-09-06T10:15:00Z"
   };
 
   // Test Case 3: Legitimate September 17 paper
   const VALID_QUANT_PH_SEP17: ArxivPaperCandidate = {
     id: "2609.19854",
-    title: "Universal Non-Abelian Holonomic Quantum Computation via Topologically Protected Squeezed Optical States",
-    summary: "Demonstration of non-Abelian holonomies in continuous-variable quantum optical resonators.",
+    title: "Universal Neutrino Mixing Angle Constraints from Squeezed Photon Vacuum",
+    summary: "Demonstration of non-Abelian holonomies and neutrino photon vertex coupling.",
     authors: "E. S. Morozov, K. L. Vance, H. Zhang",
-    categories: ["quant-ph", "physics.optics"],
-    primaryCategory: "quant-ph",
+    categories: ["hep-th"],
+    primaryCategory: "hep-th",
     submittedDate: "2026-09-17T18:22:00Z"
   };
 
   // Test Case 4: Legitimate September 18 paper
   const VALID_OPTICS_SEP18: ArxivPaperCandidate = {
     id: "2609.20188",
-    title: "Topological Soliton Frequency Combs in Anisotropic High-Q Microresonators",
-    summary: "Dissipative Kerr soliton generation protected by synthetic dimensions in optical microresonators.",
+    title: "Topological Neutrino Solitons and Radiative Photon Emissions in Microresonators",
+    summary: "Dissipative Kerr soliton generation with neutrino photon interactions.",
     authors: "S. Tanaka, F. Laurent, M. B. Alvarez",
-    categories: ["physics.optics"],
-    primaryCategory: "physics.optics",
+    categories: ["hep-ph"],
+    primaryCategory: "hep-ph",
     submittedDate: "2026-09-18T09:45:00Z"
   };
 
   describe("1. Strict Category Policy Enforcement", () => {
-    it("strictly rejects papers outside 'quant-ph' and 'physics.optics' (e.g. math.DS)", () => {
+    it("strictly rejects papers outside mandatory HEP disciplines (e.g. math.DS, cs.AI)", () => {
       const result = validateCategoryPolicy(MATH_PAPER_AUG11);
       assert.equal(result.allowed, false);
       assert.ok(result.rejectedReason?.includes("Strict category violation"));
       assert.ok(result.rejectedReason?.includes("math.ds"));
     });
 
-    it("rejects computer science and unrelated disciplines (cs.AI, hep-th)", () => {
+    it("rejects computer science and legacy disciplines (cs.AI, quant-ph, physics.optics)", () => {
       const csPaper: ArxivPaperCandidate = {
         id: "2609.09999",
         title: "Deep Reinforcement Learning Survey",
@@ -117,18 +117,27 @@ describe("ArXiv Autonomous Ingestion Pipeline - Category & Date Guards", () => {
       };
       const result = validateCategoryPolicy(csPaper);
       assert.equal(result.allowed, false);
+
+      const opticsPaper: ArxivPaperCandidate = {
+        id: "2609.11111",
+        title: "Photonic crystal waveguides",
+        summary: "Dielectric bands...",
+        authors: "Optics Researcher",
+        categories: ["physics.optics"]
+      };
+      assert.equal(validateCategoryPolicy(opticsPaper).allowed, false);
     });
 
-    it("accepts valid physics.optics candidate", () => {
+    it("accepts valid hep-ph candidate", () => {
       const result = validateCategoryPolicy(STALE_OPTICS_SEP6);
       assert.equal(result.allowed, true);
-      assert.equal(result.matchedCategory, "physics.optics");
+      assert.equal(result.matchedCategory, "hep-ph");
     });
 
-    it("accepts valid quant-ph candidate and identifies primary discipline", () => {
+    it("accepts valid hep-th candidate and identifies primary discipline", () => {
       const result = validateCategoryPolicy(VALID_QUANT_PH_SEP17);
       assert.equal(result.allowed, true);
-      assert.equal(result.matchedCategory, "quant-ph");
+      assert.equal(result.matchedCategory, "hep-th");
     });
   });
 

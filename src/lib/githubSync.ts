@@ -125,9 +125,18 @@ export function writeLocalBlogFiles(blogs: BlogPost[], targetBaseDir?: string): 
     const baseDir = targetBaseDir || process.cwd();
     const customBlogsPath = path.join(baseDir, "custom_blogs.json");
     
-    // Safety guard: if writing to root, merge with existing snapshot archive if incoming is small
+    // Safety guard: if writing to root, filter out any test mock fixtures and merge cleanly
     let finalBlogs = blogs;
     if (baseDir === process.cwd()) {
+      finalBlogs = blogs.filter(b => 
+        !b.id.startsWith("blog-test-") &&
+        !b.id.startsWith("test-") &&
+        b.id !== "blog-device-new" &&
+        b.id !== "test-snapshot-blog-1" &&
+        !b.id.includes("mizjl") &&
+        !b.title?.toLowerCase().startsWith("arxiv paper 2608")
+      );
+
       let existing: BlogPost[] = [];
       try {
         if (fs.existsSync(customBlogsPath)) {
@@ -135,13 +144,15 @@ export function writeLocalBlogFiles(blogs: BlogPost[], targetBaseDir?: string): 
         }
       } catch {}
 
-      if (existing.length > blogs.length) {
+      if (existing.length > finalBlogs.length) {
         const map = new Map<string, BlogPost>();
         for (const b of existing) {
-          const key = b.slug || b.id || b.title;
-          if (key) map.set(key, b);
+          if (!b.id.startsWith("blog-test-") && !b.id.startsWith("test-") && b.id !== "blog-device-new" && b.id !== "test-snapshot-blog-1" && !b.id.includes("mizjl")) {
+            const key = b.slug || b.id || b.title;
+            if (key) map.set(key, b);
+          }
         }
-        for (const b of blogs) {
+        for (const b of finalBlogs) {
           const key = b.slug || b.id || b.title;
           if (key) map.set(key, { ...map.get(key), ...b });
         }
@@ -670,12 +681,13 @@ export async function testGitHubConnection(): Promise<{
  */
 export async function syncAllBlogsToGitHub(
   blogs: BlogPost[],
-  reason: string = "sync articles"
+  reason: string = "sync articles",
+  targetBaseDir?: string
 ): Promise<GitHubSyncResult> {
   const timestamp = Date.now();
   
   // 1. Always update local files on disk first
-  writeLocalBlogFiles(blogs);
+  writeLocalBlogFiles(blogs, targetBaseDir);
 
   const config = getGitHubSyncConfig();
   if (!config.configured) {

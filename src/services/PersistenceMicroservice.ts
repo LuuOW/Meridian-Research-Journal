@@ -45,9 +45,11 @@ export class PersistenceMicroservice implements IMicroservice {
   private isInitialized: boolean = false;
   private deviceRegistry: Map<string, DeviceSyncRegistration> = new Map();
   private firestoreDbInstance: any = null;
+  private baseDir: string;
 
   constructor(options?: { baseDir?: string; firestoreDb?: any }) {
     const base = options?.baseDir || process.cwd();
+    this.baseDir = base;
     this.dataDir = path.join(base, "data");
     this.snapshotsDir = path.join(this.dataDir, "snapshots");
     this.journalFile = path.join(this.dataDir, "generation_journal.jsonl");
@@ -318,7 +320,7 @@ export class PersistenceMicroservice implements IMicroservice {
 
     // Tier 6: GitHub Repository Mirror
     try {
-      const ghRes = await syncAllBlogsToGitHub(blogs, reason);
+      const ghRes = await syncAllBlogsToGitHub(blogs, reason, this.baseDir);
       if (ghRes.success) {
         status.gitHubMirror = true;
       }

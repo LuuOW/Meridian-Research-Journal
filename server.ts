@@ -75,6 +75,7 @@ import {
 } from "./src/lib/persistenceManager";
 import { isArticleBlocked, checkArticleBlocked, logBlockedArticle, filterBlockedArticles } from "./src/lib/arxivBlocklist";
 import { validateCategoryPolicy } from "./src/lib/arxivAutonomousPipeline";
+import { sortBlogsByPublicationDate } from "./src/lib/viewCounter";
 import {
   createPipelineTracker,
   recordStepProgress,
@@ -624,42 +625,8 @@ const getBlogTimestamp = (blog: any): number => {
 };
 
 // Chronologically sort blogs so newest articles appear first deterministically
-// EXCEPTION: Chronological sorting does NOT apply to articles manually generated via this tool;
-// they are prioritized at the top of the publication feed.
 const sortBlogsChronologically = (blogs: any[]): any[] => {
-  const manualBlogs: any[] = [];
-  const standardBlogs: any[] = [];
-
-  for (const b of blogs) {
-    if (
-      b.isManual === true ||
-      b.isManualGeneration === true ||
-      b.source === "manual_tool" ||
-      b.id === "generated-1790281414849" ||
-      b.id === "generated-1790432374898"
-    ) {
-      manualBlogs.push(b);
-    } else {
-      standardBlogs.push(b);
-    }
-  }
-
-  manualBlogs.sort((a: any, b: any) => {
-    const timeA = getBlogTimestamp(a);
-    const timeB = getBlogTimestamp(b);
-    return timeB - timeA;
-  });
-
-  standardBlogs.sort((a: any, b: any) => {
-    const timeA = getBlogTimestamp(a);
-    const timeB = getBlogTimestamp(b);
-    if (timeA !== timeB) {
-      return timeB - timeA;
-    }
-    return (a?.title || "").localeCompare(b?.title || "");
-  });
-
-  return [...manualBlogs, ...standardBlogs];
+  return sortBlogsByPublicationDate(blogs, "desc");
 };
 
 // Get all blogs, with fallback to local JSON file
