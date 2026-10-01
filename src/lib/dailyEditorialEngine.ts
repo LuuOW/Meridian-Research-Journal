@@ -216,6 +216,30 @@ export function getArtTime(referenceDate: Date = new Date()) {
   };
 }
 
+export function formatArtReadableDate(dateInput: string | Date = new Date()): string {
+  if (typeof dateInput === "string") {
+    if (/^[A-Za-z]+ \d{1,2}, \d{4}$/.test(dateInput.trim())) {
+      return dateInput.trim();
+    }
+    const d = new Date(dateInput.includes("T") ? dateInput : `${dateInput}T12:00:00Z`);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC"
+      });
+    }
+    return dateInput;
+  }
+  return dateInput.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  });
+}
+
 /**
  * Maps the day of the week to the source arXiv batch according to next-day publishing:
  * - Friday's arXiv release -> Published on Monday 9 AM ART
@@ -826,7 +850,7 @@ The experimental signatures of these high-energy neutrino interactions provide c
     excerpt,
     content,
     author: candidate.authors ? candidate.authors.split(",")[0] : "Lucas Kempe",
-    date: artInfo.isWeekend ? artInfo.targetPublishDate : artInfo.dateString,
+    date: artInfo.isWeekend ? formatArtReadableDate(artInfo.targetPublishDate) : formatArtReadableDate(artInfo.dateString),
     readingTime: "9 min read",
     bannerSvg,
     arxivLink: `https://arxiv.org/abs/${candidate.id}`,

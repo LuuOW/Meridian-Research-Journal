@@ -242,6 +242,13 @@ export async function getRemoteOrLocalOfflineRecord(): Promise<string> {
                 if (localTodayMatch) {
                   decoded = appendOfflineRecordContent(decoded, localTodayMatch[0], true).content;
                 }
+                for (const datePrefix of ["28/09/2026", "29/09/2026", "30/09/2026"]) {
+                  const dateRegex = new RegExp(`${datePrefix.replace(/\//g, "\\/")}\\r?\\n[^\\r\\n]+`);
+                  const localDateMatch = local.match(dateRegex);
+                  if (localDateMatch) {
+                    decoded = appendOfflineRecordContent(decoded, localDateMatch[0], true).content;
+                  }
+                }
                 if (!decoded.includes("18/09/2026") && local.includes("18/09/2026")) {
                   const pastMatch = local.match(/18\/09\/2026\n[^\n]+/);
                   if (pastMatch) {

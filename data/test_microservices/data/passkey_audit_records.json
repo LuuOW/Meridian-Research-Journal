@@ -1,5 +1,305 @@
 [
   {
+    "eventId": "audit_1790871813704_5rb8i5u",
+    "eventType": "session_restored_reload",
+    "timestamp": 1790871813704,
+    "status": "info",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "roamFrom": "24.120.55.10",
+      "roamTo": "172.56.21.99",
+      "sessionId": "sess_n1wvvazua3bmupqu79i"
+    },
+    "ip": "172.56.21.99"
+  },
+  {
+    "eventId": "audit_1790871813703_teqg8kn",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790871813703,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_n1wvvazua3bmupqu79i"
+    },
+    "ip": "24.120.55.10"
+  },
+  {
+    "eventId": "audit_1790871813700_7kq1fme",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790871813700,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_cg5rp6vxocmupqu79f"
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790871813697_ijp67ea",
+    "eventType": "passkey_registered",
+    "timestamp": 1790871813697,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "biometric": true
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790871790839_ot5055s",
+    "eventType": "session_restored_reload",
+    "timestamp": 1790871790839,
+    "status": "info",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "roamFrom": "24.120.55.10",
+      "roamTo": "172.56.21.99",
+      "sessionId": "sess_26mty1kb861mupqtpmd"
+    },
+    "ip": "172.56.21.99"
+  },
+  {
+    "eventId": "audit_1790871790838_nzfz17i",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790871790838,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_26mty1kb861mupqtpmd"
+    },
+    "ip": "24.120.55.10"
+  },
+  {
+    "eventId": "audit_1790871790834_7c5vy12",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790871790834,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_8x6rtpp5t4dmupqtpma"
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790871790833_14329uu",
+    "eventType": "passkey_registered",
+    "timestamp": 1790871790833,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "biometric": true
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790871718171_bjlydmw",
+    "eventType": "session_restored_reload",
+    "timestamp": 1790871718171,
+    "status": "info",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "roamFrom": "24.120.55.10",
+      "roamTo": "172.56.21.99",
+      "sessionId": "sess_bpnjt3iotcgmupqs5jt"
+    },
+    "ip": "172.56.21.99"
+  },
+  {
+    "eventId": "audit_1790871718169_cienrmq",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790871718169,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_bpnjt3iotcgmupqs5jt"
+    },
+    "ip": "24.120.55.10"
+  },
+  {
+    "eventId": "audit_1790871718167_y7lcscp",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790871718167,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_y31sy5s3uujmupqs5jr"
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790871718165_o2mvqfx",
+    "eventType": "passkey_registered",
+    "timestamp": 1790871718165,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "biometric": true
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790777308825_2009umy",
+    "eventType": "session_restored_reload",
+    "timestamp": 1790777308825,
+    "status": "info",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "roamFrom": "24.120.55.10",
+      "roamTo": "172.56.21.99",
+      "sessionId": "sess_qmoav8y86dmuo6kmu0"
+    },
+    "ip": "172.56.21.99"
+  },
+  {
+    "eventId": "audit_1790777308824_abdwn2k",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790777308824,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_qmoav8y86dmuo6kmu0"
+    },
+    "ip": "24.120.55.10"
+  },
+  {
+    "eventId": "audit_1790777308821_66kq0kw",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790777308821,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_69uvvl9a3r7muo6kmtx"
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790777308819_d5nmdlw",
+    "eventType": "passkey_registered",
+    "timestamp": 1790777308819,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "biometric": true
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790777228209_wwu8eka",
+    "eventType": "session_restored_reload",
+    "timestamp": 1790777228209,
+    "status": "info",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "roamFrom": "24.120.55.10",
+      "roamTo": "172.56.21.99",
+      "sessionId": "sess_eh2zivbxgmkmuo6iwmm"
+    },
+    "ip": "172.56.21.99"
+  },
+  {
+    "eventId": "audit_1790777228206_zv378ja",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790777228206,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_eh2zivbxgmkmuo6iwmm"
+    },
+    "ip": "24.120.55.10"
+  },
+  {
+    "eventId": "audit_1790777228205_jxqc114",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790777228205,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_v4pmax4dj4muo6iwmk"
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790777228203_tbsavms",
+    "eventType": "passkey_registered",
+    "timestamp": 1790777228203,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "biometric": true
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790777109943_crx4fht",
+    "eventType": "session_restored_reload",
+    "timestamp": 1790777109943,
+    "status": "info",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "roamFrom": "24.120.55.10",
+      "roamTo": "172.56.21.99",
+      "sessionId": "sess_19o4kkfdsbemuo6gddh"
+    },
+    "ip": "172.56.21.99"
+  },
+  {
+    "eventId": "audit_1790777109941_kem095e",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790777109941,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_19o4kkfdsbemuo6gddh"
+    },
+    "ip": "24.120.55.10"
+  },
+  {
+    "eventId": "audit_1790777109939_upk1hkx",
+    "eventType": "passkey_authenticated",
+    "timestamp": 1790777109939,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "sessionId": "sess_rdl1lilyzr8muo6gddf"
+    },
+    "ip": "192.168.1.100"
+  },
+  {
+    "eventId": "audit_1790777109938_afkm84r",
+    "eventType": "passkey_registered",
+    "timestamp": 1790777109938,
+    "status": "success",
+    "credentialId": "passkey_macbook_m3_secure",
+    "deviceName": "Lucas's MacBook Pro M3",
+    "details": {
+      "biometric": true
+    },
+    "ip": "192.168.1.100"
+  },
+  {
     "eventId": "audit_1790775868588_p4yi9hm",
     "eventType": "session_restored_reload",
     "timestamp": 1790775868588,

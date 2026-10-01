@@ -176,6 +176,7 @@ test("Daily Offline Record Diagnosis 6: Blocklist enforcement prevents blocked p
     "Latest title must NEVER resolve to the stale Sept 6 paper"
   );
   assert.ok(
+    latestTitle === "Constraining Ultra-Light Vector Bosons via Solar Neutrino Oscillations: The Gauged $L_μ- L_τ$ Model and Prospects for JUNO and XLZD" ||
     latestTitle === "Relic Neutrinos Probing Small Scale Primordial Non-Gaussianity" ||
     latestTitle === "Bridging two families of non-Hermiticity: from non-reciprocal couplings to an imaginary potential using the Lanczos transformation" ||
     latestTitle === "Resonant neutrino flavor conversion within dark matter spikes" ||

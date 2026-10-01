@@ -29,12 +29,17 @@ export function stripSlugTimestampSuffix(slug: string): string {
 export function extractArxivIdFromText(text: string): string | null {
   if (!text) return null;
   const match = text.match(/(\d{4}\.\d{4,5}(?:v\d+)?)/i);
-  return match ? match[1] : null;
+  if (match) return match[1];
+  const hyphenMatch = text.match(/(\d{4})-(\d{4,5}(?:v\d+)?)/i);
+  if (hyphenMatch) return `${hyphenMatch[1]}.${hyphenMatch[2]}`;
+  return null;
 }
 
 export const SLUG_LEGACY_ALIASES: Record<string, string> = {
   "topological-soliton-frequency-combs-anisotropic-microresonators": "topological-argument-robustness-coherent-states-quantum-optics",
   "resonant-neutrino-flavor-conversion-within-dark-matter-spikes-4898": "resonant-neutrino-flavor-conversion-within-dark-matter-spikes-2945",
+  "https-arxiv-org-pdf-2609-35135": "muon-detection-direction-reconstruction-upgraded-water-cherenkov-detector-cjpl-i-5135",
+  "advanced-rigorous-analysis-of-https-arxiv-org-pdf-2609-35135": "muon-detection-direction-reconstruction-upgraded-water-cherenkov-detector-cjpl-i-5135",
 };
 
 /**

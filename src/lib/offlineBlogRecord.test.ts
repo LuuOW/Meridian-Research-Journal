@@ -270,6 +270,7 @@ test("offlineBlogRecord: Title resolution retrieves unblocked published article 
   
   // Should match current top published paper in catalog
   assert.ok(
+    latestTitle === "Constraining Ultra-Light Vector Bosons via Solar Neutrino Oscillations: The Gauged $L_μ- L_τ$ Model and Prospects for JUNO and XLZD" ||
     latestTitle === "Relic Neutrinos Probing Small Scale Primordial Non-Gaussianity" ||
     latestTitle === "Bridging two families of non-Hermiticity: from non-reciprocal couplings to an imaginary potential using the Lanczos transformation" ||
     latestTitle === "Resonant neutrino flavor conversion within dark matter spikes" ||

@@ -3,7 +3,7 @@ import { ensureAnimatedSvg } from "./lib/svgUtils";
 
 const RAW_PRELOADED_BLOGS: BlogPost[] = [
   {
-    "id": "blog-1790775868685-2jh1x",
+    "id": "blog-1790871813802-2t1wz",
     "title": "arXiv Paper 2608.99991: 2608 99991",
     "slug": "arxiv-paper-2608-99991-2608-99991",
     "excerpt": "Automated scholarly synthesis and mathematical breakdown of arXiv preprint 2608.99991....",
@@ -20,7 +20,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     ],
     "createdAt": 1785585600000,
     "timestamp": 1785585600000,
-    "views": 470
+    "views": 473
   },
   {
     "id": "blog-device-new",

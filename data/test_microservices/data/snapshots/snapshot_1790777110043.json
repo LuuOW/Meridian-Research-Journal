@@ -1,6 +1,6 @@
 [
   {
-    "id": "blog-1790514833164-mizjl",
+    "id": "blog-1790777110040-fuoak",
     "title": "arXiv Paper 2608.99991: 2608 99991",
     "slug": "arxiv-paper-2608-99991-2608-99991",
     "excerpt": "Automated scholarly synthesis and mathematical breakdown of arXiv preprint 2608.99991....",
@@ -17,7 +17,7 @@
     ],
     "createdAt": 1785585600000,
     "timestamp": 1785585600000,
-    "views": 1484
+    "views": 1026
   },
   {
     "id": "blog-device-new",
@@ -69,10 +69,11 @@
     "bannerSvg": "<svg><text>Quantum</text></svg>",
     "tags": [
       "Quantum Mechanics",
-      "Spectral Theory"
+      "Spectral Theory",
+      "Optics"
     ],
-    "views": 399,
-    "timestamp": 1725000000000,
+    "views": 450,
+    "timestamp": 1725200000000,
     "createdAt": 1725000000000
   }
 ]

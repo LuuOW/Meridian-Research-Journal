@@ -13,23 +13,30 @@ describe("Blog Consistency Suite: Latest Publication Dates (September 23 - 24, 2
   const pubCustomBlogsPath = path.join(process.cwd(), "public", "custom_blogs.json");
   const offlineRecordPath = path.join(process.cwd(), "offline_blog_record");
 
-  test("Latest published article is dated September 23, 24, 25, 28, 29, or 30, 2026", () => {
+  test("Latest published article is dated October 1, September 23, 24, 25, 28, 29, or 30, 2026", () => {
     const customBlogs: BlogPost[] = JSON.parse(fs.readFileSync(rootCustomBlogsPath, "utf-8"));
     const latestBlog = customBlogs[0];
     assert.ok(latestBlog, "There must be at least one blog entry");
 
     // Must match today's or recent dates
     assert.ok(
+      latestBlog.date === "October 1, 2026" ||
       latestBlog.date === "September 30, 2026" ||
       latestBlog.date === "September 29, 2026" ||
       latestBlog.date === "September 28, 2026" ||
       latestBlog.date === "September 25, 2026" ||
       latestBlog.date === "September 24, 2026" ||
       latestBlog.date === "September 23, 2026",
-      `Latest article must be dated September 23, 24, 25, 28, 29, or 30, 2026 (actual: ${latestBlog.date})`
+      `Latest article must be dated October 1, September 23, 24, 25, 28, 29, or 30, 2026 (actual: ${latestBlog.date})`
     );
 
-    if (latestBlog.date === "September 30, 2026") {
+    if (latestBlog.date === "October 1, 2026") {
+      assert.ok(
+        latestBlog.title.includes("Constraining Ultra-Light Vector Bosons") ||
+        latestBlog.title.toLowerCase().includes("neutrino") ||
+        latestBlog.arxivLink?.includes("2609.33877")
+      );
+    } else if (latestBlog.date === "September 30, 2026") {
       assert.ok(
         latestBlog.title.includes("Relic Neutrinos Probing") ||
         latestBlog.title.toLowerCase().includes("neutrino") ||

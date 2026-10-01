@@ -1858,13 +1858,23 @@ app.post("/api/blog/generate", async (req, res) => {
 
     // Fallbacks if metadata fetch failed or was skipped
     if (!paperTitle && rawText) {
-      paperTitle = "Pasted Paper Analysis";
+      const firstLine = rawText.split("\n")[0].replace(/^#+\s*/, "").trim();
+      paperTitle = firstLine.length > 5 && firstLine.length < 120 ? firstLine : "Scholarly Paper Analysis";
       paperSummary = rawText.slice(0, 2000); // chunk of raw text for context
       arxivLink = arxivInput || "https://arxiv.org";
     } else if (!paperTitle) {
-      paperTitle = arxivInput;
+      if (arxivId) {
+        paperTitle = `Scholarly Analysis of arXiv:${arxivId}`;
+      } else {
+        paperTitle = "Frontier Physical & Mathematical Analysis";
+      }
       paperSummary = rawText || arxivInput;
       arxivLink = arxivInput.startsWith("http") ? arxivInput : `https://arxiv.org/abs/${arxivInput}`;
+    }
+
+    // Sanitization: Guarantee paperTitle never contains raw URLs or "Advanced Rigorous Analysis of https://"
+    if (paperTitle.includes("http://") || paperTitle.includes("https://") || paperTitle.includes("arxiv.org")) {
+      paperTitle = arxivId ? `Scholarly Analysis of arXiv:${arxivId}` : "Frontier Physical & Mathematical Analysis";
     }
 
     // Duplicate Prevention Check:
@@ -2020,12 +2030,31 @@ Requirements:
     
     // Add stable unique ID and slug for this trigger run
     const timestamp = Date.now();
-    const slug = generateSlug(parsedBlog.title || paperTitle || "meridian-research");
+    let finalTitle = parsedBlog.title || paperTitle || "Meridian Scholarly Research";
+    if (finalTitle.includes("http://") || finalTitle.includes("https://") || finalTitle.includes("arxiv.org")) {
+      finalTitle = paperTitle && !paperTitle.includes("http") ? paperTitle : (arxivId ? `Scholarly Analysis of arXiv:${arxivId}` : "Frontier Physical & Mathematical Analysis");
+    }
+
+    let finalExcerpt = parsedBlog.excerpt || "";
+    if (!finalExcerpt || finalExcerpt.includes("http://") || finalExcerpt.includes("https://")) {
+      finalExcerpt = `A rigorous scholarly analysis exploring the fundamental mathematical physics, particle dynamics, and transformative implications of ${finalTitle}.`;
+    }
+
+    const slug = generateSlug(finalTitle);
 
     const initialBlog = {
       ...parsedBlog,
       id: `generated-${timestamp}`,
+      title: finalTitle,
+      excerpt: finalExcerpt,
       slug: `${slug}-${timestamp.toString().slice(-4)}`,
+      aliasSlugs: [
+        ...(Array.isArray(parsedBlog.aliasSlugs) ? parsedBlog.aliasSlugs : []),
+        arxivId ? `https-arxiv-org-pdf-${arxivId}` : null,
+        arxivId ? `https-arxiv-org-abs-${arxivId}` : null,
+        arxivId ? `advanced-rigorous-analysis-of-https-arxiv-org-pdf-${arxivId}` : null,
+        arxivId || null
+      ].filter(Boolean),
       date: new Date().toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
