@@ -37,12 +37,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/resonant-neutrino-flavor-conversion-within-dark-matter-spikes-2945</loc>
-    <lastmod>2026-09-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/collapse-to-extremality-the-third-law-of-black-hole-thermodynamics-in-quantum-gravity-4849</loc>
     <lastmod>2026-09-26</lastmod>
     <changefreq>monthly</changefreq>
@@ -50,12 +44,6 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/2609-29074v1-2364</loc>
-    <lastmod>2026-09-25</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/2609-29074v1-6185</loc>
     <lastmod>2026-09-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -127,18 +115,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/2609-10533-7029</loc>
-    <lastmod>2026-09-11</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/2609-10533-9761</loc>
-    <lastmod>2026-09-11</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/2609-11887v1-6194</loc>
     <lastmod>2026-09-11</lastmod>
     <changefreq>monthly</changefreq>
@@ -146,12 +122,6 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/2408-09854-6969</loc>
-    <lastmod>2026-09-10</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/2408-09854-9799</loc>
     <lastmod>2026-09-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -349,20 +319,8 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/topological-insulators-chern</loc>
-    <lastmod>2026-09-01</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/spectral-fingerprints-of-gauge-theories-on-a-quantum-computer-3779</loc>
     <lastmod>2026-08-29</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/towards-optimal-quantum-estimators-for-state-frame-potential-9854</loc>
-    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -381,12 +339,6 @@
   <url>
     <loc>https://ask-meridian.uk/blog/frontier-photonic-engines-from-quantum-readouts-to-deep-tissue-imaging-8842</loc>
     <lastmod>2026-08-22</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/intensity-based-scattering-correction-enables-in-vivo-two-photon-imaging-beyond-1-mm-7569</loc>
-    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -427,12 +379,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/synthesizing-quantum-confinement-with-far-field-photonic-dynamics-a-tcmt-deconstruction-of-stark-tuned-polaritonic-metasurfaces-6532</loc>
-    <lastmod>2026-08-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/accelerating-quantum-metrology-subquadratic-von-neumann-entropy-estimation-and-its-experimental-scalability-implications-7277</loc>
     <lastmod>2026-08-12</lastmod>
     <changefreq>monthly</changefreq>
@@ -446,12 +392,6 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/quantum-approximate-optimization-on-the-sherrington-kirkpatrick-model-a-semiclassical-perspective-0216</loc>
-    <lastmod>2026-07-10</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/unpacking-qaoa-s-performance-on-spin-glasses-a-semiclassical-journey-into-the-sherrington-kirkpatrick-model-8103</loc>
     <lastmod>2026-07-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -476,12 +416,6 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/geometric-torsion-a-new-paradigm-for-spin-to-orbital-angular-momentum-conversion-2968</loc>
-    <lastmod>2026-07-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/geometric-torsion-breaking-selection-rules-in-spin-to-oam-conversion-6995</loc>
     <lastmod>2026-07-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -536,12 +470,6 @@
   </url>
   <url>
     <loc>https://ask-meridian.uk/blog/cultivating-the-quantum-catalyst-exact-fine-dyadic-phase-gates-via-high-period-clifford-eigenstates-4812</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ask-meridian.uk/blog/exact-fine-dyadic-phase-gates-via-reusable-logical-catalyst-states-a-surface-code-cultivation-protocol-6200</loc>
     <lastmod>2026-06-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -673,12 +601,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ask-meridian.uk/blog/quantum-optics-chiral-antichiral-waveguide-arrays</loc>
-    <lastmod>2026-06-01</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ask-meridian.uk/blog/home-edna-sequencing-dgx-spark</loc>
     <lastmod>2026-05-24</lastmod>
     <changefreq>monthly</changefreq>
@@ -759,6 +681,84 @@
   <url>
     <loc>https://ask-meridian.uk/blog/cloudflare-ai-gateway-vectorize-rag</loc>
     <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/resonant-neutrino-flavor-conversion-within-dark-matter-spikes-2945</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/2609-29074v1-6185</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/2609-10533-7029</loc>
+    <lastmod>2026-09-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/2609-10533-9761</loc>
+    <lastmod>2026-09-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/2408-09854-9799</loc>
+    <lastmod>2026-09-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/topological-insulators-chern</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/towards-optimal-quantum-estimators-for-state-frame-potential-9854</loc>
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/intensity-based-scattering-correction-enables-in-vivo-two-photon-imaging-beyond-1-mm-7569</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/synthesizing-quantum-confinement-with-far-field-photonic-dynamics-a-tcmt-deconstruction-of-stark-tuned-polaritonic-metasurfaces-6532</loc>
+    <lastmod>2026-08-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/unpacking-qaoa-s-performance-on-spin-glasses-a-semiclassical-journey-into-the-sherrington-kirkpatrick-model-8103</loc>
+    <lastmod>2026-07-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/geometric-torsion-breaking-selection-rules-in-spin-to-oam-conversion-6995</loc>
+    <lastmod>2026-07-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/exact-fine-dyadic-phase-gates-via-reusable-logical-catalyst-states-a-surface-code-cultivation-protocol-6200</loc>
+    <lastmod>2026-06-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ask-meridian.uk/blog/quantum-optics-chiral-antichiral-waveguide-arrays</loc>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
