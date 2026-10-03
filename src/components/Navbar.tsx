@@ -223,14 +223,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group min-w-0" 
             onClick={handleHomeClick}
           >
-            {/* Elite Geometric Emblazoned Logo */}
-            <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 dark:from-neutral-200 dark:to-neutral-400 p-[1px] shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-105 shrink-0">
-              <div className="w-full h-full bg-black dark:bg-neutral-900 rounded-[11px] flex items-center justify-center overflow-hidden relative">
+            {/* Elite Geometric Emblazoned Logo with Moving Neon Ring */}
+            <div className="relative p-[1.5px] rounded-xl overflow-hidden neon-ring-wrapper shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-105 shrink-0">
+              <div className="w-9 h-9 sm:w-11 sm:h-11 bg-black dark:bg-neutral-900 rounded-[10.5px] flex items-center justify-center overflow-hidden relative z-10">
                 {/* Decorative background grid line */}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.15)_1px,_transparent_1px)] bg-[size:6px_6px] opacity-40"></div>
-                {/* Core rotating compass */}
+                {/* Core rotating compass - moves continuously without needing user hover */}
                 <Compass 
-                  className="w-4 h-4 sm:w-5 sm:h-5 text-white dark:text-neutral-100 transition-all duration-1000 ease-in-out group-hover:rotate-[360deg] relative z-10" 
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-white dark:text-neutral-100 animate-compass-spin relative z-10" 
                 />
                 {/* Outer orbit circle */}
                 <div className="absolute w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/10 dark:border-white/5 animate-pulse"></div>
@@ -241,9 +241,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-xl sm:text-2xl font-bold tracking-tighter italic font-serif text-black dark:text-white group-hover:text-neutral-800 dark:group-hover:text-neutral-200 transition-colors">
                   Meridian.
                 </span>
-                <span className="px-1.5 sm:px-2 py-0.5 bg-neutral-950 text-white dark:bg-white dark:text-black text-[7px] sm:text-[8px] font-extrabold rounded-md font-mono uppercase tracking-widest shadow-sm transition-colors">
-                  Journal
-                </span>
+                <div className="neon-ring-wrapper rounded-md p-[1px] inline-flex">
+                  <span className="neon-ring-content px-1.5 sm:px-2 py-0.5 bg-neutral-950 text-white dark:bg-white dark:text-black text-[7px] sm:text-[8px] font-extrabold rounded-[5px] font-mono uppercase tracking-widest shadow-sm transition-colors">
+                    Journal
+                  </span>
+                </div>
               </div>
               <p className="text-[8px] sm:text-[9px] text-gray-500 dark:text-neutral-400 font-bold tracking-widest uppercase font-mono transition-colors truncate hidden sm:block">
                 Quantum Optics · Computing · AI

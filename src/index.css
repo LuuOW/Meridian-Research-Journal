@@ -1,6 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -75,13 +75,43 @@
   }
 }
 
+@keyframes compass-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-compass-spin {
+  animation: compass-spin 10s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-compass-spin {
+    animation: none;
+  }
+  .neon-ring-wrapper::before {
+    animation: none;
+  }
+}
+
 .neon-ring-wrapper {
   position: relative;
   overflow: hidden;
   padding: 1.5px; /* fine border ring size */
   display: inline-flex;
-  border-radius: 9999px; /* rounded-full */
+  border-radius: 9999px; /* default rounded-full */
   animation: neon-pulse 4s ease-in-out infinite;
+}
+
+.neon-ring-wrapper.rounded-xl {
+  border-radius: 0.75rem;
+}
+
+.neon-ring-wrapper.rounded-md {
+  border-radius: 0.375rem;
 }
 
 .neon-ring-wrapper::before {
@@ -126,6 +156,14 @@
   height: 100%;
   display: inline-flex;
   align-items: center;
+}
+
+.neon-ring-wrapper.rounded-xl .neon-ring-content {
+  border-radius: calc(0.75rem - 1.5px);
+}
+
+.neon-ring-wrapper.rounded-md .neon-ring-content {
+  border-radius: calc(0.375rem - 1px);
 }
 
 .dark .neon-ring-content {

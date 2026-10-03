@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Compass, Search, Tag, Newspaper, Download, FileEdit, FileText, Palette, Trash2, Coins, Heart, ArrowLeftRight } from "lucide-react";
+import { ArrowLeft, Headset, ExternalLink, BookOpen, Sparkles, Search, Tag, Newspaper, Download, FileEdit, FileText, Palette, Trash2, Coins, Heart, ArrowLeftRight } from "lucide-react";
 
 import { BlogPost, GenerationJob } from "./types";
 import { PRELOADED_BLOGS } from "./data";
@@ -1331,42 +1331,8 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.35 }}
-              className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
+              className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-12"
             >
-              {/* Scholarly Hero Header */}
-              <div className="text-center max-w-3xl mx-auto mb-14 space-y-6 relative">
-                {/* Micro Ambient Glow */}
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-64 h-64 bg-neutral-200/40 dark:bg-neutral-800/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-
-                <div className="neon-ring-wrapper">
-                  <div className="neon-ring-content gap-2 px-4 py-1.5 text-neutral-600 dark:text-neutral-300 text-[10px] font-bold tracking-widest uppercase">
-                    <Compass className="w-3.5 h-3.5 text-black dark:text-white animate-spin-slow" />
-                    Active Peer-Reviewed Translations
-                  </div>
-                </div>
-                
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold italic text-black dark:text-white tracking-tight leading-[1.12]">
-                  Symmetry-Preserving <span className="not-italic font-sans font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-500 dark:from-white dark:to-neutral-400">Research</span> Journal
-                </h1>
-                
-                <div className="glitch-wrapper">
-                  <div className="glitch-text" data-text="Code is Abundant. Operational Stability is Scarce.">
-                    Code is Abundant. Operational Stability is Scarce.
-                  </div>
-                </div>
-                
-                <p className="text-gray-500 dark:text-neutral-400 text-sm sm:text-base md:text-lg leading-relaxed font-light max-w-2xl mx-auto mt-2">
-                  Bridging complex quantum optics, quantum computing, and artificial intelligence papers into highly visual, technical editorial publications.
-                </p>
-
-                {/* Elegant academic dual rule separator */}
-                <div className="flex items-center justify-center gap-3 pt-2">
-                  <div className="h-[1px] w-12 bg-neutral-200 dark:bg-neutral-800" />
-                  <div className="w-1.5 h-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 bg-transparent" />
-                  <div className="h-[1px] w-12 bg-neutral-200 dark:bg-neutral-800" />
-                </div>
-              </div>
-
               {/* Simplified Intelligent Search & Topic Filter Bar (No Tilt, Autocomplete, Loading Effect) */}
               <SearchFilterBar
                 searchQuery={searchQuery}
