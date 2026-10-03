@@ -106,6 +106,10 @@
   animation: neon-pulse 4s ease-in-out infinite;
 }
 
+.neon-ring-wrapper.rounded-2xl {
+  border-radius: 1rem;
+}
+
 .neon-ring-wrapper.rounded-xl {
   border-radius: 0.75rem;
 }
@@ -156,6 +160,10 @@
   height: 100%;
   display: inline-flex;
   align-items: center;
+}
+
+.neon-ring-wrapper.rounded-2xl .neon-ring-content {
+  border-radius: calc(1rem - 1.5px);
 }
 
 .neon-ring-wrapper.rounded-xl .neon-ring-content {

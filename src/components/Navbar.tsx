@@ -217,39 +217,39 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header id="app-header" className="sticky top-0 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-gray-100 dark:border-neutral-900 z-40 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
         
-        {/* Brand Logo & Compass */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {/* Brand Logo & Compass with Moving Neon Ring over the WHOLE component */}
+        <div className="flex items-center min-w-0">
           <div 
-            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group min-w-0" 
+            className="neon-ring-wrapper rounded-2xl p-[1.5px] cursor-pointer group shadow-sm transition-all duration-300 hover:shadow-md hover:scale-[1.02] shrink-0" 
             onClick={handleHomeClick}
           >
-            {/* Elite Geometric Emblazoned Logo with Moving Neon Ring */}
-            <div className="relative p-[1.5px] rounded-xl overflow-hidden neon-ring-wrapper shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-105 shrink-0">
-              <div className="w-9 h-9 sm:w-11 sm:h-11 bg-black dark:bg-neutral-900 rounded-[10.5px] flex items-center justify-center overflow-hidden relative z-10">
+            <div className="neon-ring-content px-2.5 py-1.5 sm:px-3 sm:py-2 bg-white/95 dark:bg-neutral-950/95 flex items-center gap-2.5 sm:gap-3 transition-colors">
+              {/* Core rotating compass emblem */}
+              <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-black dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
                 {/* Decorative background grid line */}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.15)_1px,_transparent_1px)] bg-[size:6px_6px] opacity-40"></div>
                 {/* Core rotating compass - moves continuously without needing user hover */}
                 <Compass 
-                  className="w-4 h-4 sm:w-5 sm:h-5 text-white dark:text-neutral-100 animate-compass-spin relative z-10" 
+                  className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white dark:text-neutral-100 animate-compass-spin group-hover:animate-[compass-spin_3s_linear_infinite] relative z-10" 
                 />
                 {/* Outer orbit circle */}
-                <div className="absolute w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/10 dark:border-white/5 animate-pulse"></div>
+                <div className="absolute w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/10 dark:border-white/5 animate-pulse"></div>
               </div>
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-bold tracking-tighter italic font-serif text-black dark:text-white group-hover:text-neutral-800 dark:group-hover:text-neutral-200 transition-colors">
-                  Meridian.
-                </span>
-                <div className="neon-ring-wrapper rounded-md p-[1px] inline-flex">
-                  <span className="neon-ring-content px-1.5 sm:px-2 py-0.5 bg-neutral-950 text-white dark:bg-white dark:text-black text-[7px] sm:text-[8px] font-extrabold rounded-[5px] font-mono uppercase tracking-widest shadow-sm transition-colors">
+
+              {/* Title & Metadata */}
+              <div className="min-w-0 pr-1">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-lg sm:text-xl font-bold tracking-tighter italic font-serif text-black dark:text-white group-hover:text-neutral-800 dark:group-hover:text-neutral-200 transition-colors">
+                    Meridian.
+                  </span>
+                  <span className="px-1.5 py-0.5 bg-neutral-900 text-white dark:bg-white dark:text-black text-[7px] sm:text-[8px] font-extrabold rounded font-mono uppercase tracking-widest shadow-xs transition-colors">
                     Journal
                   </span>
                 </div>
+                <p className="text-[7.5px] sm:text-[8.5px] text-gray-500 dark:text-neutral-400 font-bold tracking-widest uppercase font-mono transition-colors truncate hidden sm:block">
+                  Quantum Optics · Computing · AI
+                </p>
               </div>
-              <p className="text-[8px] sm:text-[9px] text-gray-500 dark:text-neutral-400 font-bold tracking-widest uppercase font-mono transition-colors truncate hidden sm:block">
-                Quantum Optics · Computing · AI
-              </p>
             </div>
           </div>
         </div>
