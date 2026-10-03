@@ -235,6 +235,135 @@
   margin: 2.5rem 0;
 }
 
+/* Monochromatic & Chromatic Brand Letter Glitch Effect */
+.brand-glitch {
+  position: relative;
+  display: inline-block;
+}
+
+.brand-glitch::before,
+.brand-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Cyan chromatic dispersion shift */
+.brand-glitch::before {
+  left: 1.5px;
+  text-shadow: -1.2px 0 rgba(6, 182, 212, 0.75);
+  clip-path: inset(0 0 100% 0);
+  animation: brand-glitch-1 4s infinite ease-in-out;
+}
+
+/* Rose/magenta chromatic dispersion shift */
+.brand-glitch::after {
+  left: -1.5px;
+  text-shadow: 1.2px 0 rgba(244, 63, 94, 0.75);
+  clip-path: inset(100% 0 0 0);
+  animation: brand-glitch-2 4s infinite ease-in-out;
+}
+
+.dark .brand-glitch::before {
+  text-shadow: -1.5px 0 rgba(34, 211, 238, 0.9);
+}
+
+.dark .brand-glitch::after {
+  text-shadow: 1.5px 0 rgba(251, 113, 133, 0.9);
+}
+
+@keyframes brand-glitch-1 {
+  0%, 75%, 100% {
+    clip-path: inset(0 0 100% 0);
+    transform: translate(0);
+  }
+  77% {
+    clip-path: inset(20% 0 55% 0);
+    transform: translate(-1.5px, -0.5px);
+  }
+  79% {
+    clip-path: inset(65% 0 15% 0);
+    transform: translate(1.5px, 0.5px);
+  }
+  81% {
+    clip-path: inset(40% 0 45% 0);
+    transform: translate(-1px, 0);
+  }
+  83% {
+    clip-path: inset(0 0 100% 0);
+    transform: translate(0);
+  }
+  92% {
+    clip-path: inset(10% 0 70% 0);
+    transform: translate(1.5px, -0.5px);
+  }
+  94% {
+    clip-path: inset(75% 0 10% 0);
+    transform: translate(-1px, 0.5px);
+  }
+  96% {
+    clip-path: inset(0 0 100% 0);
+    transform: translate(0);
+  }
+}
+
+@keyframes brand-glitch-2 {
+  0%, 75%, 100% {
+    clip-path: inset(100% 0 0 0);
+    transform: translate(0);
+  }
+  77% {
+    clip-path: inset(50% 0 25% 0);
+    transform: translate(1.5px, 0.5px);
+  }
+  79% {
+    clip-path: inset(15% 0 65% 0);
+    transform: translate(-1.5px, -0.5px);
+  }
+  81% {
+    clip-path: inset(75% 0 10% 0);
+    transform: translate(1px, 0);
+  }
+  83% {
+    clip-path: inset(100% 0 0 0);
+    transform: translate(0);
+  }
+  92% {
+    clip-path: inset(70% 0 10% 0);
+    transform: translate(-1px, 0.5px);
+  }
+  94% {
+    clip-path: inset(30% 0 50% 0);
+    transform: translate(1.5px, -0.5px);
+  }
+  96% {
+    clip-path: inset(100% 0 0 0);
+    transform: translate(0);
+  }
+}
+
+/* Accelerated glitch when user hovers over the brand unit */
+.group:hover .brand-glitch::before {
+  animation: brand-glitch-1 1.2s infinite ease-in-out;
+}
+
+.group:hover .brand-glitch::after {
+  animation: brand-glitch-2 1.2s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-glitch::before,
+  .brand-glitch::after {
+    animation: none;
+    display: none;
+  }
+}
+
 /* Monochromatic glitch effect */
 .glitch-wrapper {
   display: inline-flex;
