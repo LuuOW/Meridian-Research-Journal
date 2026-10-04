@@ -349,7 +349,21 @@ export async function executeOfflineRecordPushToGitHub(options?: {
     };
   }
 
-  // 5. Push to GitHub modifying ONLY and ONLY offline_blog_record
+  // 5. If entry for date already exists and not force-pushing, skip remote GitHub push
+  if (!appendResult.appended && !options?.forcePush) {
+    console.log(`[offlineBlogRecord] Record for ${dateStr} is already up to date in ${OFFLINE_RECORD_FILE_PATH}. Remote push skipped.`);
+    return {
+      success: true,
+      message: `Record for ${dateStr} already up to date in ${OFFLINE_RECORD_FILE_PATH}. Remote push skipped.`,
+      entry,
+      filePath: OFFLINE_RECORD_FILE_PATH,
+      date: dateStr,
+      isWeekend,
+      timestamp: Date.now()
+    };
+  }
+
+  // 6. Push to GitHub modifying ONLY and ONLY offline_blog_record
   const config = getGitHubSyncConfig();
   if (!config.configured) {
     const infoMsg = "GitHub token or repository is not configured in environment (GITHUB_TOKEN). Local record updated.";

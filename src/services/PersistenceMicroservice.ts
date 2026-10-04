@@ -153,13 +153,14 @@ export class PersistenceMicroservice implements IMicroservice {
    * Reads blogs from custom_blogs.json, falling back to data.ts or most recent snapshot
    */
   public readBlogs(): BlogPost[] {
+    const map = new Map<string, BlogPost>();
+
     // 1. Primary source of truth: custom_blogs.json
     try {
       if (fs.existsSync(this.customBlogsFile)) {
         const raw = fs.readFileSync(this.customBlogsFile, "utf-8");
         const parsed: BlogPost[] = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const map = new Map<string, BlogPost>();
           for (const b of parsed) {
             if (isArticleBlocked(b)) continue;
             const key = b.id || b.slug || b.title;
@@ -167,30 +168,41 @@ export class PersistenceMicroservice implements IMicroservice {
               map.set(key, b);
             }
           }
-          return filterBlockedArticles(Array.from(map.values()));
         }
       }
     } catch (err) {
       console.error(`[${this.serviceName}] Error reading custom_blogs.json:`, err);
     }
 
-    // 2. Fallback to most recent snapshot if custom_blogs.json is missing or empty
-    const map = new Map<string, BlogPost>();
-    const snapshots = this.listSnapshots();
-    for (const snap of snapshots) {
-      try {
-        const raw = fs.readFileSync(snap.path, "utf-8");
-        const list: BlogPost[] = JSON.parse(raw);
-        if (Array.isArray(list)) {
-          for (const b of list) {
-            if (isArticleBlocked(b)) continue;
-            const key = b.id || b.slug || b.title;
-            if (key && !map.has(key)) {
-              map.set(key, b);
+    // 2. Fallback to snapshot archive if missing or truncated (< 120 articles)
+    if (map.size < 120) {
+      const snapshots = this.listSnapshots();
+      for (const snap of snapshots) {
+        try {
+          const raw = fs.readFileSync(snap.path, "utf-8");
+          const list: BlogPost[] = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            for (const b of list) {
+              if (isArticleBlocked(b)) continue;
+              if (
+                b.id?.startsWith("blog-test-") ||
+                b.id?.startsWith("test-snapshot-") ||
+                b.id === "blog-1790514833164-mizjl"
+              )
+                continue;
+              const key = b.id || b.slug || b.title;
+              if (key && !map.has(key)) {
+                map.set(key, b);
+              }
             }
           }
-        }
-      } catch {}
+        } catch {}
+        if (map.size >= 126) break;
+      }
+    }
+
+    if (map.size > 0) {
+      return filterBlockedArticles(Array.from(map.values()));
     }
 
     const all = filterBlockedArticles(Array.from(map.values()));

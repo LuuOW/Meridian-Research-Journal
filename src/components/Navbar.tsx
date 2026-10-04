@@ -236,26 +236,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="absolute w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/10 dark:border-white/5 animate-pulse"></div>
               </div>
 
-              {/* Title & Metadata with Glitch Effect */}
-              <div className="min-w-0 pr-1 select-none">
+              {/* Title & Metadata */}
+              <div className="min-w-0 pr-1">
                 <div className="flex items-baseline gap-1.5">
-                  <span 
-                    className="brand-glitch text-lg sm:text-xl font-bold tracking-tighter italic font-serif text-black dark:text-white group-hover:text-neutral-800 dark:group-hover:text-neutral-200 transition-colors"
-                    data-text="Meridian."
-                  >
+                  <span className="text-lg sm:text-xl font-bold tracking-tighter italic font-serif text-black dark:text-white group-hover:text-neutral-800 dark:group-hover:text-neutral-200 transition-colors">
                     Meridian.
                   </span>
-                  <span 
-                    className="brand-glitch px-1.5 py-0.5 bg-neutral-900 text-white dark:bg-white dark:text-black text-[7px] sm:text-[8px] font-extrabold rounded font-mono uppercase tracking-widest shadow-xs transition-colors"
-                    data-text="Journal"
-                  >
+                  <span className="px-1.5 py-0.5 bg-neutral-900 text-white dark:bg-white dark:text-black text-[7px] sm:text-[8px] font-extrabold rounded font-mono uppercase tracking-widest shadow-xs transition-colors">
                     Journal
                   </span>
                 </div>
-                <p 
-                  className="brand-glitch text-[7.5px] sm:text-[8.5px] text-gray-500 dark:text-neutral-400 font-bold tracking-widest uppercase font-mono transition-colors truncate hidden sm:block"
-                  data-text="Quantum Optics · Computing · AI"
-                >
+                <p className="text-[7.5px] sm:text-[8.5px] text-gray-500 dark:text-neutral-400 font-bold tracking-widest uppercase font-mono transition-colors truncate hidden sm:block">
                   Quantum Optics · Computing · AI
                 </p>
               </div>

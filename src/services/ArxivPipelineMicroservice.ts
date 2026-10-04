@@ -279,7 +279,7 @@ export class ArxivPipelineMicroservice implements IMicroservice {
     const s2Start = Date.now();
     let blog: BlogPost;
     let modelUsed = "procedural-scholar-engine";
-    let provider: "gemini" | "github_models" | "procedural" = "procedural";
+    let provider: "github_models" | "procedural" | "gemini" = "procedural";
     let tokenUsage = { promptTokens: 0, candidateTokens: 0, totalTokens: 0, estimatedCostUsd: 0 };
 
     if (process.env.GITHUB_TOKEN && options.forceModel !== "procedural") {

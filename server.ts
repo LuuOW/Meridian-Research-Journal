@@ -71,6 +71,7 @@ import {
   persistMultiTierBlogs,
   appendGenerationJournal,
   readPipelineRecords,
+  readCustomBlogs,
   createBlogSnapshot
 } from "./src/lib/persistenceManager";
 import { isArticleBlocked, checkArticleBlocked, logBlockedArticle, filterBlockedArticles } from "./src/lib/arxivBlocklist";
@@ -360,24 +361,14 @@ const fetchArxivMetadata = async (id: string) => {
 };
 
 const CUSTOM_BLOGS_FILE = path.join(process.cwd(), "custom_blogs.json");
-
-const readCustomBlogs = (): any[] => {
-  try {
-    if (fs.existsSync(CUSTOM_BLOGS_FILE)) {
-      const data = fs.readFileSync(CUSTOM_BLOGS_FILE, "utf-8");
-      const list = JSON.parse(data);
-      return filterBlockedArticles(Array.isArray(list) ? list : []);
-    }
-  } catch (error) {
-    console.error("Error reading custom_blogs.json:", error);
-  }
-  return [];
-};
+const PUBLIC_CUSTOM_BLOGS_FILE = path.join(process.cwd(), "public", "custom_blogs.json");
 
 const writeCustomBlogs = (blogs: any[]) => {
   try {
     const cleanList = filterBlockedArticles(Array.isArray(blogs) ? blogs : []);
-    fs.writeFileSync(CUSTOM_BLOGS_FILE, JSON.stringify(cleanList, null, 2), "utf-8");
+    const jsonStr = JSON.stringify(cleanList, null, 2);
+    fs.writeFileSync(CUSTOM_BLOGS_FILE, jsonStr, "utf-8");
+    fs.writeFileSync(PUBLIC_CUSTOM_BLOGS_FILE, jsonStr, "utf-8");
   } catch (error) {
     console.error("Error writing custom_blogs.json:", error);
   }
@@ -662,7 +653,20 @@ const getBlogs = async (): Promise<any[]> => {
       return localBlogs;
     }
 
-    return sortBlogsChronologically(filterBlockedArticles(firestoreBlogs));
+    // Merge localBlogs and firestoreBlogs by ID so neither is ever lost or masked
+    const mergedMap = new Map<string, any>();
+    for (const b of localBlogs) {
+      if (b && b.id) mergedMap.set(b.id, b);
+    }
+    for (const b of firestoreBlogs) {
+      if (b && b.id) {
+        const existing = mergedMap.get(b.id);
+        if (!existing || (b.updatedAt && (!existing.updatedAt || b.updatedAt > existing.updatedAt))) {
+          mergedMap.set(b.id, b);
+        }
+      }
+    }
+    return sortBlogsChronologically(filterBlockedArticles(Array.from(mergedMap.values())));
   } catch (error) {
     console.error("Error reading from Firestore, falling back to local file:", error);
     return localBlogs;
@@ -2695,7 +2699,7 @@ app.post("/api/blog/inject-arxiv", async (req, res) => {
       }
     }
 
-    // 4. Generate scholarly article via Gemini with mathematical rigor & LaTeX
+    // 4. Generate scholarly article via GitHub Models with mathematical rigor & LaTeX
     let generatedBlogData: any = null;
     const systemInstruction = `You are the Senior Research Editor & Theoretical Physicist at Meridian Research (https://ask-meridian.uk).
 Your goal is to author an exhaustive, mathematically elegant scholarly editorial analyzing the provided scientific paper.
@@ -3523,7 +3527,7 @@ Respond strictly with valid JSON conforming to the response schema.`;
   }
 });
 
-// API: AI-Enhanced LinkedIn Post Generator powered by Gemini
+// API: AI-Enhanced LinkedIn Post Generator powered by GitHub Models
 app.post("/api/linkedin/generate-post", async (req, res) => {
   const { title, excerpt, content, tags, arxivLink, blogId, articleUrl: clientArticleUrl, tone = "technical", customPrompt } = req.body;
 

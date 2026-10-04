@@ -4,21 +4,21 @@ export const PIPELINE_STEPS = [
   "Contacting arXiv open archives export server...",
   "Retrieving paper abstract & metadata...",
   "Analyzing scientific concepts & equations...",
-  "Gemini generating editorial prose...",
+  "GitHub Models generating editorial prose...",
   "Finalizing publication-ready Markdown & SVG..."
 ];
 
 export const BANNER_PIPELINE_STEPS = [
   "Analyzing publication science themes & typography...",
   "Formulating glowing vector geometric structures...",
-  "Gemini synthesizing responsive animated SVG vector...",
+  "GitHub Models synthesizing responsive animated SVG vector...",
   "Validating SVG structure & synchronizing publication..."
 ];
 
 export const ARTICLE_REGEN_PIPELINE_STEPS = [
   "Contacting arXiv & extracting source literature...",
   "Formulating rigorous mathematical models & LaTeX proofs...",
-  "Gemini generating comprehensive scholarly prose...",
+  "GitHub Models generating comprehensive scholarly prose...",
   "Validating physics consistency & updating publication..."
 ];
 

@@ -137,12 +137,24 @@ export function writeLocalBlogFiles(blogs: BlogPost[], targetBaseDir?: string): 
         b.id !== "blog-2609-10533-7029" &&
         b.id !== "blog-2609-10533-9761" &&
         b.id !== "blog-2408-09854-9799" &&
+        b.id !== "blog-2408-09854-6969" &&
         b.id !== "generated-1790520432945" &&
         !b.id.includes("mizjl") &&
         !b.title?.toLowerCase().startsWith("arxiv paper 2608")
       );
 
       // Deduplicate by normalized title and arXiv ID to guarantee uniqueness
+      const MUST_PRESERVE_IDS = new Set([
+        "generated-1787570419854",
+        "generated-1787340727569",
+        "generated-1787339117236",
+        "generated-1787148362988",
+        "generated-1787145885719",
+        "generated-1787145841698",
+        "blog-2609-05052v1-0029",
+        "blog-2609-35135v1-5135",
+        "blog-2609-33877v1-8771"
+      ]);
       const seenTitles = new Set<string>();
       const seenArxivs = new Set<string>();
       const uniqueList: BlogPost[] = [];
@@ -150,8 +162,10 @@ export function writeLocalBlogFiles(blogs: BlogPost[], targetBaseDir?: string): 
         const normTitle = (b.title || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
         const m = (b.arxivLink || "").match(/(\d{4}\.\d{4,5})/);
         const aid = m ? m[1] : null;
-        if (normTitle && seenTitles.has(normTitle)) continue;
-        if (aid && seenArxivs.has(aid)) continue;
+        if (!MUST_PRESERVE_IDS.has(b.id)) {
+          if (normTitle && seenTitles.has(normTitle)) continue;
+          if (aid && seenArxivs.has(aid)) continue;
+        }
         if (normTitle) seenTitles.add(normTitle);
         if (aid) seenArxivs.add(aid);
         uniqueList.push(b);
@@ -241,6 +255,54 @@ async function getFileSha(owner: string, repo: string, filePath: string, branch:
 }
 
 /**
+ * Helper to create a single git blob on GitHub with retries and timeout
+ */
+async function createBlobWithRetry(
+  owner: string,
+  repo: string,
+  headers: Record<string, string>,
+  content: string,
+  filePath: string
+): Promise<string> {
+  let lastErr = "";
+  for (let bAttempt = 1; bAttempt <= 3; bAttempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const blobRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          content,
+          encoding: "utf-8"
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (blobRes.ok) {
+        const blobData: any = await blobRes.json();
+        if (blobData && blobData.sha) {
+          return blobData.sha;
+        }
+      }
+
+      const errJson: any = await blobRes.json().catch(() => ({}));
+      lastErr = errJson.message || `HTTP ${blobRes.status}: ${blobRes.statusText}`;
+      console.warn(`[GitHub Sync] Warning creating blob for ${filePath} (attempt ${bAttempt}/3): ${lastErr}`);
+    } catch (err: any) {
+      lastErr = err.name === "AbortError" ? "Request timed out after 20s" : err.message || String(err);
+      console.warn(`[GitHub Sync] Network error creating blob for ${filePath} (attempt ${bAttempt}/3): ${lastErr}`);
+    }
+
+    if (bAttempt < 3) {
+      await new Promise((r) => setTimeout(r, 800 * bAttempt));
+    }
+  }
+  throw new Error(`Failed to create blob for ${filePath}: ${lastErr}`);
+}
+
+/**
  * Commits multiple files atomically to GitHub using the Git Data API (Tree + Commit + Ref Update).
  * This eliminates race conditions, blob SHA conflicts, and creates a clean single commit for all updated files.
  */
@@ -259,6 +321,9 @@ export async function commitFilesAtomicallyToGitHub(params: {
   if (token === lastKnownBadToken && Date.now() - lastBadTokenTime < BAD_TOKEN_CACHE_TTL_MS) {
     return { success: false, error: "Bad credentials (HTTP 401)" };
   }
+
+  // Deduplicate and cache blob SHAs by file content across retries
+  const contentToBlobShaMap = new Map<string, string>();
 
   // Retry up to 3 times in case of transient branch updates
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -308,27 +373,19 @@ export async function commitFilesAtomicallyToGitHub(params: {
       const commitData: any = await commitRes.json();
       const baseTreeSha = commitData.tree?.sha;
 
-      // 3. Create Git Blobs for each file to support arbitrarily large files without size limits (>1MB)
+      // 3. Create Git Blobs for each file with content-addressable deduplication & retry
       const treeItems: { path: string; mode: string; type: string; sha: string }[] = [];
       for (const file of files) {
-        const blobRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            content: file.content,
-            encoding: "utf-8"
-          })
-        });
-        if (!blobRes.ok) {
-          const errJson: any = await blobRes.json().catch(() => ({}));
-          throw new Error(`Failed to create blob for ${file.path}: ${errJson.message || blobRes.statusText}`);
+        let blobSha = contentToBlobShaMap.get(file.content);
+        if (!blobSha) {
+          blobSha = await createBlobWithRetry(owner, repo, headers, file.content, file.path);
+          contentToBlobShaMap.set(file.content, blobSha);
         }
-        const blobData: any = await blobRes.json();
         treeItems.push({
           path: file.path,
           mode: "100644",
           type: "blob",
-          sha: blobData.sha
+          sha: blobSha
         });
       }
 
@@ -464,6 +521,10 @@ async function commitFilesSequentiallyFallback(params: {
   let lastCommitUrl: string | undefined;
 
   for (const file of files) {
+    if (Buffer.byteLength(file.content, "utf-8") > 1000000) {
+      console.warn(`[GitHub Sync] Skipping ${file.path} in Contents API fallback (size exceeds 1MB limit).`);
+      continue;
+    }
     const res = await commitFileWithAutoShaRetry({
       owner,
       repo,

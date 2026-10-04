@@ -33,7 +33,7 @@ export const DailyPrediction: React.FC<DailyPredictionProps> = ({ onGeneratePred
     "Analyzing your scholarly publication history...",
     "Scanning latest arXiv entries in physics.optics & quant-ph...",
     "Correlating mathematical formulas and physical paradigms...",
-    "Calculating predictive relevance scoring via Gemini...",
+    "Calculating predictive relevance scoring via GitHub Models...",
     "Drafting technical reasoning justification..."
   ];
 
@@ -100,7 +100,7 @@ export const DailyPrediction: React.FC<DailyPredictionProps> = ({ onGeneratePred
         setPrediction(predictionResult);
         localStorage.setItem("meridian_daily_prediction", JSON.stringify(predictionResult));
       } else {
-        throw new Error("Invalid prediction payload received from Gemini advisor.");
+        throw new Error("Invalid prediction payload received from GitHub Models advisor.");
       }
     } catch (err: any) {
       console.error(err);

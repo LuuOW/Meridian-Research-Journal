@@ -169,7 +169,7 @@ export function isWithinSentenceLimit(text: string, maxSentences: number = 3): b
 }
 
 /**
- * Builds system instruction for Gemini LinkedIn Post generation
+ * Builds system instruction for GitHub Models LinkedIn Post generation
  */
 export const buildLinkedInSystemInstruction = (blogUrl: string): string => {
   return `You are a world-class scientific communications officer and senior LinkedIn strategist for "Ask Meridian" (https://ask-meridian.uk), the leading peer-reviewed research digest in quantum optics, photonics, and mathematical physics.

@@ -388,7 +388,7 @@ export interface AutonomousPipelineOptions {
   targetDate?: Date;
   maxFreshnessLagDays?: number;
   networkTimeoutMs?: number;
-  forceModel?: "procedural" | "gemini";
+  forceModel?: "procedural" | "github_models";
 }
 
 export class ArxivAutonomousPipeline {

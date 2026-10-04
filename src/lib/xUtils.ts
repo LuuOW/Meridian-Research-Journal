@@ -153,7 +153,7 @@ export function isWithinSentenceLimit(text: string, maxSentences: number = 3): b
 }
 
 /**
- * Builds system instruction for Gemini X Companion Post generation (Futuristic Vision only).
+ * Builds system instruction for GitHub Models X Companion Post generation (Futuristic Vision only).
  */
 export const buildXSystemInstruction = (blogUrl: string): string => {
   return `You are a visionary scientific communications officer and leading technology futurist for "Ask Meridian" (https://ask-meridian.uk), the premier research digest in quantum optics, photonics, and mathematical physics.

@@ -99,12 +99,12 @@ export class XaiCodingAgent implements IMicroservice {
 
   private static readonly SYSTEM_SECRETS: Array<Omit<SecretDescriptor, "isConfigured" | "maskedValue">> = [
     {
-      key: "GEMINI_API_KEY",
+      key: "GITHUB_TOKEN",
       category: "ai",
-      description: "Google Gemini 2.5/2.0 API key for automated arXiv paper translations, mathematical derivations, and podcasts.",
+      description: "GitHub Personal Access Token for GitHub Models (OpenAI GPT-4o-mini / GPT-4o) inference and repository synchronization.",
       required: true,
-      associatedFiles: ["server.ts", "src/services/GeminiPaperCurator.ts", "src/services/DailyScheduleDaemon.ts"],
-      examplePlaceholder: "AIzaSy..."
+      associatedFiles: ["server.ts", "src/lib/modelEngine/providers/GitHubModelsProvider.ts", "src/services/ArxivPipelineMicroservice.ts"],
+      examplePlaceholder: "ghp_..."
     },
     {
       key: "XAI_API_KEY",
@@ -454,7 +454,7 @@ export class XaiCodingAgent implements IMicroservice {
     out += "# Copy these variables to your server environment, Dockerfile, or Cloud Run configuration.\n\n";
 
     const catLabels: Record<string, string> = {
-      ai: "AI & Large Language Models (Gemini, xAI Grok)",
+      ai: "AI & Large Language Models (GitHub Models, xAI Grok)",
       x_twitter: "X (Twitter) Autonomous Social Dispatch",
       github: "GitHub Continuous Mirroring & Git Push",
       binance: "Binance Spot Treasury Telemetry",

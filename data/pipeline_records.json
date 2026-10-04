@@ -1,12 +1,12 @@
 [
   {
     "jobId": "test-job-9999",
-    "triggerId": 1790872292035,
+    "triggerId": 1791114388405,
     "arxivInput": "2402.09854",
     "paperTitle": "Towards Optimal Quantum Estimators",
     "authors": "Author A, Author B",
     "status": "completed",
-    "startTime": 1790872292035,
+    "startTime": 1791114388405,
     "tokenUsage": {
       "promptTokens": 19,
       "candidateTokens": 19,
@@ -19,9 +19,9 @@
         "stepName": "Input Validation & ArXiv ID Parsing",
         "category": "ingestion",
         "status": "completed",
-        "startTime": 1790872292035,
+        "startTime": 1791114388405,
         "details": "Parsing input: 2402.09854",
-        "endTime": 1790872292035,
+        "endTime": 1791114388405,
         "durationMs": 0
       },
       {
@@ -29,10 +29,10 @@
         "stepName": "Angle Synthesis & Token Budgeting",
         "category": "prompt_prep",
         "status": "completed",
-        "startTime": 1790872292035,
+        "startTime": 1791114388405,
         "details": "Angle: Theoretical physics",
-        "endTime": 1790872292035,
-        "durationMs": 0
+        "endTime": 1791114388406,
+        "durationMs": 1
       }
     ],
     "persistenceStatus": {
@@ -43,8 +43,8 @@
       "gitHubMirror": false,
       "sitemapXml": true
     },
-    "endTime": 1790872292035,
-    "totalDurationMs": 0,
+    "endTime": 1791114388406,
+    "totalDurationMs": 1,
     "modelUsed": "gemini-2.5-flash",
     "provider": "gemini",
     "resultingBlog": {
@@ -57,6 +57,272 @@
         "Quantum",
         "Physics"
       ]
+    }
+  },
+  {
+    "jobId": "test-job-1791114118556",
+    "triggerId": 1791114118556,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1791114113556,
+    "endTime": 1791114118556,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1791114113556,
+        "endTime": 1791114114556,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "test-job-1791064373150",
+    "triggerId": 1791064373150,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1791064368150,
+    "endTime": 1791064373150,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1791064368150,
+        "endTime": 1791064369150,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "test-job-1790943451607",
+    "triggerId": 1790943451607,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1790943446607,
+    "endTime": 1790943451607,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790943446607,
+        "endTime": 1790943447607,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "test-job-1790943388044",
+    "triggerId": 1790943388044,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1790943383044,
+    "endTime": 1790943388044,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790943383044,
+        "endTime": 1790943384044,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "test-job-1790943246085",
+    "triggerId": 1790943246085,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1790943241085,
+    "endTime": 1790943246085,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790943241085,
+        "endTime": 1790943242085,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "test-job-1790943091056",
+    "triggerId": 1790943091056,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1790943086056,
+    "endTime": 1790943091056,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790943086056,
+        "endTime": 1790943087056,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
+    }
+  },
+  {
+    "jobId": "test-job-1790943038118",
+    "triggerId": 1790943038118,
+    "arxivInput": "2608.99999",
+    "paperTitle": "Quantum Simulation in Metamaterials",
+    "authors": "Lucas Kempe",
+    "status": "completed",
+    "startTime": 1790943033118,
+    "endTime": 1790943038118,
+    "totalDurationMs": 5000,
+    "modelUsed": "gemini-2.5-pro",
+    "provider": "gemini",
+    "tokenUsage": {
+      "promptTokens": 500,
+      "candidateTokens": 1200,
+      "totalTokens": 1700,
+      "estimatedCostUsd": 0.000397
+    },
+    "steps": [
+      {
+        "stepId": 1,
+        "stepName": "Input Validation & ArXiv ID Parsing",
+        "category": "ingestion",
+        "status": "completed",
+        "startTime": 1790943033118,
+        "endTime": 1790943034118,
+        "durationMs": 1000
+      }
+    ],
+    "persistenceStatus": {
+      "customBlogsJson": true,
+      "dataTs": true,
+      "journalJsonl": true,
+      "firestore": false,
+      "gitHubMirror": false,
+      "sitemapXml": true
     }
   },
   {

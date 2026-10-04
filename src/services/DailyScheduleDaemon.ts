@@ -55,6 +55,7 @@ export class DailyScheduleDaemon implements IMicroservice {
   // - xPostingEnabled: Controls autonomous posting to X API
   private arxivGenerationEnabled: boolean = true;
   private xPostingEnabled: boolean = true;
+  private lastWeekendOfflineRecordDate: string | null = null;
 
   constructor(persistenceService: PersistenceMicroservice) {
     this.persistenceService = persistenceService;
@@ -263,10 +264,13 @@ export class DailyScheduleDaemon implements IMicroservice {
         }
       }
 
-      if (art.isWeekend) {
-        // On weekends, arXiv has no announcements; push "- Weekend" to offline_blog_record
+      if (art.isWeekend && this.lastWeekendOfflineRecordDate !== art.dateString) {
+        // On weekends, arXiv has no announcements; push "- Weekend" to offline_blog_record once per day
         try {
-          await executeOfflineRecordPushToGitHub({ date: new Date(), forceWeekend: true });
+          const res = await executeOfflineRecordPushToGitHub({ date: new Date(), forceWeekend: true });
+          if (res.success) {
+            this.lastWeekendOfflineRecordDate = art.dateString;
+          }
         } catch (weekendErr) {
           console.log(`[${this.serviceName}] Weekend offline record sync note:`, weekendErr);
         }
