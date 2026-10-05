@@ -167,7 +167,7 @@ export const AutonomousEditorConsoleModal: React.FC<AutonomousEditorConsoleModal
         }).format(now);
         setLiveArtClock(`${timeFormatter.format(now)} ART • ${dateParts}`);
       } catch {
-        setLiveArtClock("09:00:00 ART");
+        setLiveArtClock("04:00:00 ART");
       }
     };
     updateTime();
@@ -506,7 +506,7 @@ export const AutonomousEditorConsoleModal: React.FC<AutonomousEditorConsoleModal
               {/* Live ART Ticker */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 font-mono font-bold text-cyan-600 dark:text-cyan-400">
                 <Clock className="w-3.5 h-3.5 text-cyan-500" />
-                <span>{liveArtClock || "09:00:00 ART"}</span>
+                <span>{liveArtClock || "04:00:00 ART"}</span>
               </div>
             </div>
 
@@ -634,11 +634,11 @@ export const AutonomousEditorConsoleModal: React.FC<AutonomousEditorConsoleModal
                       <span>
                         {isAlreadyPublished
                           ? "Today's Edition Published to Meridian Journal"
-                          : "arXiv Next-Day Cadence: Staged for 09:00 AM ART"}
+                          : "arXiv Next-Day Cadence: Staged for 04:00 AM ART"}
                       </span>
                     </div>
                     <div className="text-[11px] opacity-80">
-                      Friday arXiv releases bridge through to Monday 09:00 AM ART • Autonomous quality control
+                      Friday arXiv releases bridge through to Monday 04:00 AM ART • Autonomous quality control
                     </div>
                   </div>
                 </div>
@@ -937,7 +937,7 @@ export const AutonomousEditorConsoleModal: React.FC<AutonomousEditorConsoleModal
                 remainingSeconds={remainingSeconds}
                 formatCountdown={formatCountdown}
                 isAlreadyPublished={isAlreadyPublished}
-                scheduledTimeLabel="Tomorrow 09:00 AM ART"
+                scheduledTimeLabel="Tomorrow 04:00 AM ART"
                 theme={theme}
               />
             </div>

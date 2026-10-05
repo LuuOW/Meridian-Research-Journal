@@ -219,7 +219,7 @@ export default function App() {
     };
   }, [isEditorMode, jobs]);
 
-  // 9:00 AM ART Daily Editorial Dispatch:
+  // 4:00 AM ART Daily Editorial Dispatch:
   // Automatically prompt editorial component when entering editor mode if a staged draft awaits review
   useEffect(() => {
     let isMounted = true;
@@ -1951,7 +1951,7 @@ export default function App() {
         }}
       />
 
-      {/* MERIDIAN 9:00 AM - 10:00 AM ART AUTONOMOUS DAILY EDITORIAL PROMPT MODAL */}
+      {/* MERIDIAN 4:00 AM - 5:30 AM ART AUTONOMOUS DAILY EDITORIAL PROMPT MODAL */}
       <DailyEditorialPromptModal
         isOpen={isDailyEditorialModalOpen}
         onClose={() => setIsDailyEditorialModalOpen(false)}

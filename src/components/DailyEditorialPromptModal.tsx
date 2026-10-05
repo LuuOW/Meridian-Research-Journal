@@ -191,7 +191,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
         }).format(now);
         setLiveArtClock(`${timeStr} ART (UTC-3)`);
       } catch {
-        setLiveArtClock("09:00:00 ART (UTC-3)");
+        setLiveArtClock("04:00:00 ART (UTC-3)");
       }
     };
     updateArt();
@@ -205,9 +205,9 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateStr = tomorrow.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      return `Next-Day Cadence: 4 Articles queued for tomorrow (${dateStr}) 09:00 AM ART`;
+      return `Next-Day Cadence: 4 Articles queued for tomorrow (${dateStr}) 04:00 AM ART`;
     } catch {
-      return "Next-Day Cadence: 4 Articles queued for tomorrow 09:00 AM ART";
+      return "Next-Day Cadence: 4 Articles queued for tomorrow 04:00 AM ART";
     }
   }, []);
 
@@ -242,14 +242,14 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
     }
   }, [isOpen]);
 
-  // Countdown timer to 10:00 AM ART
+  // Countdown timer to 05:30 AM ART
   useEffect(() => {
     if (!isOpen || remainingSeconds <= 0) return;
     const timer = setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          fetchDispatch(); // Refresh state upon 10 AM timeout
+          fetchDispatch(); // Refresh state upon 05:30 AM timeout
           return 0;
         }
         return prev - 1;
@@ -567,7 +567,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
               >
                 <Clock className={`w-3.5 h-3.5 ${isLight ? "text-cyan-700" : "text-cyan-300"}`} />
                 <span>
-                  {liveArtClock || (artInfo ? `${String(artInfo.hour).padStart(2, "0")}:${String(artInfo.minute).padStart(2, "0")} ART (UTC-3)` : "09:00:00 ART (UTC-3)")}
+                  {liveArtClock || (artInfo ? `${String(artInfo.hour).padStart(2, "0")}:${String(artInfo.minute).padStart(2, "0")} ART (UTC-3)` : "04:00:00 ART (UTC-3)")}
                 </span>
               </div>
               {isPendingReview && remainingSeconds > 0 ? (
@@ -729,7 +729,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                   No Staged Dispatch for Today Yet
                 </h3>
                 <p className={`text-sm max-w-md mx-auto mt-1 leading-relaxed ${isLight ? "text-slate-600" : "text-slate-400"}`}>
-                  The automated arXiv crawler triggers at 9:00 AM ART (UTC-3). You can initialize the 4 September 3 candidates or crawl arXiv now.
+                  The automated arXiv crawler triggers at 4:00 AM ART (UTC-3). You can initialize the candidate deck or crawl arXiv now.
                 </p>
               </div>
               <button
@@ -738,7 +738,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                 className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-lg shadow-cyan-500/20 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
-                {actionLoading ? "Crawling arXiv & Staging..." : "Initialize 9:00 AM Candidate Deck Now"}
+                {actionLoading ? "Crawling arXiv & Staging..." : "Initialize 4:00 AM Candidate Deck Now"}
               </button>
             </div>
           ) : (
@@ -1497,7 +1497,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                         remainingSeconds={remainingSeconds}
                         formatCountdown={formatCountdown}
                         isAlreadyPublished={isAlreadyPublished}
-                        scheduledTimeLabel={isWeekend ? "Monday 09:00 AM ART" : "Tomorrow 09:00 AM ART"}
+                        scheduledTimeLabel={isWeekend ? "Monday 04:00 AM ART" : "Tomorrow 04:00 AM ART"}
                         theme={theme}
                       />
                     </motion.div>
@@ -1577,7 +1577,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                           <span>Autonomous arXiv Editorial Cadence Specification</span>
                         </div>
                         <p className="leading-relaxed text-[11px]">
-                          arXiv runs releases Monday through Friday nights. Friday night preprints are staged for publication on Monday 9:00 AM ART. The 10:00 AM ART auto-publish timeout is active on weekdays only.
+                          arXiv runs releases Monday through Friday nights. Friday night preprints are staged for publication on Monday 04:00 AM ART. The 05:30 AM ART auto-publish timeout is active on weekdays only.
                         </p>
                       </div>
                     </motion.div>

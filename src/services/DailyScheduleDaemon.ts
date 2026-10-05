@@ -1,12 +1,12 @@
 /**
  * MERIDIAN DAILY SCHEDULE DAEMON MICROSERVICE
  * 
- * Orchestrates autonomous daily publishing at 9:00 AM - 10:00 AM ART (UTC-3):
- * 1. 9:00 AM ART: Crawls arXiv optics & quant-ph, scores candidates using corpus AI model,
+ * Orchestrates autonomous daily publishing at 4:00 AM - 5:30 AM ART (UTC-3):
+ * 1. 4:00 AM ART: Crawls arXiv optics & quant-ph, scores candidates using corpus AI model,
  *    and stages the publication draft + 3-sentence X companion post for editorial review.
  * 2. Editor Mode: When user logs in and activates editor mode, prompts editorial modal.
  * 3. Review Accept: Immediately finalizes article, updates sitemaps/GitHub, and posts to X.
- * 4. 10:00 AM ART Timeout: If unreviewed by 10:00 AM ART, automatically publishes and posts to X.
+ * 4. 5:30 AM ART Timeout: If unreviewed by 5:30 AM ART, automatically publishes and posts to X.
  */
 
 import fs from "fs";
@@ -165,7 +165,7 @@ export class DailyScheduleDaemon implements IMicroservice {
 
   public async initialize(): Promise<boolean> {
     this.lastHeartbeat = Date.now();
-    console.log(`[${this.serviceName}] Initializing Daily Autonomous Publication Daemon (9:00-10:00 AM ART)...`);
+    console.log(`[${this.serviceName}] Initializing Daily Autonomous Publication Daemon (4:00-5:30 AM ART)...`);
 
     // Run initial schedule evaluation
     await this.checkSchedule();
@@ -203,7 +203,8 @@ export class DailyScheduleDaemon implements IMicroservice {
       details: {
         artTime: `${art.dateString} ${String(art.hour).padStart(2, "0")}:${String(art.minute).padStart(2, "0")} ART (UTC-3)`,
         isReviewWindow: art.isReviewWindow,
-        isPast10AmArt: art.isPast10AmArt,
+        isPast530AmArt: art.isPast530AmArt,
+        isPast10AmArt: art.isPast530AmArt,
         stagedDispatchId: currentDispatch?.id || null,
         stagedDispatchStatus: currentDispatch?.status || null,
         stagedDate: currentDispatch?.dateArt || null,
@@ -214,7 +215,7 @@ export class DailyScheduleDaemon implements IMicroservice {
   }
 
   /**
-   * Evaluates current ART time and triggers 9:00 AM staging or 10:00 AM auto-publishing
+   * Evaluates current ART time and triggers 4:00 AM staging or 5:30 AM auto-publishing
    */
   public async checkSchedule(): Promise<void> {
     if (this.isProcessing) return;
@@ -226,40 +227,40 @@ export class DailyScheduleDaemon implements IMicroservice {
       let dispatch = loadStagedDailyDispatch();
 
       // If no dispatch staged for today, or previous dispatch is from a previous date:
-      // Only auto-stage during the 9:00 AM ART review window (hour === 9) on weekdays.
-      // If past 10 AM ART on weekdays and today's article has not been published yet, perform late recovery.
-      // On weekends, arXiv has no announcements; Friday preprints stage for Monday 9:00 AM ART.
+      // Only auto-stage during the 4:00 AM - 5:30 AM ART review window on weekdays.
+      // If past 5:30 AM ART on weekdays and today's article has not been published yet, perform late recovery.
+      // On weekends, arXiv has no announcements; Friday preprints stage for Monday 04:00 AM ART.
       if (!dispatch || (dispatch.dateArt !== art.dateString && dispatch.dateArt !== art.targetPublishDate)) {
         if (art.isReviewWindow) {
-          console.log(`[${this.serviceName}] 9:00 AM ART review window detected for date ${art.dateString}. Staging today's arXiv draft...`);
+          console.log(`[${this.serviceName}] 4:00 AM ART review window detected for date ${art.dateString}. Staging today's arXiv draft...`);
           dispatch = await this.stageTodayDispatch();
-        } else if (art.isPast10AmArt && !art.isWeekend) {
+        } else if (art.isPast530AmArt && !art.isWeekend) {
           // Check if today's edition is already in corpus
           const existingBlogs = this.persistenceService.readBlogs();
-          const targetDateStr = art.dateString; // e.g. "2026-09-08"
+          const targetDateStr = art.dateString;
           const publishedToday = existingBlogs.some(b => {
             const bDate = b.date ? new Date(b.date).toISOString().slice(0, 10) : "";
-            return bDate === targetDateStr || b.date === `September ${parseInt(targetDateStr.slice(8))}, ${targetDateStr.slice(0, 4)}`;
+            return bDate === targetDateStr || b.date === `October ${parseInt(targetDateStr.slice(8))}, ${targetDateStr.slice(0, 4)}` || b.date === `September ${parseInt(targetDateStr.slice(8))}, ${targetDateStr.slice(0, 4)}`;
           });
           if (!publishedToday) {
-            console.log(`[${this.serviceName}] Past 10:00 AM ART on weekday and no article published for ${targetDateStr}; auto-staging and auto-publishing today's edition...`);
+            console.log(`[${this.serviceName}] Past 5:30 AM ART on weekday and no article published for ${targetDateStr}; auto-staging and auto-publishing today's edition...`);
             dispatch = await this.stageTodayDispatch(undefined, true);
             if (dispatch && this.arxivGenerationEnabled) {
               await this.executePublish(dispatch, "auto_timeout_publish");
             }
           } else {
-            console.log(`[${this.serviceName}] Past 10:00 AM ART and today's article is already present in corpus.`);
+            console.log(`[${this.serviceName}] Past 5:30 AM ART and today's article is already present in corpus.`);
           }
         }
       }
 
-      // Check if staged dispatch is waiting for review and current time has reached 10:00 AM ART.
+      // Check if staged dispatch is waiting for review and current time has reached 5:30 AM ART.
       // Weekend dispatches bridge to Monday and must NEVER be auto-published on Saturday or Sunday.
       if (dispatch && (dispatch.status === "staged_pending_review" || dispatch.status === "sourced_pending_generation")) {
         if (!this.arxivGenerationEnabled) {
           console.log(`[${this.serviceName}] Auto-publish suppressed: arXiv article generation is disabled in Config (sourcing-only mode).`);
-        } else if (!art.isWeekend && (art.isPast10AmArt || art.autoPublish10AmEpoch <= Date.now())) {
-          console.log(`[${this.serviceName}] 10:00 AM ART timeout reached. Auto-publishing unreviewed staged dispatch (${dispatch.id})...`);
+        } else if (!art.isWeekend && (art.isPast530AmArt || art.autoPublish530AmEpoch <= Date.now())) {
+          console.log(`[${this.serviceName}] 5:30 AM ART timeout reached. Auto-publishing unreviewed staged dispatch (${dispatch.id})...`);
           await this.executePublish(dispatch, "auto_timeout_publish");
         }
       }
@@ -292,10 +293,10 @@ export class DailyScheduleDaemon implements IMicroservice {
   ): Promise<StagedDailyDispatch> {
     const art = getArtTime();
 
-    // Defensive: do not stage if past 10:00 AM ART unless explicitly forced or in late staging recovery
-    if (art.isPast10AmArt && !forceCategory && !allowLateStaging) {
-      console.log(`[${this.serviceName}] stageTodayDispatch called after 10:00 AM ART; skipping staging to prevent immediate auto-publish.`);
-      throw new Error("Staging skipped: past 10:00 AM ART");
+    // Defensive: do not stage if past 5:30 AM ART unless explicitly forced or in late staging recovery
+    if (art.isPast530AmArt && !forceCategory && !allowLateStaging) {
+      console.log(`[${this.serviceName}] stageTodayDispatch called after 5:30 AM ART; skipping staging to prevent immediate auto-publish.`);
+      throw new Error("Staging skipped: past 5:30 AM ART");
     }
 
     const sourceBatch = getSourceArxivBatch(art.dayOfWeek);
@@ -526,8 +527,8 @@ export class DailyScheduleDaemon implements IMicroservice {
 
     const targetDateArt = art.isWeekend ? art.targetPublishDate : art.dateString;
     const targetDayName = art.isWeekend ? art.targetDayName : art.dayName;
-    const targetScheduledFor = art.isWeekend ? art.targetPublishEpoch9Am : art.scheduled9AmEpoch;
-    const targetAutoPublishAt = art.isWeekend ? art.targetPublishEpoch10Am : art.autoPublish10AmEpoch;
+    const targetScheduledFor = art.isWeekend ? art.targetPublishEpoch4Am : art.scheduled4AmEpoch;
+    const targetAutoPublishAt = art.isWeekend ? art.targetPublishEpoch530Am : art.autoPublish530AmEpoch;
 
     const dispatchId = `dispatch_${targetDateArt.replace(/-/g, "_")}`;
     const dispatch: StagedDailyDispatch = {
@@ -585,8 +586,8 @@ export class DailyScheduleDaemon implements IMicroservice {
     await this.persistenceService.persistMultiTier(
       updatedBlogs,
       via === "manual_editor_accept"
-        ? `Manual Editor Acceptance of 9 AM ART Dispatch (${dispatch.candidatePaper.id})`
-        : `10 AM ART Auto-Publish Timeout (${dispatch.candidatePaper.id})`
+        ? `Manual Editor Acceptance of 4:00 AM ART Dispatch (${dispatch.candidatePaper.id})`
+        : `5:30 AM ART Auto-Publish Timeout (${dispatch.candidatePaper.id})`
     );
 
     // 2b. Synchronize offline_blog_record for today's published edition
@@ -848,8 +849,8 @@ export class DailyScheduleDaemon implements IMicroservice {
           dayName: art.dayName,
           sourceArxivBatchDay: sourceBatch.sourceBatchName,
           createdAt: Date.now(),
-          scheduledFor: art.scheduled9AmEpoch,
-          autoPublishAt: art.autoPublish10AmEpoch,
+          scheduledFor: art.scheduled4AmEpoch,
+          autoPublishAt: art.autoPublish530AmEpoch,
           status: "staged_pending_review",
           selectedCategory: top.category,
           candidatePaper: {
@@ -887,7 +888,7 @@ export class DailyScheduleDaemon implements IMicroservice {
       }
     }
 
-    const countdownSeconds = Math.max(0, Math.floor((art.autoPublish10AmEpoch - Date.now()) / 1000));
+    const countdownSeconds = Math.max(0, Math.floor((art.autoPublish530AmEpoch - Date.now()) / 1000));
 
     return {
       dispatch,

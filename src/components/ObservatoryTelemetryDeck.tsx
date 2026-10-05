@@ -46,7 +46,7 @@ export const ObservatoryTelemetryDeck: React.FC<ObservatoryTelemetryDeckProps> =
   remainingSeconds = 0,
   formatCountdown,
   isAlreadyPublished = false,
-  scheduledTimeLabel = "Tomorrow 09:00 AM ART",
+  scheduledTimeLabel = "Tomorrow 04:00 AM ART",
   theme,
 }) => {
   const [telemetry, setTelemetry] = useState<ObservatoryTelemetry | null>(null);
@@ -75,7 +75,7 @@ export const ObservatoryTelemetryDeck: React.FC<ObservatoryTelemetryDeckProps> =
         }).format(now);
         setLiveArtTime(`${timeFormatter.format(now)} ART • ${dateParts}`);
       } catch {
-        setLiveArtTime("09:00:00 ART");
+        setLiveArtTime("04:00:00 ART");
       }
     };
     updateTime();
@@ -184,7 +184,7 @@ export const ObservatoryTelemetryDeck: React.FC<ObservatoryTelemetryDeckProps> =
     }
   };
 
-  const currentDisplayTime = artTimeStr || liveArtTime || "09:00:00 ART (UTC-3)";
+  const currentDisplayTime = artTimeStr || liveArtTime || "04:00:00 ART (UTC-3)";
   const isLight = theme === "light";
 
   return (

@@ -1,13 +1,13 @@
 /**
  * MERIDIAN DAILY EDITORIAL & AUTONOMOUS DISPATCH ENGINE
  * 
- * Implements the 9:00 AM - 10:00 AM ART (Argentina Time, UTC-3) publication pipeline:
+ * Implements the 4:00 AM - 5:30 AM ART (Argentina Time, UTC-3) publication pipeline:
  * 1. Deep corpus analysis across all 64+ articles to balance physics.optics vs quant-ph
  * 2. Next-day publication rule (Friday arXiv -> Monday publish, etc.)
  * 3. Daily arXiv crawl, scoring, and candidate ranking
  * 4. KaTeX mathematical article drafting and dynamic procedural SVG banner synthesis
  * 5. Futuristic Vision 3-sentence X companion post preparation
- * 6. Editor review staging with 10:00 AM ART auto-publish timeout
+ * 6. Editor review staging with 5:30 AM ART auto-publish timeout
  */
 
 import fs from "fs";
@@ -51,7 +51,7 @@ export interface ArxivVsMeridianDateComparison {
   arxivDayOfWeekName: string; // e.g. "Thursday"
   meridianPubDate: string; // e.g. "September 4, 2026" (Scheduled Meridian Dispatch)
   meridianDayOfWeekName: string; // e.g. "Friday"
-  meridianPubTime: string; // "09:00 AM ART"
+  meridianPubTime: string; // "04:00 AM ART"
   isDateAligned: boolean;
   dateAlignmentReason: string;
   sourceOfTruthNote: string;
@@ -95,8 +95,8 @@ export interface StagedDailyDispatch {
   dayName: string;
   sourceArxivBatchDay: string; // e.g. "Friday batch" for Monday publication
   createdAt: number;
-  scheduledFor: number; // 9:00 AM ART timestamp
-  autoPublishAt: number; // 10:00 AM ART timestamp
+  scheduledFor: number; // 4:00 AM ART timestamp
+  autoPublishAt: number; // 5:30 AM ART timestamp
   status: "staged_pending_review" | "accepted_and_published" | "auto_published" | "redrafted" | "sourced_pending_generation";
   selectedCategory: EditorialCategory;
   candidatePaper: ArxivPaper & {
@@ -154,20 +154,20 @@ export function getArtTime(referenceDate: Date = new Date()) {
 
   const dateString = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   
-  // Calculate today's 9:00 AM ART and 10:00 AM ART in UTC epochs
+  // Calculate today's 4:00 AM ART and 5:30 AM ART in UTC epochs
   const todayStartUtc = Date.UTC(year, month - 1, day, 3, 0, 0, 0); // 00:00 ART is 03:00 UTC
-  const scheduled9AmEpoch = todayStartUtc + (9 * 60 * 60 * 1000); // 12:00 UTC
-  const autoPublish10AmEpoch = todayStartUtc + (10 * 60 * 60 * 1000); // 13:00 UTC
+  const scheduled4AmEpoch = todayStartUtc + (4 * 60 * 60 * 1000); // 07:00 UTC
+  const autoPublish530AmEpoch = todayStartUtc + ((5 * 60 + 30) * 60 * 1000); // 08:30 UTC
 
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
   // Intelligent Weekend Bridge to Monday:
   // arXiv announces papers Mon-Fri (no weekend announcements on Friday/Saturday nights US ET).
-  // Friday's arXiv preprints are published on Monday 9:00 AM ART.
+  // Friday's arXiv preprints are published on Monday 04:00 AM - 05:30 AM ART.
   let targetPublishDate = dateString;
-  let targetPublishEpoch9Am = scheduled9AmEpoch;
-  let targetPublishEpoch10Am = autoPublish10AmEpoch;
+  let targetPublishEpoch4Am = scheduled4AmEpoch;
+  let targetPublishEpoch530Am = autoPublish530AmEpoch;
   let targetDayName = dayNames[dayOfWeek];
 
   if (dayOfWeek === 6) { // Saturday -> targets Monday (in 2 days)
@@ -176,8 +176,8 @@ export function getArtTime(referenceDate: Date = new Date()) {
     const mMonth = monDate.getUTCMonth() + 1;
     const mDay = monDate.getUTCDate();
     targetPublishDate = `${mYear}-${String(mMonth).padStart(2, "0")}-${String(mDay).padStart(2, "0")}`;
-    targetPublishEpoch9Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 9, 0, 0, 0);
-    targetPublishEpoch10Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 10, 0, 0, 0);
+    targetPublishEpoch4Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 4, 0, 0, 0);
+    targetPublishEpoch530Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 5, 30, 0, 0);
     targetDayName = "Monday";
   } else if (dayOfWeek === 0) { // Sunday -> targets Monday (in 1 day)
     const monDate = new Date(todayStartUtc + (1 * 24 * 60 * 60 * 1000));
@@ -185,10 +185,16 @@ export function getArtTime(referenceDate: Date = new Date()) {
     const mMonth = monDate.getUTCMonth() + 1;
     const mDay = monDate.getUTCDate();
     targetPublishDate = `${mYear}-${String(mMonth).padStart(2, "0")}-${String(mDay).padStart(2, "0")}`;
-    targetPublishEpoch9Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 9, 0, 0, 0);
-    targetPublishEpoch10Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 10, 0, 0, 0);
+    targetPublishEpoch4Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 4, 0, 0, 0);
+    targetPublishEpoch530Am = Date.UTC(mYear, mMonth - 1, mDay, 3 + 5, 30, 0, 0);
     targetDayName = "Monday";
   }
+
+  // 4:00 AM - 5:30 AM ART review window on weekdays
+  const isReviewWindow = !isWeekend && (hour === 4 || (hour === 5 && minute < 30));
+  // Past 5:30 AM ART on weekdays
+  const isPast530AmArt = !isWeekend && (hour > 5 || (hour === 5 && minute >= 30));
+  const millisUntil530Am = isWeekend ? Math.max(0, targetPublishEpoch530Am - utcMillis) : Math.max(0, autoPublish530AmEpoch - utcMillis);
 
   return {
     year,
@@ -201,18 +207,25 @@ export function getArtTime(referenceDate: Date = new Date()) {
     dayName: dayNames[dayOfWeek],
     dateString,
     artDate,
-    scheduled9AmEpoch,
-    autoPublish10AmEpoch,
+    scheduled4AmEpoch,
+    autoPublish530AmEpoch,
+    // Backwards-compatible aliases
+    scheduled9AmEpoch: scheduled4AmEpoch,
+    autoPublish10AmEpoch: autoPublish530AmEpoch,
     isWeekend,
     isWeekendBridge: isWeekend,
     targetPublishDate,
     targetDayName,
-    targetPublishEpoch9Am,
-    targetPublishEpoch10Am,
+    targetPublishEpoch4Am,
+    targetPublishEpoch530Am,
+    targetPublishEpoch9Am: targetPublishEpoch4Am,
+    targetPublishEpoch10Am: targetPublishEpoch530Am,
     // Only weekdays have active auto-review and auto-publish windows
-    isReviewWindow: !isWeekend && hour === 9,
-    isPast10AmArt: !isWeekend && hour >= 10,
-    millisUntil10Am: isWeekend ? Math.max(0, targetPublishEpoch10Am - utcMillis) : Math.max(0, autoPublish10AmEpoch - utcMillis),
+    isReviewWindow,
+    isPast530AmArt,
+    isPast10AmArt: isPast530AmArt,
+    millisUntil530Am,
+    millisUntil10Am: millisUntil530Am,
   };
 }
 
@@ -242,12 +255,12 @@ export function formatArtReadableDate(dateInput: string | Date = new Date()): st
 
 /**
  * Maps the day of the week to the source arXiv batch according to next-day publishing:
- * - Friday's arXiv release -> Published on Monday 9 AM ART
- * - Monday's arXiv release -> Published on Tuesday 9 AM ART
- * - Tuesday's arXiv release -> Published on Wednesday 9 AM ART
- * - Wednesday's arXiv release -> Published on Thursday 9 AM ART
- * - Thursday's arXiv release -> Published on Friday 9 AM ART
- * - Saturday & Sunday -> Weekend bridge targeting Monday 9 AM ART
+ * - Friday's arXiv release -> Published on Monday 4:00 AM - 5:30 AM ART
+ * - Monday's arXiv release -> Published on Tuesday 4:00 AM - 5:30 AM ART
+ * - Tuesday's arXiv release -> Published on Wednesday 4:00 AM - 5:30 AM ART
+ * - Wednesday's arXiv release -> Published on Thursday 4:00 AM - 5:30 AM ART
+ * - Thursday's arXiv release -> Published on Friday 4:00 AM - 5:30 AM ART
+ * - Saturday & Sunday -> Weekend bridge targeting Monday 4:00 AM - 5:30 AM ART
  */
 export function getSourceArxivBatch(dayOfWeek: number): { sourceBatchName: string; note: string } {
   switch (dayOfWeek) {
@@ -281,7 +294,7 @@ export function getSourceArxivBatch(dayOfWeek: number): { sourceBatchName: strin
     default:
       return {
         sourceBatchName: "Weekend bridge to Monday",
-        note: "arXiv has no weekend announcements. Bridges to Monday 09:00 AM ART.",
+        note: "arXiv has no weekend announcements. Bridges to Monday 04:00 AM ART.",
       };
   }
 }
@@ -607,8 +620,8 @@ export function computeArxivVsMeridianDates(
 
   const isWeekendBatch = arxivDayOfWeek === 5 || arxivDayOfWeek === 6 || arxivDayOfWeek === 0;
   const dateAlignmentReason = isWeekendBatch
-    ? `arXiv Friday release bridged to Monday 09:00 AM ART. arXiv does not post on weekends (Sat/Sun).`
-    : `arXiv ${arxivDayOfWeekName} web release scheduled for Meridian ${meridianDayOfWeekName} 09:00 AM ART dispatch. Matches next-day publishing cadence.`;
+    ? `arXiv Friday release bridged to Monday 04:00 AM ART. arXiv does not post on weekends (Sat/Sun).`
+    : `arXiv ${arxivDayOfWeekName} web release scheduled for Meridian ${meridianDayOfWeekName} 04:00 AM ART dispatch. Matches next-day publishing cadence.`;
 
   const sourceOfTruthNote = `The arXiv website announcement date (${arxivPubDate}) is the canonical source of truth. Internal PDF header author timestamps or server time zones may vary.`;
 
@@ -617,7 +630,7 @@ export function computeArxivVsMeridianDates(
     arxivDayOfWeekName,
     meridianPubDate,
     meridianDayOfWeekName,
-    meridianPubTime: "09:00 AM ART",
+    meridianPubTime: "04:00 AM ART",
     isDateAligned: true,
     dateAlignmentReason,
     sourceOfTruthNote,

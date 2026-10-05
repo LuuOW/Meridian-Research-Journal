@@ -1,12 +1,12 @@
 [
   {
     "jobId": "test-job-9999",
-    "triggerId": 1791114388405,
+    "triggerId": 1791200625223,
     "arxivInput": "2402.09854",
     "paperTitle": "Towards Optimal Quantum Estimators",
     "authors": "Author A, Author B",
     "status": "completed",
-    "startTime": 1791114388405,
+    "startTime": 1791200625223,
     "tokenUsage": {
       "promptTokens": 19,
       "candidateTokens": 19,
@@ -19,9 +19,9 @@
         "stepName": "Input Validation & ArXiv ID Parsing",
         "category": "ingestion",
         "status": "completed",
-        "startTime": 1791114388405,
+        "startTime": 1791200625223,
         "details": "Parsing input: 2402.09854",
-        "endTime": 1791114388405,
+        "endTime": 1791200625223,
         "durationMs": 0
       },
       {
@@ -29,10 +29,10 @@
         "stepName": "Angle Synthesis & Token Budgeting",
         "category": "prompt_prep",
         "status": "completed",
-        "startTime": 1791114388405,
+        "startTime": 1791200625223,
         "details": "Angle: Theoretical physics",
-        "endTime": 1791114388406,
-        "durationMs": 1
+        "endTime": 1791200625223,
+        "durationMs": 0
       }
     ],
     "persistenceStatus": {
@@ -43,8 +43,8 @@
       "gitHubMirror": false,
       "sitemapXml": true
     },
-    "endTime": 1791114388406,
-    "totalDurationMs": 1,
+    "endTime": 1791200625223,
+    "totalDurationMs": 0,
     "modelUsed": "gemini-2.5-flash",
     "provider": "gemini",
     "resultingBlog": {
