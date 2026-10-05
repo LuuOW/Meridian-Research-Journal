@@ -22,7 +22,7 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
     ],
     "createdAt": 1791200514598,
     "timestamp": 1791200514598,
-    "views": 394,
+    "views": 1661,
     "status": "published"
   },
   {
