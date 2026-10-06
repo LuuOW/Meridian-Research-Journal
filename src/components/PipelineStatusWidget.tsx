@@ -118,6 +118,27 @@ export const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
   // Filter out dismissed jobs
   const activeJobs = jobs.filter((j) => !j.dismissed);
 
+  // Automatically dismiss finished jobs (completed or failed) after 15 seconds so the widget badge doesn't linger indefinitely
+  useEffect(() => {
+    const finishedJobs = activeJobs.filter(
+      (j) => j.status === "completed" || j.status === "failed"
+    );
+    if (finishedJobs.length === 0) return;
+
+    const timers = finishedJobs.map((j) => {
+      const now = Date.now();
+      const elapsed = now - (j.completedTime || j.startTime || now);
+      const remainingMs = Math.max(1000, 15000 - elapsed);
+      return setTimeout(() => {
+        onDismissJob(j.id);
+      }, remainingMs);
+    });
+
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, [activeJobs, onDismissJob]);
+
   const handleDismissJobWithExplosion = (jobId: string) => {
     setExplodingJobIds((prev) => new Set(prev).add(jobId));
     setTimeout(() => {
@@ -387,7 +408,10 @@ export const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
                               </span>
 
                               <button
-                                onClick={() => onSelectBlog(job.resultBlog!)}
+                                onClick={() => {
+                                  onSelectBlog(job.resultBlog!);
+                                  onDismissJob(job.id);
+                                }}
                                 className="px-3 py-1 bg-white text-black hover:bg-neutral-200 text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-sm"
                               >
                                 <span>View Article</span>

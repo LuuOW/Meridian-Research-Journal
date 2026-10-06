@@ -101,6 +101,7 @@ interface NavbarProps {
   hasPendingDispatch?: boolean;
   activeJobs?: GenerationJob[];
   onStartManualGeneration?: (url: string) => Promise<void> | void;
+  onBlogGenerated?: (blog: BlogPost) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -122,7 +123,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenXaiAgent,
   hasPendingDispatch = false,
   activeJobs = [],
-  onStartManualGeneration
+  onStartManualGeneration,
+  onBlogGenerated
 }) => {
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [manualUrl, setManualUrl] = useState("");
@@ -162,6 +164,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
           throw new Error(err.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.blog && onBlogGenerated) {
+          onBlogGenerated(data.blog);
         }
 
         setManualStatus({ text: "Post generated successfully!" });

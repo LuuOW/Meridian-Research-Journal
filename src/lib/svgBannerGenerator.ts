@@ -3,6 +3,8 @@
  * Generates mathematically grounded, animated scientific vector SVG artwork with rich unique variations.
  */
 
+import { SVG_ANIMATION_STYLES } from "./svgUtils.js";
+
 export interface BannerTheme {
   bgStart: string;
   bgMid: string;
@@ -292,6 +294,7 @@ export function generateProceduralBannerSvg(title: string, tags?: string | strin
 
   return `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:${t.bgMid}">
   <defs>
+    <style id="mrd-svg-animations">${SVG_ANIMATION_STYLES}</style>
     <linearGradient id="bgGrad_${uid}" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="${t.bgStart}" />
       <stop offset="50%" stop-color="${t.bgMid}" />

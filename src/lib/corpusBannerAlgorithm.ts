@@ -61,6 +61,8 @@ const ARCHETYPE_BASE_HUES: Record<ScientificArchetype, number> = {
 const ARCHETYPE_FORMULAS: Record<ScientificArchetype, string[]> = {
   QUANTUM_STATES_AND_CIRCUITS: [
     "|Ψ⟩ = 1/√2 (|00⟩ + |11⟩)",
+    "(√Δm²₃₁ + √Δm²₂₁) / (√Δm²₃₁ - √Δm²₂₁) = √2",
+    "P(να→νβ) = sin²(2θ) sin²(Δm²L / 4E)",
     "F_frame^(k)(E) = ∫ |⟨ψ|φ⟩|^(2k) dμ",
     "Ĥ|Ψ⟩ = iℏ ∂_t|Ψ⟩",
     "ρ̂ = ∑ p_i |ψ_i⟩⟨ψ_i|",
@@ -196,7 +198,8 @@ export function classifyArticleArchetype(article: {
     FINANCE_AND_CRYPTOGRAPHY: 0
   };
 
-  // Quantum Information & Circuits
+  // Quantum Information, Circuits & Neutrino Dynamics
+  if (text.includes("neutrino") || text.includes("mass splittings") || text.includes("oscillation") || text.includes("pmns")) scores.QUANTUM_STATES_AND_CIRCUITS += 10;
   if (text.includes("frame potential") || text.includes("haar") || text.includes("qsvt") || text.includes("singular value transformation")) scores.QUANTUM_STATES_AND_CIRCUITS += 10;
   if (text.includes("qubit") || text.includes("quantum circuit") || text.includes("tomography") || text.includes("entangle")) scores.QUANTUM_STATES_AND_CIRCUITS += 5;
   if (text.includes("quantum") || text.includes("bell state") || text.includes("density matrix")) scores.QUANTUM_STATES_AND_CIRCUITS += 3;

@@ -1776,7 +1776,7 @@ app.get("/api/verify-github-token", async (req, res) => {
 function generateProceduralPaperArticle(paperTitle: string, paperSummary: string, arxivLink: string, paperAuthors: string, triggerId: number) {
   const generated = generateScientificArticleFromArxiv(paperTitle, paperSummary, arxivLink, paperAuthors, triggerId);
   const bannerTags = Array.isArray(generated.tags) ? generated.tags.slice(0, 2).join(" & ") : "Optics & Quantum";
-  const bannerSvg = generateProceduralBannerSvg(generated.title, bannerTags, triggerId);
+  const bannerSvg = ensureAnimatedSvg(generateProceduralBannerSvg(generated.title, bannerTags, triggerId));
 
   return {
     ...generated,
@@ -2046,14 +2046,36 @@ Requirements:
 
     const slug = generateSlug(finalTitle);
 
+    const cleanArxivSlug = arxivId ? arxivId.replace(/[^a-z0-9]+/gi, "-").toLowerCase() : "";
+    const canonicalId = cleanArxivSlug 
+      ? `blog-${cleanArxivSlug}-${timestamp.toString().slice(-4)}`
+      : `blog-generated-${timestamp}`;
+
+    // Synthesize high-fidelity Corpus-Aware Animated Vector Banner
+    // Guarantees non-colliding harmonic hues, KaTeX math formulas, glowing radial gradients, and animated keyframes
+    const existingCorpus = await getBlogs();
+    const candidateBlogForBanner = {
+      id: canonicalId,
+      title: finalTitle,
+      excerpt: finalExcerpt,
+      content: parsedBlog.content || "",
+      tags: Array.isArray(parsedBlog.tags) && parsedBlog.tags.length > 0 ? parsedBlog.tags : ["Quantum Physics", "Theoretical Physics"]
+    };
+
+    let synthesizedBanner = generateCorpusBannerSvg(candidateBlogForBanner, existingCorpus, processTriggerId);
+    synthesizedBanner = ensureAnimatedSvg(synthesizedBanner);
+
     const initialBlog = {
       ...parsedBlog,
-      id: `generated-${timestamp}`,
+      id: canonicalId,
       title: finalTitle,
       excerpt: finalExcerpt,
       slug: `${slug}-${timestamp.toString().slice(-4)}`,
+      bannerSvg: synthesizedBanner,
       aliasSlugs: [
         ...(Array.isArray(parsedBlog.aliasSlugs) ? parsedBlog.aliasSlugs : []),
+        `generated-${timestamp}`,
+        canonicalId,
         arxivId ? `https-arxiv-org-pdf-${arxivId}` : null,
         arxivId ? `https-arxiv-org-abs-${arxivId}` : null,
         arxivId ? `advanced-rigorous-analysis-of-https-arxiv-org-pdf-${arxivId}` : null,
@@ -2069,7 +2091,7 @@ Requirements:
       isManual: true,
       isManualGeneration: true,
       source: "manual_tool",
-      views: getBlogViews(`generated-${timestamp}`)
+      views: getBlogViews(canonicalId)
     };
 
     // For manual generated articles via this tool: chronological backdating to past arXiv dates

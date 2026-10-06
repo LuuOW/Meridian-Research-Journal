@@ -33,21 +33,49 @@ export function loadStoredJobs(): GenerationJob[] {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       const now = Date.now();
-      return parsed
+      const updated = parsed
         .filter(j => j && typeof j === "object" && j.id)
         .map(j => {
-          // If a job was left in "generating" state from a previous browser session, resolve it so it doesn't spin indefinitely
+          // If a job was left in "generating" state from a previous session, mark failed AND dismissed so it never pesters the user
           if (j.status === "generating" && (now - (j.startTime || 0) > 3 * 60 * 1000)) {
             return {
               ...j,
               status: "failed",
+              dismissed: true,
               currentStepMessage: "Session interrupted during generation",
               error: "Process timed out or page was reloaded during generation.",
               completedTime: now
             };
           }
+
+          // If a completed or failed job is older than 5 minutes, automatically mark it dismissed
+          const completedAge = j.completedTime ? now - j.completedTime : now - (j.startTime || 0);
+          if ((j.status === "completed" || j.status === "failed") && completedAge > 5 * 60 * 1000) {
+            return {
+              ...j,
+              dismissed: true
+            };
+          }
+
+          // If any job was started more than 1 hour ago, mark it dismissed
+          if (now - (j.startTime || 0) > 60 * 60 * 1000) {
+            return {
+              ...j,
+              dismissed: true
+            };
+          }
+
           return j;
-        });
+        })
+        // Retain only jobs created within the last 24 hours to keep localStorage healthy
+        .filter(j => now - (j.startTime || 0) < 24 * 60 * 60 * 1000);
+
+      // Save the cleaned jobs back to storage
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated.slice(0, 40)));
+      } catch (_) {}
+
+      return updated;
     }
   } catch (err) {
     console.warn("Failed to load stored generation jobs:", err);

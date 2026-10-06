@@ -237,15 +237,60 @@ export function readCustomBlogs(): BlogPost[] {
   try {
     const map = new Map<string, BlogPost>();
     if (fs.existsSync(CUSTOM_BLOGS_FILE)) {
-      const data = fs.readFileSync(CUSTOM_BLOGS_FILE, "utf-8");
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
-        for (const b of parsed) {
-          if (b && b.id) map.set(b.id, b);
+      try {
+        const data = fs.readFileSync(CUSTOM_BLOGS_FILE, "utf-8");
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          for (const b of parsed) {
+            if (b && b.id) map.set(b.id, b);
+          }
         }
+      } catch (e) {
+        console.warn("[Persistence] Warning parsing custom_blogs.json:", e);
       }
     }
 
+    // Secondary backup: public/custom_blogs.json
+    if (fs.existsSync(PUBLIC_CUSTOM_BLOGS_FILE)) {
+      try {
+        const pubData = fs.readFileSync(PUBLIC_CUSTOM_BLOGS_FILE, "utf-8");
+        const pubParsed = JSON.parse(pubData);
+        if (Array.isArray(pubParsed)) {
+          for (const b of pubParsed) {
+            if (b && b.id && !map.has(b.id)) {
+              map.set(b.id, b);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Tertiary backup: check generation_journal.jsonl for any manually or autonomously generated articles
+    if (fs.existsSync(JOURNAL_FILE)) {
+      try {
+        const lines = fs.readFileSync(JOURNAL_FILE, "utf-8").split("\n").filter(Boolean);
+        for (const line of lines) {
+          try {
+            const entry = JSON.parse(line);
+            const blog = entry?.resultingBlog || entry?.blog;
+            if (
+              blog &&
+              blog.id &&
+              blog.title &&
+              blog.content &&
+              blog.content.length > 100 &&
+              !map.has(blog.id) &&
+              !blog.id.startsWith("blog-test-") &&
+              !blog.id.startsWith("test-snapshot-")
+            ) {
+              map.set(blog.id, blog);
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    // Quaternary backup: snapshots archive if corpus size is below baseline
     if (map.size < 127) {
       const snapshotsDir = path.join(process.cwd(), "data", "snapshots");
       if (fs.existsSync(snapshotsDir)) {

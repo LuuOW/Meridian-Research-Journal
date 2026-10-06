@@ -498,6 +498,13 @@ export default function App() {
       localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
     } catch (_) {}
 
+    // 4. Sync to server API and multi-tier persistence
+    fetch("/api/blogs/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blogs: [updatedBlog] })
+    }).catch(err => console.error("Error syncing injected article to server:", err));
+
     setArticleToastMsg(`Successfully injected arXiv paper "${updatedBlog.title.slice(0, 42)}..."`);
     setTimeout(() => setArticleToastMsg(null), 4000);
   };
@@ -833,8 +840,9 @@ export default function App() {
           }
           const allBlogs = sortBlogsByPublicationDate(applyOverrides(filterBlockedArticles(Array.from(mergedMap.values()))));
           setBlogs(allBlogs);
-          if (mergedCustomBlogs.length > 0) {
-            localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
+          const customOnly = mergedCustomBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
+          if (customOnly.length > 0) {
+            localStorage.setItem("meridian_blogs_saved", JSON.stringify(customOnly));
           }
 
           // Handle deep linking with resilient slug/ID matching
@@ -1308,6 +1316,7 @@ export default function App() {
         hasPendingDispatch={hasPendingDispatch}
         activeJobs={jobs}
         onStartManualGeneration={handleStartAsyncGeneration}
+        onBlogGenerated={handleBlogGenerated}
       />
 
       {/* Dynamic Scroll Progress Indicator for active blog reading */}
