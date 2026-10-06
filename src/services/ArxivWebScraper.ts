@@ -363,10 +363,20 @@ export async function scrapeArxivPreprint(
 export function verifyPreprintDateMatch(
   scrapedPage: ScrapedArxivPage,
   targetDate: string | Date,
-  requiredCategory?: "Quantum Physics" | "Optics" | "any"
+  requiredCategory?: "Quantum Physics" | "Optics" | "any",
+  allowedLagDays: number = 0
 ): DateMatchVerification {
   const { isoDate: targetIso, canonicalDate: targetFormatted } = normalizeDateToIso(targetDate);
-  const matches = scrapedPage.isoDate === targetIso;
+  let matches = scrapedPage.isoDate === targetIso;
+
+  if (!matches && allowedLagDays > 0 && scrapedPage.isoDate) {
+    const scrapedTime = new Date(scrapedPage.isoDate).getTime();
+    const targetTime = new Date(targetIso).getTime();
+    const diffDays = Math.round((targetTime - scrapedTime) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0 && diffDays <= allowedLagDays) {
+      matches = true;
+    }
+  }
 
   let categoryMatches = true;
   if (requiredCategory && requiredCategory !== "any") {
@@ -379,7 +389,7 @@ export function verifyPreprintDateMatch(
 
   let rejectionReason: string | undefined = undefined;
   if (!matches) {
-    rejectionReason = `Preprint submission date [${scrapedPage.submittedDateStr}] does not match target date ${targetFormatted} (${scrapedPage.isoDate} !== ${targetIso})`;
+    rejectionReason = `Preprint submission date [${scrapedPage.submittedDateStr}] does not match target date ${targetFormatted} (${scrapedPage.isoDate} !== ${targetIso}, allowed lag: ${allowedLagDays} days)`;
   } else if (!categoryMatches) {
     rejectionReason = `Preprint category "${scrapedPage.category}" (${scrapedPage.categoryCode}) does not match required discipline (Quantum Physics or Optics)`;
   }

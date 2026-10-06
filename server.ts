@@ -3951,7 +3951,7 @@ app.post("/api/daily-dispatch/select-candidate", async (req, res) => {
 app.post("/api/daily-dispatch/trigger-crawl", async (req, res) => {
   try {
     const { category } = req.body || {};
-    const dispatch = await microservicesRegistry.getDailyScheduleDaemon().stageTodayDispatch(category);
+    const dispatch = await microservicesRegistry.getDailyScheduleDaemon().stageTodayDispatch(category, true);
     res.json({ success: true, dispatch });
   } catch (err: any) {
     console.error("[API] Failed to trigger crawl:", err);

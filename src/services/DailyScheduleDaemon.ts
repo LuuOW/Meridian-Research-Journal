@@ -444,7 +444,7 @@ export class DailyScheduleDaemon implements IMicroservice {
     for (const cand of candidatesToScore) {
       try {
         const scraped = await scrapeArxivPreprint(cand.id, { timeoutMs: 2500 });
-        const dateMatch = verifyPreprintDateMatch(scraped, art.dateString);
+        const dateMatch = verifyPreprintDateMatch(scraped, art.dateString, "any", 4);
         if (dateMatch.matches) {
           console.log(`[${this.serviceName}] Candidate ${cand.id} verified via arXiv Web Scraping: Category="${scraped.category}", Dateline="${scraped.rawDateline}" matches generation date.`);
           dateVerifiedCandidates.push({
