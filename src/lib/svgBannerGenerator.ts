@@ -127,8 +127,18 @@ function getScientificFormula(title: string, tag: string, seed: number): string 
     "P_out = η_slope · (P_pump - P_th)"
   ];
 
+  const neutrinoFormulas = [
+    "P(ν_e → ν_μ) = sin²(2θ) sin²(Δm² L / 4E)",
+    "Δm²₂₁ ≪ |Δm²₃₁| // JUNO Mass Hierarchy",
+    "U_PMNS = V_e† · V_ν // 3×3 Mixing",
+    "(√Δm²₃₁ + √Δm²₂₁) / (√Δm²₃₁ - √Δm²₂₁) = √2",
+    "Δm²₃₁ ≈ 2.52 × 10⁻³ eV² // θ₁₂ ≈ 33.4°"
+  ];
+
   let pool = opticsFormulas;
-  if (combined.includes("quantum") || combined.includes("qubit") || combined.includes("entangle") || combined.includes("matter")) {
+  if (combined.includes("neutrino") || combined.includes("pmns") || combined.includes("splittings") || combined.includes("juno") || combined.includes("dark photon") || combined.includes("hep-")) {
+    pool = neutrinoFormulas;
+  } else if (combined.includes("quantum") || combined.includes("qubit") || combined.includes("entangle") || combined.includes("matter")) {
     pool = quantumFormulas;
   } else if (combined.includes("topology") || combined.includes("chiral") || combined.includes("crystal") || combined.includes("lattice")) {
     pool = topologyFormulas;

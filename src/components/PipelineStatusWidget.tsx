@@ -117,27 +117,44 @@ export const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
 
   // Filter out dismissed jobs
   const activeJobs = jobs.filter((j) => !j.dismissed);
+  const dismissalTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  // Automatically dismiss finished jobs (completed or failed) after 15 seconds so the widget badge doesn't linger indefinitely
+  // Automatically dismiss finished jobs (completed or failed) after 8 seconds so the badge never lingers.
+  // Also auto-dismiss any jobs stuck in generating for > 3 minutes.
+  // Uses stable job status signature so mouse movement re-renders DO NOT clear the timers.
+  const jobSignature = activeJobs.map((j) => `${j.id}:${j.status}`).join(",");
+
   useEffect(() => {
-    const finishedJobs = activeJobs.filter(
-      (j) => j.status === "completed" || j.status === "failed"
-    );
-    if (finishedJobs.length === 0) return;
+    const now = Date.now();
+    for (const job of activeJobs) {
+      if (job.status === "completed" || job.status === "failed") {
+        if (!dismissalTimersRef.current.has(job.id)) {
+          const elapsed = now - (job.completedTime || job.startTime || now);
+          const remainingMs = Math.max(500, 8000 - elapsed);
+          const t = setTimeout(() => {
+            onDismissJob(job.id);
+            dismissalTimersRef.current.delete(job.id);
+          }, remainingMs);
+          dismissalTimersRef.current.set(job.id, t);
+        }
+      } else if (job.status === "generating") {
+        const elapsed = now - (job.startTime || now);
+        if (elapsed > 3 * 60 * 1000) {
+          // Interrupted / stuck job from prior session
+          onDismissJob(job.id);
+        }
+      }
+    }
 
-    const timers = finishedJobs.map((j) => {
-      const now = Date.now();
-      const elapsed = now - (j.completedTime || j.startTime || now);
-      const remainingMs = Math.max(1000, 15000 - elapsed);
-      return setTimeout(() => {
-        onDismissJob(j.id);
-      }, remainingMs);
-    });
-
-    return () => {
-      timers.forEach((t) => clearTimeout(t));
-    };
-  }, [activeJobs, onDismissJob]);
+    // Clean up timers for jobs that are no longer active
+    const activeIds = new Set(activeJobs.map((j) => j.id));
+    for (const [id, timer] of dismissalTimersRef.current.entries()) {
+      if (!activeIds.has(id)) {
+        clearTimeout(timer);
+        dismissalTimersRef.current.delete(id);
+      }
+    }
+  }, [jobSignature, onDismissJob]);
 
   const handleDismissJobWithExplosion = (jobId: string) => {
     setExplodingJobIds((prev) => new Set(prev).add(jobId));

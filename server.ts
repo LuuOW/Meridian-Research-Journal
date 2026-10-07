@@ -1686,7 +1686,16 @@ app.post("/api/blogs/sync", async (req, res) => {
   // Then add client-side blogs (which might have been created offline or saved in localStorage)
   clientBlogs.forEach((blog: any) => {
     if (blog && blog.id && !isArticleBlocked(blog)) {
-      mergedMap.set(blog.id, blog);
+      const existing = mergedMap.get(blog.id);
+      if (!existing) {
+        mergedMap.set(blog.id, blog);
+      } else {
+        const clientTime = blog.updatedAt ? new Date(blog.updatedAt).getTime() : (blog.timestamp || blog.createdAt || 0);
+        const serverTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : (existing.timestamp || existing.createdAt || 0);
+        if (clientTime >= serverTime || (blog.content && (!existing.content || existing.content.length < blog.content.length))) {
+          mergedMap.set(blog.id, { ...existing, ...blog });
+        }
+      }
     }
   });
   
@@ -2780,15 +2789,26 @@ Generate a fresh, in-depth academic synthesis with unique mathematical derivatio
       generatedBlogData = generateProceduralPaperArticle(paperTitle, paperSummary, fullArxivUrl, paperAuthors, triggerId);
     }
 
-    // 5. Generate bespoke vector SVG banner
+    // 5. Generate bespoke vector SVG banner via Corpus-Aware Contextual Engine
     const finalTitle = generatedBlogData.title || paperTitle;
     const finalTags = Array.isArray(generatedBlogData.tags) && generatedBlogData.tags.length > 0
       ? generatedBlogData.tags
       : ["Theoretical Physics", "Quantum Optics"];
-    const bannerTags = finalTags.join(" & ");
-    let finalBannerSvg = generatedBlogData.bannerSvg;
-    if (!finalBannerSvg || !finalBannerSvg.startsWith("<svg") || !finalBannerSvg.endsWith("</svg>")) {
-      finalBannerSvg = generateProceduralBannerSvg(finalTitle, bannerTags, triggerId);
+    
+    let finalBannerSvg = "";
+    try {
+      const existingCorpus = await getBlogs();
+      const candidateBlogForBanner = {
+        title: finalTitle,
+        excerpt: generatedBlogData.excerpt || paperSummary,
+        content: generatedBlogData.content || "",
+        tags: finalTags
+      };
+      finalBannerSvg = generateCorpusBannerSvg(candidateBlogForBanner, existingCorpus, triggerId);
+      finalBannerSvg = ensureAnimatedSvg(finalBannerSvg);
+    } catch (_) {
+      const bannerTags = finalTags.join(" & ");
+      finalBannerSvg = ensureAnimatedSvg(generateProceduralBannerSvg(finalTitle, bannerTags, triggerId));
     }
 
     const now = new Date();

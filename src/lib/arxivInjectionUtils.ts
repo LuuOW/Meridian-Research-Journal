@@ -2,6 +2,8 @@ import { BlogPost } from "../types";
 import { extractArxivId } from "./arxivUtils";
 import { generateScientificArticleFromArxiv } from "./paperGenerationEngine";
 import { generateProceduralBannerSvg } from "./svgBannerGenerator";
+import { generateCorpusBannerSvg } from "./corpusBannerAlgorithm";
+import { ensureAnimatedSvg } from "./svgUtils";
 
 export interface ArxivPaperPreview {
   title: string;
@@ -277,7 +279,18 @@ export function createClientSideFallbackArticle(
   const bannerTags = Array.isArray(generated.tags) && generated.tags.length > 0
     ? generated.tags.slice(0, 2).join(" & ")
     : "Optics & Quantum";
-  const bannerSvg = generateProceduralBannerSvg(generated.title, bannerTags, seed);
+
+  let bannerSvg = "";
+  try {
+    bannerSvg = ensureAnimatedSvg(generateCorpusBannerSvg({
+      title: generated.title || title,
+      excerpt: generated.excerpt || summary,
+      content: generated.content,
+      tags: generated.tags || ["arXiv", "Quantum"]
+    }, undefined, seed));
+  } catch (_) {
+    bannerSvg = ensureAnimatedSvg(generateProceduralBannerSvg(generated.title, bannerTags, seed));
+  }
 
   const newSlug = updateSlug
     ? `${cleanId}-${Math.floor(1000 + Math.random() * 9000)}`

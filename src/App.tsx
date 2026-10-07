@@ -468,16 +468,32 @@ export default function App() {
   };
 
   const handleArticleInjected = (updatedBlog: BlogPost, previousBlogId: string) => {
-    // 1. Update in blogs list preserving order
-    setBlogs((prev) =>
-      prev.map((b) =>
+    // 1. Update in blogs list preserving order and persist safely
+    setBlogs((prev) => {
+      const updatedList = prev.map((b) =>
         b.id === previousBlogId ||
         b.id === updatedBlog.id ||
         (b.slug && (b.slug === updatedBlog.slug || b.slug === previousBlogId))
           ? updatedBlog
           : b
-      )
-    );
+      );
+
+      // Persist to local storage with quota protection
+      try {
+        const customBlogs = updatedList.filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id));
+        localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+      } catch (_) {
+        try {
+          const lightweight = updatedList.slice(0, 20).filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id)).map(b => ({
+            ...b,
+            bannerSvg: b.bannerSvg ? b.bannerSvg.slice(0, 500) : ""
+          }));
+          localStorage.setItem("meridian_blogs_saved", JSON.stringify(lightweight));
+        } catch (_) {}
+      }
+
+      return updatedList;
+    });
 
     // 2. Update activeBlog if currently open
     if (
@@ -490,20 +506,15 @@ export default function App() {
       setActiveBlog(updatedBlog);
     }
 
-    // 3. Persist to local storage
+    // 3. Sync to server API and multi-tier persistence with keepalive so browser exit does not cancel
     try {
-      const customBlogs = blogs
-        .map((b) => (b.id === previousBlogId ? updatedBlog : b))
-        .filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id));
-      localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+      fetch("/api/blogs/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blogs: [updatedBlog] }),
+        keepalive: true
+      }).catch(err => console.error("Error syncing injected article to server:", err));
     } catch (_) {}
-
-    // 4. Sync to server API and multi-tier persistence
-    fetch("/api/blogs/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blogs: [updatedBlog] })
-    }).catch(err => console.error("Error syncing injected article to server:", err));
 
     setArticleToastMsg(`Successfully injected arXiv paper "${updatedBlog.title.slice(0, 42)}..."`);
     setTimeout(() => setArticleToastMsg(null), 4000);
@@ -1083,16 +1094,25 @@ export default function App() {
       const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
       try {
         localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
-      } catch (_) {}
+      } catch (_) {
+        try {
+          const lightweight = customBlogs.slice(0, 20).map(b => ({
+            ...b,
+            bannerSvg: b.bannerSvg ? b.bannerSvg.slice(0, 500) : ""
+          }));
+          localStorage.setItem("meridian_blogs_saved", JSON.stringify(lightweight));
+        } catch (_) {}
+      }
       return updatedBlogs;
     });
     
-    // Proactively trigger sync to the server API and Firestore securely in the background
+    // Proactively trigger sync to the server API and Firestore securely in the background with keepalive
     try {
       const res = await fetch("/api/blogs/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blogs: [newBlog] })
+        body: JSON.stringify({ blogs: [newBlog] }),
+        keepalive: true
       });
       if (res.ok) {
         const data = await res.json();

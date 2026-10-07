@@ -36,32 +36,24 @@ export function loadStoredJobs(): GenerationJob[] {
       const updated = parsed
         .filter(j => j && typeof j === "object" && j.id)
         .map(j => {
-          // If a job was left in "generating" state from a previous session, mark failed AND dismissed so it never pesters the user
-          if (j.status === "generating" && (now - (j.startTime || 0) > 3 * 60 * 1000)) {
+          // On fresh app boot / page load, ALL past completed or failed jobs are dismissed
+          // so historical notifications never reappear days or hours later
+          if (j.status === "completed" || j.status === "failed") {
+            return {
+              ...j,
+              dismissed: true
+            };
+          }
+
+          // If a job was left in "generating" state from a previous session, mark failed AND dismissed
+          if (j.status === "generating") {
             return {
               ...j,
               status: "failed",
               dismissed: true,
               currentStepMessage: "Session interrupted during generation",
-              error: "Process timed out or page was reloaded during generation.",
+              error: "Process was interrupted or page was reloaded.",
               completedTime: now
-            };
-          }
-
-          // If a completed or failed job is older than 5 minutes, automatically mark it dismissed
-          const completedAge = j.completedTime ? now - j.completedTime : now - (j.startTime || 0);
-          if ((j.status === "completed" || j.status === "failed") && completedAge > 5 * 60 * 1000) {
-            return {
-              ...j,
-              dismissed: true
-            };
-          }
-
-          // If any job was started more than 1 hour ago, mark it dismissed
-          if (now - (j.startTime || 0) > 60 * 60 * 1000) {
-            return {
-              ...j,
-              dismissed: true
             };
           }
 
