@@ -182,35 +182,29 @@ export function sortBlogsByPublicationDate(
   blogs: BlogPost[],
   direction: "desc" | "asc" = "desc"
 ): BlogPost[] {
-  const manualBlogs: BlogPost[] = [];
-  const standardBlogs: BlogPost[] = [];
-
-  for (const b of blogs) {
-    if (isManualGeneratedBlog(b)) {
-      manualBlogs.push(b);
-    } else {
-      standardBlogs.push(b);
-    }
-  }
+  const sorted = [...blogs];
 
   const sortFn = (a: BlogPost, b: BlogPost) => {
-    const dateA = parsePublicationDate(a.date)?.getTime() || 0;
-    const dateB = parsePublicationDate(b.date)?.getTime() || 0;
-    if (dateA !== dateB) {
-      return direction === "desc" ? dateB - dateA : dateA - dateB;
-    }
     const timeA = getBlogTimestamp(a);
     const timeB = getBlogTimestamp(b);
     if (timeA !== timeB) {
       return direction === "desc" ? timeB - timeA : timeA - timeB;
     }
+    const dateA = parsePublicationDate(a.date)?.getTime() || 0;
+    const dateB = parsePublicationDate(b.date)?.getTime() || 0;
+    if (dateA !== dateB) {
+      return direction === "desc" ? dateB - dateA : dateA - dateB;
+    }
+    const manualA = isManualGeneratedBlog(a) ? 1 : 0;
+    const manualB = isManualGeneratedBlog(b) ? 1 : 0;
+    if (manualA !== manualB) {
+      return manualB - manualA;
+    }
     return (a.title || "").localeCompare(b.title || "");
   };
 
-  manualBlogs.sort(sortFn);
-  standardBlogs.sort(sortFn);
-
-  return [...manualBlogs, ...standardBlogs];
+  sorted.sort(sortFn);
+  return sorted;
 }
 
 /**

@@ -24,6 +24,7 @@ import {
   generateStagedArticleDraft,
   buildCandidateDeck,
   buildAdaptiveArxivQueryUrl,
+  formatArtReadableDate,
   StagedDailyDispatch,
   EditorialCandidate
 } from "../lib/dailyEditorialEngine";
@@ -230,18 +231,30 @@ export class DailyScheduleDaemon implements IMicroservice {
       // Only auto-stage during the 4:00 AM - 5:30 AM ART review window on weekdays.
       // If past 5:30 AM ART on weekdays and today's article has not been published yet, perform late recovery.
       // On weekends, arXiv has no announcements; Friday preprints stage for Monday 04:00 AM ART.
-      if (!dispatch || (dispatch.dateArt !== art.dateString && dispatch.dateArt !== art.targetPublishDate)) {
+      const targetDateStr = art.isWeekend ? art.targetPublishDate : art.dateString;
+      const targetFormattedDate = formatArtReadableDate(targetDateStr);
+      const isArticleForDate = (b: any) => {
+        if (!b) return false;
+        if (b.date === targetDateStr || b.date === targetFormattedDate) return true;
+        if (b.date) {
+          const parsed = new Date(b.date);
+          if (!isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === targetDateStr) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      const existingBlogs = this.persistenceService.readBlogs();
+      const publishedToday = existingBlogs.some(isArticleForDate);
+
+      // If no dispatch staged for today, or previous dispatch is from a previous date,
+      // or today's article has not been published yet past 5:30 AM ART:
+      if (!dispatch || (dispatch.dateArt !== targetDateStr) || (!publishedToday && !art.isWeekend && art.isPast530AmArt)) {
         if (art.isReviewWindow) {
           console.log(`[${this.serviceName}] 4:00 AM ART review window detected for date ${art.dateString}. Staging today's arXiv draft...`);
           dispatch = await this.stageTodayDispatch();
         } else if (art.isPast530AmArt && !art.isWeekend) {
-          // Check if today's edition is already in corpus
-          const existingBlogs = this.persistenceService.readBlogs();
-          const targetDateStr = art.dateString;
-          const publishedToday = existingBlogs.some(b => {
-            const bDate = b.date ? new Date(b.date).toISOString().slice(0, 10) : "";
-            return bDate === targetDateStr || b.date === `October ${parseInt(targetDateStr.slice(8))}, ${targetDateStr.slice(0, 4)}` || b.date === `September ${parseInt(targetDateStr.slice(8))}, ${targetDateStr.slice(0, 4)}`;
-          });
           if (!publishedToday) {
             console.log(`[${this.serviceName}] Past 5:30 AM ART on weekday and no article published for ${targetDateStr}; auto-staging and auto-publishing today's edition...`);
             dispatch = await this.stageTodayDispatch(undefined, true);
@@ -252,10 +265,7 @@ export class DailyScheduleDaemon implements IMicroservice {
             console.log(`[${this.serviceName}] Past 5:30 AM ART and today's article is already present in corpus.`);
             // Ensure daily_dispatch.json is aligned with today's edition so editor modal does not show stale prompts
             if (!dispatch || dispatch.dateArt !== targetDateStr) {
-              const todayArticle = existingBlogs.find(b => {
-                const bDate = b.date ? new Date(b.date).toISOString().slice(0, 10) : "";
-                return bDate === targetDateStr || (b.date && b.date.includes(targetDateStr.slice(0, 4)));
-              });
+              const todayArticle = existingBlogs.find(isArticleForDate);
               if (todayArticle) {
                 const currentDispatchRecord: StagedDailyDispatch = {
                   id: `dispatch_${targetDateStr.replace(/-/g, "_")}`,

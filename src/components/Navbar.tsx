@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Sparkles, Compass, Sun, Moon, Activity, Loader2, ChevronDown, Wrench, ArrowUpRight, ArrowRight, FileText, Coins, Heart, QrCode, Terminal, Layers, Sliders, CheckCircle2, AlertTriangle, Link2, X as CloseIcon, Wifi } from "lucide-react";
-import { GenerationJob } from "../types";
+import { GenerationJob, BlogPost } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
 import { Switch } from "./Switch";
 import { useEditorConfig } from "../lib/editorConfig";
