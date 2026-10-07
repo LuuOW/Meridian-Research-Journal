@@ -20,9 +20,9 @@ const RAW_PRELOADED_BLOGS: BlogPost[] = [
       "Electroweak Theory",
       "Astrophysics"
     ],
-    "createdAt": 1791378226728,
-    "timestamp": 1791378226728,
-    "views": 549,
+    "createdAt": 1791378233855,
+    "timestamp": 1791378233855,
+    "views": 384,
     "status": "published"
   },
   {
