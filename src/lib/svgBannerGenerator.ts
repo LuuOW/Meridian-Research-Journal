@@ -302,6 +302,29 @@ export function generateProceduralBannerSvg(title: string, tags?: string | strin
     `;
   }
 
+  // Multi-line responsive title layout
+  let titleSvg = `<text x="50" y="340" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" letter-spacing="-0.5">${cleanTitle}</text>`;
+  if (cleanTitle.length > 50) {
+    const words = cleanTitle.split(/\s+/);
+    let line1 = "";
+    let line2 = "";
+    for (const w of words) {
+      if ((line1 + " " + w).trim().length <= 50 && line2 === "") {
+        line1 = (line1 + " " + w).trim();
+      } else {
+        line2 = (line2 + " " + w).trim();
+      }
+    }
+    if (line2.length > 58) {
+      const truncated = line2.slice(0, 55);
+      const lastSpace = truncated.lastIndexOf(" ");
+      line2 = (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + "...";
+    }
+    const fs = cleanTitle.length > 70 ? 15 : 17;
+    titleSvg = `<text x="50" y="324" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="${fs}" font-weight="800" letter-spacing="-0.4">${line1}</text>
+  <text x="50" y="345" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="${fs}" font-weight="800" letter-spacing="-0.4">${line2}</text>`;
+  }
+
   return `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:${t.bgMid}">
   <defs>
     <style id="mrd-svg-animations">${SVG_ANIMATION_STYLES}</style>
@@ -354,7 +377,7 @@ export function generateProceduralBannerSvg(title: string, tags?: string | strin
   <text x="750" y="56" text-anchor="end" fill="${t.accent}" font-family="monospace" font-size="11" font-weight="600" opacity="0.85" letter-spacing="0.5">${formula}</text>
 
   <!-- Title Watermark & Unique Run Branding -->
-  <text x="50" y="340" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" letter-spacing="-0.5">${cleanTitle}</text>
+  ${titleSvg}
   <text x="50" y="366" fill="#94a3b8" font-family="monospace" font-size="10" letter-spacing="1.2">MERIDIAN RESEARCH // ${t.label} // #${uid.toUpperCase()}</text>
 </svg>`;
 }

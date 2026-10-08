@@ -14,8 +14,13 @@
 
 import { BlogPost } from "../types";
 import { SVG_ANIMATION_STYLES } from "./svgUtils.js";
+import { cleanLatexForPlainText } from "./paperGenerationEngine";
 
 export type ScientificArchetype =
+  | "MESON_DECAY_AND_COLLIDER_PHYSICS"
+  | "ASTROPARTICLE_AND_DARK_MATTER"
+  | "QUANTUM_THERMODYNAMICS_AND_SYMMETRIES"
+  | "NEUTRINO_OSCILLATIONS_AND_MATTER"
   | "QUANTUM_STATES_AND_CIRCUITS"
   | "TOPOLOGICAL_PHOTONICS_AND_BICS"
   | "CAVITY_QED_AND_LASERS"
@@ -26,11 +31,13 @@ export type ScientificArchetype =
   | "DIAMOND_NV_AND_COLOR_CENTERS"
   | "DISTRIBUTED_SYSTEMS_AND_MCP"
   | "FINANCE_AND_CRYPTOGRAPHY"
+  | "FERMION_MOMENTS_AND_LOOP_PHYSICS"
   | "HIGH_ENERGY_AND_NEUTRINO_PHYSICS";
 
 export interface CorpusBannerProfile {
   archetype: ScientificArchetype;
   label: string;
+  badgeLabel: string;
   formula: string;
   bgStart: string;
   bgMid: string;
@@ -46,21 +53,66 @@ export interface CorpusBannerProfile {
 
 // Base hues for each scientific archetype
 const ARCHETYPE_BASE_HUES: Record<ScientificArchetype, number> = {
-  QUANTUM_STATES_AND_CIRCUITS: 195,       // Cyan / Electric Blue
-  TOPOLOGICAL_PHOTONICS_AND_BICS: 160,    // Emerald / Mint
-  CAVITY_QED_AND_LASERS: 345,             // Rose / Ruby Red
-  OPTICAL_INTERFEROMETRY: 270,            // Deep Violet / Purple
-  DIFFRACTIVE_AI_AND_TENSORS: 220,        // Royal Blue / Indigo
-  CONDENSED_MATTER_AND_SPINS: 35,         // Amber / Gold
-  BIOPHOTONICS_AND_IMAGING: 140,          // Jade Green / Teal
-  DIAMOND_NV_AND_COLOR_CENTERS: 310,      // Magenta / Fuchsia
-  DISTRIBUTED_SYSTEMS_AND_MCP: 210,       // Sky Blue / Slate
-  FINANCE_AND_CRYPTOGRAPHY: 45,           // Warm Gold / Topaz
-  HIGH_ENERGY_AND_NEUTRINO_PHYSICS: 265   // Cosmic Violet / Cherenkov Radiant Indigo
+  MESON_DECAY_AND_COLLIDER_PHYSICS: 285,      // Vibrant Violet / Magenta
+  FERMION_MOMENTS_AND_LOOP_PHYSICS: 310,      // Royal Fuchsia / Radiant Magenta
+  ASTROPARTICLE_AND_DARK_MATTER: 240,         // Deep Celestial Indigo
+  QUANTUM_THERMODYNAMICS_AND_SYMMETRIES: 175, // Electric Emerald / Cyan
+  NEUTRINO_OSCILLATIONS_AND_MATTER: 205,      // Radiant Cobalt / Azure
+  QUANTUM_STATES_AND_CIRCUITS: 195,           // Cyan / Electric Blue
+  TOPOLOGICAL_PHOTONICS_AND_BICS: 160,        // Emerald / Mint
+  CAVITY_QED_AND_LASERS: 345,                 // Rose / Ruby Red
+  OPTICAL_INTERFEROMETRY: 270,                // Deep Violet / Purple
+  DIFFRACTIVE_AI_AND_TENSORS: 220,            // Royal Blue / Indigo
+  CONDENSED_MATTER_AND_SPINS: 35,             // Amber / Gold
+  BIOPHOTONICS_AND_IMAGING: 140,              // Jade Green / Teal
+  DIAMOND_NV_AND_COLOR_CENTERS: 295,          // Imperial Orchid / Violet
+  DISTRIBUTED_SYSTEMS_AND_MCP: 210,           // Sky Blue / Slate
+  FINANCE_AND_CRYPTOGRAPHY: 45,               // Warm Gold / Topaz
+  HIGH_ENERGY_AND_NEUTRINO_PHYSICS: 265       // Cosmic Violet / Cherenkov Radiant Indigo
 };
 
 // Domain Formulas tailored to context
 const ARCHETYPE_FORMULAS: Record<ScientificArchetype, string[]> = {
+  MESON_DECAY_AND_COLLIDER_PHYSICS: [
+    "M²_miss = (p_D - p_e)² ≥ m_φ²",
+    "dΓ/dM²_miss ∝ (m_D² - M²)² (M² - m_φ²)",
+    "D⁺ → e⁺ ν̄_α φ // STCF Threshold",
+    "ℒ_int = -½ g_φ φ ν̄^c ν + h.c.",
+    "B(D⁺ → e⁺ ν̄ φ) ≫ B(D⁺ → e⁺ ν_e)_SM",
+    "10 MeV ≲ m_φ ≲ 1 GeV // BESIII"
+  ],
+  FERMION_MOMENTS_AND_LOOP_PHYSICS: [
+    "ℒ_eff = ½ ψ̄ σ^μν (μ + i d γ₅) ψ F_μν",
+    "μ_f = g (e / 2m) · [1 + (α / 2π) + ...]",
+    "Majorana Invariance: μ_ii = d_ii = 0",
+    "Γ(ψ_j → ψ_i γ) = (|μ_ij|² + |d_ij|²) · (Δm³ / 8π)",
+    "Passarino-Veltman C_0(p², q², m_S², m_f²)",
+    "a_μ = (g - 2)/2 // Transition Dipoles"
+  ],
+  ASTROPARTICLE_AND_DARK_MATTER: [
+    "V_α(r) = √2 G_eff (n_χ - n_χ̄)",
+    "ρ_DM(r) ∝ r^(-γ_sp) // Gondolo-Silk Spike",
+    "V_DM(r_res) ≈ Δm²₃₁ / (2 E_ν) cos 2θ₂₃",
+    "(f_e : f_μ : f_τ)_⊕ ↔ IceCube MESE",
+    "E_ν ~ 100 TeV // Resonant MSW Conversion",
+    "|ε_α (n_χ - n_χ̄)| ~ 10¹⁸ cm⁻³"
+  ],
+  QUANTUM_THERMODYNAMICS_AND_SYMMETRIES: [
+    "[U_SH, Q_S + Q_H] = 0 // Noether Symmetry",
+    "ΔS_H = 0 ⟹ A_Q(ρ_S) ≥ A_Q(ρ_S')",
+    "ρ_S(θ) = e^(-i θ Q_S) ρ_S e^(i θ Q_S)",
+    "ΔE_H = Tr[H_H (ρ_H' - ρ_H)] > 0",
+    "A_Q(ρ_S) = S(G_Q(ρ_S)) - S(ρ_S) ≥ 0",
+    "DEH Exact Preservation: ΔA_Q = 0"
+  ],
+  NEUTRINO_OSCILLATIONS_AND_MATTER: [
+    "i dΨ/dx = H(x) Ψ // Ψ(x) = exp(Ω(x))",
+    "Ω_1 = -i ∫ H(t) dt",
+    "Ω_2 = -½ ∫ dt₁ ∫ dt₂ [H(t₁), H(t₂)]",
+    "Ψ(x)† Ψ(x) = I // Unconditional Unitarity",
+    "U_PMNS = V_e† · V_ν // 3×3 Mixing Matrix",
+    "P(ν_e → ν_μ; x) = |⟨ν_μ|Ψ(x)|ν_e⟩|²"
+  ],
   HIGH_ENERGY_AND_NEUTRINO_PHYSICS: [
     "P(ν_e → ν_μ) = sin²(2θ) sin²(Δm² L / 4E)",
     "Δm²₂₁ ≪ |Δm²₃₁| // JUNO Mass Hierarchy",
@@ -72,8 +124,6 @@ const ARCHETYPE_FORMULAS: Record<ScientificArchetype, string[]> = {
   ],
   QUANTUM_STATES_AND_CIRCUITS: [
     "|Ψ⟩ = 1/√2 (|00⟩ + |11⟩)",
-    "(√Δm²₃₁ + √Δm²₂₁) / (√Δm²₃₁ - √Δm²₂₁) = √2",
-    "P(να→νβ) = sin²(2θ) sin²(Δm²L / 4E)",
     "F_frame^(k)(E) = ∫ |⟨ψ|φ⟩|^(2k) dμ",
     "Ĥ|Ψ⟩ = iℏ ∂_t|Ψ⟩",
     "ρ̂ = ∑ p_i |ψ_i⟩⟨ψ_i|",
@@ -156,6 +206,10 @@ const ARCHETYPE_FORMULAS: Record<ScientificArchetype, string[]> = {
 
 // Domain Watermark Labels
 const ARCHETYPE_LABELS: Record<ScientificArchetype, string> = {
+  MESON_DECAY_AND_COLLIDER_PHYSICS: "HIGH ENERGY PHYSICS // LEPTONIC DECAYS & STCF",
+  ASTROPARTICLE_AND_DARK_MATTER: "MULTI-MESSENGER ASTROPHYSICS // DM SPIKES & ICECUBE",
+  QUANTUM_THERMODYNAMICS_AND_SYMMETRIES: "QUANTUM PHYSICS // NOETHER HARVESTING PROTOCOLS",
+  NEUTRINO_OSCILLATIONS_AND_MATTER: "HIGH ENERGY PHYSICS // MAGNUS EXPANSION",
   QUANTUM_STATES_AND_CIRCUITS: "QUANTUM INFORMATION // CIRCUITS & TOMOGRAPHY",
   TOPOLOGICAL_PHOTONICS_AND_BICS: "TOPOLOGICAL PHOTONICS // GRATINGS & BICS",
   CAVITY_QED_AND_LASERS: "CAVITY OPTICS // CONFOCAL RESONATOR MODES",
@@ -166,7 +220,28 @@ const ARCHETYPE_LABELS: Record<ScientificArchetype, string> = {
   DIAMOND_NV_AND_COLOR_CENTERS: "QUANTUM SENSING // DIAMOND NV CENTERS",
   DISTRIBUTED_SYSTEMS_AND_MCP: "DISTRIBUTED ARCHITECTURES // MCP PROTOCOL",
   FINANCE_AND_CRYPTOGRAPHY: "QUANTITATIVE SYSTEMS // CRYPTOGRAPHY",
+  FERMION_MOMENTS_AND_LOOP_PHYSICS: "HIGH ENERGY PHYSICS // ONE-LOOP MOMENTS & VERTICES",
   HIGH_ENERGY_AND_NEUTRINO_PHYSICS: "HIGH ENERGY PHYSICS // NEUTRINO OSCILLATIONS & JUNO"
+};
+
+// Clean, professional top badge labels
+const ARCHETYPE_BADGE_LABELS: Record<ScientificArchetype, string> = {
+  MESON_DECAY_AND_COLLIDER_PHYSICS: "PRECISION FLAVOR & MESON DECAYS",
+  FERMION_MOMENTS_AND_LOOP_PHYSICS: "FERMION MOMENTS & LOOP QED",
+  ASTROPARTICLE_AND_DARK_MATTER: "ASTROPARTICLE & DARK MATTER",
+  QUANTUM_THERMODYNAMICS_AND_SYMMETRIES: "QUANTUM THERMODYNAMICS & SYMMETRY",
+  NEUTRINO_OSCILLATIONS_AND_MATTER: "NEUTRINO OSCILLATIONS & PROFILES",
+  QUANTUM_STATES_AND_CIRCUITS: "QUANTUM CIRCUITS & TOMOGRAPHY",
+  TOPOLOGICAL_PHOTONICS_AND_BICS: "TOPOLOGICAL PHOTONICS & BICS",
+  CAVITY_QED_AND_LASERS: "CAVITY OPTICS & LASERS",
+  OPTICAL_INTERFEROMETRY: "OPTICAL INTERFEROMETRY",
+  DIFFRACTIVE_AI_AND_TENSORS: "DIFFRACTIVE OPTICS & AI",
+  CONDENSED_MATTER_AND_SPINS: "CONDENSED MATTER & SPINS",
+  BIOPHOTONICS_AND_IMAGING: "BIOPHOTONICS & IMAGING",
+  DIAMOND_NV_AND_COLOR_CENTERS: "DIAMOND NV CENTERS",
+  DISTRIBUTED_SYSTEMS_AND_MCP: "DISTRIBUTED SYSTEMS & MCP",
+  FINANCE_AND_CRYPTOGRAPHY: "QUANTITATIVE SYSTEMS",
+  HIGH_ENERGY_AND_NEUTRINO_PHYSICS: "HIGH ENERGY PARTICLE PHYSICS"
 };
 
 /**
@@ -196,8 +271,66 @@ export function classifyArticleArchetype(article: {
     : (article.tags || "").toLowerCase();
   const text = `${title} ${tags} ${(article.excerpt || "").toLowerCase()} ${(article.content || "").slice(0, 1000).toLowerCase()}`;
 
-  // Domain score accumulator
+  // 1. Check for Meson Decays & Collider Phenomenology
+  if (
+    text.includes("meson") ||
+    text.includes("missing-mass") ||
+    text.includes("missing mass") ||
+    text.includes("neutrinophilic") ||
+    text.includes("stcf") ||
+    text.includes("besiii") ||
+    text.includes("three-body decay") ||
+    text.includes("leptonic decay") ||
+    text.includes("branching fraction")
+  ) {
+    return "MESON_DECAY_AND_COLLIDER_PHYSICS";
+  }
+
+  // 2. Check for Fermion Electromagnetic Moments & Dipoles (arXiv:2610.09974)
+  if (
+    text.includes("electromagnetic moment") ||
+    text.includes("electromagnetic moments") ||
+    text.includes("transition electromagnetic") ||
+    text.includes("diagonal and transition") ||
+    (text.includes("spin-1/2") && (text.includes("fermion") || text.includes("moment"))) ||
+    (text.includes("one-loop") && text.includes("fermion")) ||
+    (text.includes("dirac and majorana") && text.includes("moment")) ||
+    (text.includes("anomalous magnetic") && text.includes("moment"))
+  ) {
+    return "FERMION_MOMENTS_AND_LOOP_PHYSICS";
+  }
+
+  // 3. Check for Magnus expansion & matter profiles
+  if (
+    (text.includes("magnus") || text.includes("hermitian hamiltonian") || text.includes("density profile") || text.includes("varying profile")) &&
+    (text.includes("neutrino") || text.includes("oscillation"))
+  ) {
+    return "NEUTRINO_OSCILLATIONS_AND_MATTER";
+  }
+
+  // 4. Check for Dark Matter Spikes & Astroparticle Neutrinos
+  if (
+    (text.includes("dm spike") || text.includes("spike") || text.includes("gondolo-silk")) &&
+    (text.includes("neutrino") || text.includes("icecube") || text.includes("agn") || text.includes("flavor conversion"))
+  ) {
+    return "ASTROPARTICLE_AND_DARK_MATTER";
+  }
+
+  // 5. Check for Noether Symmetries & Energy Harvesting
+  if (
+    (text.includes("noether") || text.includes("energy harvesting") || text.includes("energy-harvesting")) &&
+    (text.includes("symmetry") || text.includes("asymmetry") || text.includes("entropy") || text.includes("harvester"))
+  ) {
+    return "QUANTUM_THERMODYNAMICS_AND_SYMMETRIES";
+  }
+
+  // Domain score accumulator for remaining archetypes
   const scores: Record<ScientificArchetype, number> = {
+    MESON_DECAY_AND_COLLIDER_PHYSICS: 0,
+    FERMION_MOMENTS_AND_LOOP_PHYSICS: 0,
+    ASTROPARTICLE_AND_DARK_MATTER: 0,
+    QUANTUM_THERMODYNAMICS_AND_SYMMETRIES: 0,
+    NEUTRINO_OSCILLATIONS_AND_MATTER: 0,
     HIGH_ENERGY_AND_NEUTRINO_PHYSICS: 0,
     QUANTUM_STATES_AND_CIRCUITS: 0,
     TOPOLOGICAL_PHOTONICS_AND_BICS: 0,
@@ -211,24 +344,14 @@ export function classifyArticleArchetype(article: {
     FINANCE_AND_CRYPTOGRAPHY: 0
   };
 
-  // High-Energy Particle Physics, Neutrino Oscillations & JUNO / DUNE Observatories
+  // High-Energy Particle Physics, Neutrino Oscillations & JUNO / DUNE Observatories (strictly for reactor/oscillation preprints)
   if (
-    text.includes("neutrino") ||
-    text.includes("mass splittings") ||
-    text.includes("oscillation") ||
-    text.includes("pmns") ||
     text.includes("juno") ||
+    text.includes("mass splittings") ||
     text.includes("kamiokande") ||
     text.includes("dune") ||
-    text.includes("dark photon") ||
-    text.includes("hep-ph") ||
-    text.includes("hep-ex") ||
-    text.includes("hep-th") ||
-    text.includes("hep-lat") ||
-    text.includes("majorana") ||
-    text.includes("dirac neutrino") ||
-    text.includes("flavor conversion") ||
-    text.includes("lepton")
+    text.includes("pmns") ||
+    (text.includes("neutrino") && text.includes("oscillation") && !text.includes("magnus"))
   ) {
     scores.HIGH_ENERGY_AND_NEUTRINO_PHYSICS += 20;
   }
@@ -317,7 +440,6 @@ export function deriveCorpusProfile(
   const baseHue = ARCHETYPE_BASE_HUES[archetype];
 
   // Golden ratio hue stepping: 137.50776405 degrees per corpus index
-  // Guarantees that every single article in the corpus has an unrepeated, unique hue angle!
   const GOLDEN_RATIO_ANGLE = 137.50776405;
   const combinedSeed = hashString(`${article.id || ""}:${article.title || ""}:${corpusIndex}`) + seedModifier;
   const hueAngle = (baseHue + (corpusIndex * GOLDEN_RATIO_ANGLE) + (combinedSeed % 23)) % 360;
@@ -342,11 +464,13 @@ export function deriveCorpusProfile(
   const formula = formulaPool[formulaIndex];
 
   const label = ARCHETYPE_LABELS[archetype];
+  const badgeLabel = ARCHETYPE_BADGE_LABELS[archetype];
   const corpusHash = Math.abs(combinedSeed).toString(36).padStart(6, "0").slice(-6).toUpperCase();
 
   return {
     archetype,
     label,
+    badgeLabel,
     formula,
     bgStart,
     bgMid,
@@ -378,14 +502,189 @@ function buildArchetypeGeometry(
   const pB = ((seed * 7) % 36) - 18;
   const amp = 65 + (seed % 35);
   const yCenter = 195 + pA;
+  const cX = 390 + pB;
+  const cY = yCenter;
 
   switch (archetype) {
-    case "HIGH_ENERGY_AND_NEUTRINO_PHYSICS": {
-      // JUNO Spherical Acrylic Detector Geodesic + 3-Flavor Neutrino Oscillation Waveform + PMNS Vertex
-      const cX = 390 + pB;
-      const cY = yCenter;
+    case "MESON_DECAY_AND_COLLIDER_PHYSICS": {
+      // Collider Beam Axis + Microstrip Vertex Tracker Cylinders + Recoiling Lepton & Missing Mass
       return `
-        <!-- Underground Neutrino Observatory Spherical Detector Geodesic (JUNO / Hyper-K) -->
+        <!-- Collider Beam Axis & Interaction Point -->
+        <line x1="40" y1="${cY}" x2="760" y2="${cY}" stroke="${secondary}" stroke-width="1.2" stroke-opacity="0.3" stroke-dasharray="8,6" />
+        
+        <!-- Concentric Silicon Vertex Detector Cylinders -->
+        <g stroke="${secondary}" stroke-width="1.2" stroke-opacity="0.4" fill="none">
+          <circle cx="${cX}" cy="${cY}" r="65" stroke-dasharray="5,4" />
+          <circle cx="${cX}" cy="${cY}" r="115" stroke="${primary}" stroke-width="1.6" stroke-dasharray="8,5" />
+          <circle cx="${cX}" cy="${cY}" r="155" stroke-dasharray="6,4" stroke-opacity="0.3" />
+        </g>
+        
+        <!-- Recoiling Charged Lepton Track (e+ / mu+) -->
+        <path class="mrd-anim-wave-1" d="M ${cX},${cY} Q ${cX + 90},${cY - 90} ${cX + 210},${cY - 120}" fill="none" stroke="${accent}" stroke-width="3" filter="url(#glow_${uid})" />
+        <circle cx="${cX + 210}" cy="${cY - 120}" r="6" fill="#ffffff" filter="url(#glow_${uid})" />
+        
+        <!-- Recoiling Neutral Missing-Mass Cone (nu_bar + phi) -->
+        <path d="M ${cX},${cY} L ${cX - 180},${cY + 85} L ${cX - 150},${cY + 140} Z" fill="${primary}" fill-opacity="0.12" stroke="${primary}" stroke-width="1.4" stroke-dasharray="6,4" />
+        <line x1="${cX}" y1="${cY}" x2="${cX - 165}" y2="${cY + 112}" stroke="${accent2}" stroke-width="2.5" stroke-dasharray="5,3" filter="url(#glow_${uid})" />
+        
+        <!-- Missing-Mass Phase Space Ellipse -->
+        <ellipse cx="${cX - 80}" cy="${cY - 65}" rx="55" ry="32" fill="none" stroke="${accent}" stroke-width="1.5" stroke-dasharray="4,4" class="mrd-anim-spin" />
+        <circle cx="${cX}" cy="${cY}" r="8" fill="#ffffff" class="mrd-anim-pulse" filter="url(#glow_${uid})" />
+        
+        <!-- Particle & Kinematics Badges -->
+        <rect x="${cX + 175}" y="${cY - 150}" width="55" height="24" rx="4" fill="${profile.bgMid}" stroke="${accent}" stroke-width="1.5" />
+        <text x="${cX + 202}" y="${cY - 134}" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="12" font-weight="bold">e⁺ / μ⁺</text>
+        
+        <rect x="${cX - 225}" y="${cY + 115}" width="75" height="24" rx="4" fill="${profile.bgMid}" stroke="${accent2}" stroke-width="1.5" />
+        <text x="${cX - 188}" y="${cY + 131}" text-anchor="middle" fill="${accent2}" font-family="monospace" font-size="11" font-weight="bold">ν̄ + φ(m_φ)</text>
+        
+        <text x="${cX}" y="${cY + 135}" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1">STCF / BESIII INTERACTION VERTEX // M²_miss RECOIL</text>
+      `;
+    }
+
+    case "FERMION_MOMENTS_AND_LOOP_PHYSICS": {
+      // One-Loop Triangle / Self-Energy Feynman Diagram with Photon Emission & Transition Dipole
+      return `
+        <!-- External Ingoing & Outgoing Fermion Propagators -->
+        <g stroke="${primary}" stroke-width="2.5" fill="none">
+          <line x1="80" y1="${cY}" x2="${cX - 75}" y2="${cY}" filter="url(#glow_${uid})" />
+          <line x1="${cX + 75}" y1="${cY}" x2="720" y2="${cY}" filter="url(#glow_${uid})" />
+        </g>
+        
+        <!-- Fermion Propagator Direction Arrows -->
+        <polygon points="${cX - 120},${cY - 6} ${cX - 108},${cY} ${cX - 120},${cY + 6}" fill="${primary}" />
+        <polygon points="${cX + 120},${cY - 6} ${cX + 132},${cY} ${cX + 120},${cY + 6}" fill="${primary}" />
+        
+        <!-- Virtual Particle Loop (Charged Scalar / Gauge & Heavy Fermion) -->
+        <circle cx="${cX}" cy="${cY - 55}" r="65" fill="none" stroke="${secondary}" stroke-width="2.2" stroke-dasharray="8,5" class="mrd-anim-spin" />
+        <circle cx="${cX}" cy="${cY - 55}" r="65" fill="${secondary}" fill-opacity="0.08" />
+        
+        <!-- Virtual Loop Internal Vertices -->
+        <circle cx="${cX - 55}" cy="${cY - 20}" r="6" fill="${accent}" filter="url(#glow_${uid})" />
+        <circle cx="${cX + 55}" cy="${cY - 20}" r="6" fill="${accent}" filter="url(#glow_${uid})" />
+        <line x1="${cX - 55}" y1="${cY - 20}" x2="${cX - 75}" y2="${cY}" stroke="${primary}" stroke-width="2.5" />
+        <line x1="${cX + 55}" y1="${cY - 20}" x2="${cX + 75}" y2="${cY}" stroke="${primary}" stroke-width="2.5" />
+        
+        <!-- Outgoing Quantum Photon Wavy Waveform (γ) -->
+        <path class="mrd-anim-wave-1" d="M ${cX},${cY - 120} Q ${cX + 18},${cY - 145} ${cX},${cY - 170} T ${cX},${cY - 215}" fill="none" stroke="${accent2}" stroke-width="3.5" filter="url(#glow_${uid})" />
+        <circle cx="${cX}" cy="${cY - 120}" r="7" fill="#ffffff" filter="url(#glow_${uid})" class="mrd-anim-pulse" />
+        
+        <!-- Magnetic Dipole Torque Vector Precession Ring -->
+        <ellipse cx="${cX}" cy="${cY + 55}" rx="55" ry="20" fill="none" stroke="${accent}" stroke-width="1.6" stroke-dasharray="5,4" />
+        <line x1="${cX}" y1="${cY + 20}" x2="${cX}" y2="${cY + 90}" stroke="${accent2}" stroke-width="2.8" filter="url(#glow_${uid})" />
+        <polygon points="${cX - 6},${cY + 28} ${cX},${cY + 16} ${cX + 6},${cY + 28}" fill="${accent2}" />
+        
+        <!-- Particles & Quantum Badges -->
+        <rect x="70" y="${cY - 36}" width="78" height="22" rx="4" fill="${profile.bgMid}" stroke="${primary}" stroke-width="1.4" />
+        <text x="109" y="${cY - 21}" text-anchor="middle" fill="${primary}" font-family="monospace" font-size="11" font-weight="bold">ψ_j (spin-½)</text>
+        
+        <rect x="652" y="${cY - 36}" width="78" height="22" rx="4" fill="${profile.bgMid}" stroke="${primary}" stroke-width="1.4" />
+        <text x="691" y="${cY - 21}" text-anchor="middle" fill="${primary}" font-family="monospace" font-size="11" font-weight="bold">ψ_i (spin-½)</text>
+        
+        <rect x="${cX - 46}" y="${cY - 245}" width="92" height="22" rx="4" fill="${profile.bgMid}" stroke="${accent2}" stroke-width="1.4" />
+        <text x="${cX}" y="${cY - 230}" text-anchor="middle" fill="${accent2}" font-family="monospace" font-size="11" font-weight="bold">PHOTON γ(q²)</text>
+        
+        <text x="${cX}" y="${cY + 118}" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1">ONE-LOOP VERTEX // F_M(q²) + i F_E(q²) γ₅ // μ_ij DIPOLE</text>
+      `;
+    }
+
+    case "ASTROPARTICLE_AND_DARK_MATTER": {
+      // Central SMBH & Gravitational Potential Wells + DM Spike Streamlines + IceCube Inset
+      return `
+        <!-- Central SMBH & Gravitational Potential Wells -->
+        <g stroke="${secondary}" stroke-width="1.2" stroke-opacity="0.4" fill="none">
+          <circle cx="${cX}" cy="${cY}" r="150" stroke="${primary}" stroke-width="1.8" />
+          <circle cx="${cX}" cy="${cY}" r="105" stroke-dasharray="6,4" stroke-opacity="0.5" />
+          <circle cx="${cX}" cy="${cY}" r="65" stroke-dasharray="4,3" stroke-opacity="0.7" />
+        </g>
+        
+        <!-- Dark Matter Spike Streamlines (rho(r) ~ r^-gamma) -->
+        <path class="mrd-anim-wave-1" d="M 60,${cY + 70} C ${cX - 110},${cY + 95} ${cX - 50},${cY + 30} ${cX},${cY}" fill="none" stroke="${accent}" stroke-width="2" stroke-opacity="0.75" />
+        <path class="mrd-anim-wave-2" d="M 60,${cY - 70} C ${cX - 110},${cY - 95} ${cX - 50},${cY - 30} ${cX},${cY}" fill="none" stroke="${accent2}" stroke-width="2" stroke-opacity="0.75" />
+        
+        <!-- Escaping Neutrino Wave with Resonant Matter Potential Shift -->
+        <path class="mrd-anim-wave-1" d="M ${cX},${cY} Q ${cX + 80},${cY - 55} ${cX + 180},${cY + 20} T 750,${cY}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3.6" filter="url(#glow_${uid})" />
+        
+        <!-- Black Hole Horizon & Accretion Glow -->
+        <circle cx="${cX}" cy="${cY}" r="38" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
+        <circle cx="${cX}" cy="${cY}" r="18" fill="#000000" stroke="${accent}" stroke-width="2" />
+        <circle cx="${cX}" cy="${cY}" r="6" fill="#ffffff" filter="url(#glow_${uid})" />
+        
+        <!-- IceCube Ternary Flavor Inset Geometry -->
+        <polygon points="680,${cY - 95} 735,${cY} 625,${cY}" fill="${profile.bgMid}" stroke="${accent}" stroke-width="1.5" />
+        <circle cx="680" cy="${cY - 45}" r="4" fill="${accent2}" class="mrd-anim-pulse" />
+        <text x="680" y="${cY - 102}" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="9" font-weight="bold">ν_e</text>
+        <text x="618" y="${cY + 14}" text-anchor="middle" fill="${primary}" font-family="monospace" font-size="9" font-weight="bold">ν_μ</text>
+        <text x="742" y="${cY + 14}" text-anchor="middle" fill="${accent2}" font-family="monospace" font-size="9" font-weight="bold">ν_τ</text>
+        
+        <text x="${cX}" y="${cY + 130}" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1">DM SPIKE POTENTIAL V_DM // ICECUBE FLAVOR RATIOS</text>
+      `;
+    }
+
+    case "QUANTUM_THERMODYNAMICS_AND_SYMMETRIES": {
+      // Noether Symmetry Continuous Orbits + Asymmetry Conservation Manifold
+      return `
+        <!-- Noether Symmetry Continuous Orbits -->
+        <g stroke="${secondary}" stroke-width="1.4" stroke-opacity="0.45" fill="none">
+          <ellipse cx="${cX}" cy="${cY}" rx="155" ry="85" stroke="${primary}" stroke-width="2" />
+          <ellipse cx="${cX}" cy="${cY}" rx="115" ry="60" stroke-dasharray="6,4" stroke-opacity="0.6" />
+          <ellipse cx="${cX}" cy="${cY}" rx="70" ry="35" stroke-dasharray="4,3" stroke-opacity="0.8" />
+        </g>
+        
+        <!-- Conserved Charge Trajectory Vector -->
+        <path class="mrd-anim-wave-1" d="M 60,${cY} C 200,${cY - 90} 320,${cY + 90} ${cX},${cY}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3.5" filter="url(#glow_${uid})" />
+        
+        <!-- Deterministic Energy Extraction Transfer to Harvester -->
+        <line x1="${cX}" y1="${cY}" x2="${cX + 180}" y2="${cY - 70}" stroke="${accent}" stroke-width="3" stroke-dasharray="6,3" filter="url(#glow_${uid})" />
+        <polygon points="${cX + 190},${cY - 74} ${cX + 175},${cY - 82} ${cX + 177},${cY - 64}" fill="${accent}" />
+        
+        <!-- Harvester Battery State Nodes (|0>_H -> |E>_H) -->
+        <rect x="${cX + 195}" y="${cY - 95}" width="80" height="28" rx="6" fill="${profile.bgMid}" stroke="${accent}" stroke-width="1.8" />
+        <text x="${cX + 235}" y="${cY - 76}" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="10" font-weight="bold">|E⟩_H (ΔS=0)</text>
+        
+        <circle cx="${cX}" cy="${cY}" r="45" fill="url(#nodeGlow_${uid})" class="mrd-anim-pulse" />
+        <circle cx="${cX}" cy="${cY}" r="8" fill="#ffffff" filter="url(#glow_${uid})" />
+        
+        <!-- Asymmetry Conservation Badge -->
+        <rect x="65" y="${cY - 120}" width="150" height="26" rx="4" fill="${profile.bgMid}" stroke="${accent2}" stroke-width="1.5" />
+        <text x="140" y="${cY - 103}" text-anchor="middle" fill="${accent2}" font-family="monospace" font-size="10" font-weight="bold">ΔA_Q = 0 SATURATED</text>
+        
+        <text x="${cX}" y="${cY + 125}" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1">NOETHER CHARGE SYMMETRY // DETERMINISTIC EXTRACTION</text>
+      `;
+    }
+
+    case "NEUTRINO_OSCILLATIONS_AND_MATTER": {
+      // Varying Matter Density Step Grid + Magnus Expansions
+      return `
+        <!-- Varying Matter Density Profile Step Grid -->
+        <g stroke="${secondary}" stroke-width="1" stroke-opacity="0.35">
+          <line x1="60" y1="${cY - 80}" x2="740" y2="${cY - 80}" stroke-dasharray="4,4" />
+          <line x1="60" y1="${cY + 80}" x2="740" y2="${cY + 80}" stroke-dasharray="4,4" />
+          <line x1="180" y1="${cY - 120}" x2="180" y2="${cY + 120}" stroke-dasharray="5,4" />
+          <line x1="360" y1="${cY - 120}" x2="360" y2="${cY + 120}" stroke-dasharray="5,4" />
+          <line x1="540" y1="${cY - 120}" x2="540" y2="${cY + 120}" stroke-dasharray="5,4" />
+        </g>
+        
+        <!-- Matter Density Profile Contour rho(x) -->
+        <path d="M 60,${cY + 65} Q 280,${cY + 35} 400,${cY - 45} T 740,${cY - 85}" fill="none" stroke="${primary}" stroke-width="2.5" stroke-opacity="0.65" />
+        
+        <!-- 3-Flavor Magnus Probability Evolution Waveforms -->
+        <path class="mrd-anim-wave-1" d="M 60,${cY - 50} Q 180,${cY + 80} 300,${cY - 50} T 540,${cY - 50} T 740,${cY}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3.5" filter="url(#glow_${uid})" />
+        <path class="mrd-anim-wave-2" d="M 60,${cY + 20} Q 200,${cY - 75} 340,${cY + 20} T 620,${cY + 20} T 740,${cY - 40}" fill="none" stroke="${accent}" stroke-width="2.2" stroke-opacity="0.8" stroke-dasharray="8,4" />
+        
+        <!-- Magnus Expansion Step Integration Nodes -->
+        <circle cx="180" cy="${cY}" r="6" fill="${accent}" class="mrd-anim-pulse" />
+        <circle cx="360" cy="${cY - 25}" r="8" fill="#ffffff" filter="url(#glow_${uid})" class="mrd-anim-pulse" />
+        <circle cx="540" cy="${cY - 15}" r="6" fill="${accent2}" class="mrd-anim-pulse" />
+        
+        <text x="${cX}" y="${cY + 125}" text-anchor="middle" fill="${accent}" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1">MAGNUS EXPANSION // UNITARY FLAVOR EVOLUTION Ψ(x)</text>
+      `;
+    }
+
+    case "HIGH_ENERGY_AND_NEUTRINO_PHYSICS": {
+      // JUNO Spherical Acrylic Detector Geodesic + 3-Flavor Neutrino Oscillation Waveform
+      return `
+        <!-- Underground Neutrino Observatory Spherical Detector Geodesic -->
         <g stroke="${secondary}" stroke-width="1.2" stroke-opacity="0.35" fill="none">
           <circle cx="${cX}" cy="${cY}" r="145" stroke="${primary}" stroke-width="2" />
           <circle cx="${cX}" cy="${cY}" r="115" stroke-dasharray="5,4" stroke-opacity="0.5" />
@@ -412,13 +711,8 @@ function buildArchetypeGeometry(
         <circle cx="${cX}" cy="${cY}" r="9" fill="#ffffff" filter="url(#glow_${uid})" />
 
         <!-- 3-Flavor Neutrino Oscillation Interleaved Wave Harmonics (ν_e, ν_μ, ν_τ) -->
-        <!-- Flavor 1: Electron Neutrino ν_e (Primary Gradient Harmonic) -->
         <path class="mrd-anim-wave-1" d="M 40,${cY} Q 180,${cY - amp} 300,${cY} T 560,${cY} T 760,${cY}" fill="none" stroke="url(#primaryGrad_${uid})" stroke-width="3.6" filter="url(#glow_${uid})" />
-        
-        <!-- Flavor 2: Muon Neutrino ν_μ (Counter-phase High-frequency) -->
         <path class="mrd-anim-wave-2" d="M 40,${cY - 22} Q 200,${cY + amp * 0.85} 360,${cY - 22} T 640,${cY - 22} T 760,${cY - 22}" fill="none" stroke="${accent}" stroke-width="2.2" stroke-opacity="0.85" stroke-dasharray="10,5" />
-
-        <!-- Flavor 3: Tau Neutrino ν_τ (Interfering Matter Resonance) -->
         <path class="mrd-anim-wave-1" d="M 40,${cY + 28} Q 220,${cY - amp * 0.7} 380,${cY + 28} T 620,${cY + 28} T 760,${cY + 28}" fill="none" stroke="${accent2}" stroke-width="1.6" stroke-opacity="0.7" stroke-dasharray="6,4" />
 
         <!-- Neutrino Flavor State Badges & PMNS Mixing Labels -->
@@ -437,9 +731,7 @@ function buildArchetypeGeometry(
     }
 
     case "QUANTUM_STATES_AND_CIRCUITS": {
-      // Bloch Sphere + Superposition Waveform + Unitary State Nodes
-      const cX = 390 + pB;
-      const cY = yCenter;
+      // Bloch Sphere Projection + Superposition Waveform + Unitary State Nodes
       return `
         <!-- Bloch Sphere Projection & Unitary Coordinate Axes -->
         <g stroke="${secondary}" stroke-width="1.2" stroke-opacity="0.4" fill="none">
@@ -545,7 +837,7 @@ function buildArchetypeGeometry(
     }
 
     case "DIFFRACTIVE_AI_AND_TENSORS": {
-      // Diffractive Phase Planes + Optical Matrix Grid + Coherent Rays
+      // Diffractive Phase Planes + Optical Matrix Grid
       const planes: string[] = [];
       for (let i = 0; i < 4; i++) {
         const px = 220 + i * 110;
@@ -578,7 +870,7 @@ function buildArchetypeGeometry(
     }
 
     case "CONDENSED_MATTER_AND_SPINS": {
-      // Hexagonal Lattice / Magnetic Spin Orbitals / Cooper Pair Lines
+      // Hexagonal Lattice / Magnetic Spin Orbitals
       return `
         <!-- Spin Vortex & Hexagonal Coordinates -->
         <g stroke="${secondary}" stroke-width="1.2" stroke-opacity="0.4" fill="none">
@@ -624,8 +916,6 @@ function buildArchetypeGeometry(
 
     case "DIAMOND_NV_AND_COLOR_CENTERS": {
       // Diamond Carbon Lattice + NV Center Nitrogen & Vacancy Pair
-      const cX = 400 + pB;
-      const cY = yCenter;
       return `
         <!-- Diamond Cubic Lattice Lines -->
         <g stroke="${secondary}" stroke-width="1.4" stroke-opacity="0.45" fill="none">
@@ -635,9 +925,6 @@ function buildArchetypeGeometry(
           <line x1="${cX + 120}" y1="${cY + 60}" x2="${cX}" y2="${cY + 100}" />
           <line x1="${cX}" y1="${cY + 100}" x2="${cX - 120}" y2="${cY + 60}" />
           <line x1="${cX - 120}" y1="${cY + 60}" x2="${cX - 120}" y2="${cY - 80}" />
-          <line x1="${cX - 120}" y1="${cY - 80}" x2="${cX}" y2="${cY}" />
-          <line x1="${cX + 120}" y1="${cY - 80}" x2="${cX}" y2="${cY}" />
-          <line x1="${cX}" y1="${cY + 100}" x2="${cX}" y2="${cY}" />
         </g>
         
         <!-- Nitrogen Atom (N) -->
@@ -655,7 +942,7 @@ function buildArchetypeGeometry(
     }
 
     case "DISTRIBUTED_SYSTEMS_AND_MCP": {
-      // Mesh Nodes + Packet Routing Channels + Cloud Edge Pipeline
+      // Mesh Nodes + Packet Routing Channels
       return `
         <!-- Mesh Coordinates -->
         <g stroke="${secondary}" stroke-width="1.2" stroke-opacity="0.4">
@@ -683,7 +970,7 @@ function buildArchetypeGeometry(
     }
 
     case "FINANCE_AND_CRYPTOGRAPHY": {
-      // Order Book Depth Curves + Liquidity Manifold + Cryptographic Root
+      // Order Book Depth Curves + Liquidity Manifold
       return `
         <!-- Market Depth Bid & Ask Curves -->
         <path class="mrd-anim-wave-1" d="M 60,310 L 220,310 Q 340,310 380,180 L 380,310 Z" fill="${primary}" fill-opacity="0.22" stroke="${primary}" stroke-width="2.5" />
@@ -722,29 +1009,36 @@ export function generateCorpusBannerSvg(
   const profile = deriveCorpusProfile(article, corpusIndex, seed || 0);
   const uid = profile.corpusHash.toLowerCase();
   
-  // Intelligent two-line title wrapping preserving complete words
-  const rawTitle = (article.title || "Scholarly Publication").replace(/["'<>]/g, "").trim();
+  // Clean raw LaTeX from title for SVG display
+  const cleanTitle = cleanLatexForPlainText(article.title || "Scholarly Publication").replace(/["'<>]/g, "").trim();
   let titleLines: string[] = [];
-  if (rawTitle.length <= 50) {
-    titleLines = [rawTitle];
+  if (cleanTitle.length <= 54) {
+    titleLines = [cleanTitle];
   } else {
-    const words = rawTitle.split(/\s+/);
+    const words = cleanTitle.split(/\s+/);
     let line1 = "";
     let line2 = "";
     for (const w of words) {
-      if ((line1 + " " + w).trim().length <= 48 && line2 === "") {
+      if ((line1 + " " + w).trim().length <= 54 && line2 === "") {
         line1 = (line1 + " " + w).trim();
       } else {
         line2 = (line2 + " " + w).trim();
       }
     }
-    if (line2.length > 55) {
-      line2 = line2.slice(0, 52) + "...";
+    // Cleanly truncate line2 at a word boundary if it exceeds 64 characters
+    if (line2.length > 64) {
+      const truncated = line2.slice(0, 60);
+      const lastSpace = truncated.lastIndexOf(" ");
+      line2 = (lastSpace > 25 ? truncated.slice(0, lastSpace) : truncated) + "...";
     }
     titleLines = [line1, line2].filter(Boolean);
   }
 
-  const geometrySvg = buildArchetypeGeometry(profile, rawTitle, uid);
+  const geometrySvg = buildArchetypeGeometry(profile, cleanTitle, uid);
+  const displayBadge = article.isEditorEdition
+    ? "EDITOR'S SPECIAL EDITION // PHOTONIC ENGINES"
+    : profile.badgeLabel;
+  const titleFontSize = cleanTitle.length > 70 ? 15 : 17;
 
   return `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:${profile.bgMid}">
   <defs>
@@ -791,17 +1085,17 @@ export function generateCorpusBannerSvg(
   ${geometrySvg}
 
   <!-- Top Metadata Archetype Badge -->
-  <rect x="50" y="36" width="${article.isEditorEdition ? 290 : Math.max(220, profile.archetype.length * 8.5 + 40)}" height="26" rx="13" fill="${profile.primary}" fill-opacity="0.16" stroke="${profile.primary}" stroke-opacity="0.45" />
-  <text x="${50 + (article.isEditorEdition ? 145 : Math.max(110, (profile.archetype.length * 8.5 + 40) / 2))}" y="53" text-anchor="middle" fill="${profile.accent}" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1.5">${article.isEditorEdition ? "EDITOR'S SPECIAL EDITION // PHOTONIC ENGINES" : profile.archetype.replace(/_/g, " ")}</text>
+  <rect x="50" y="36" width="${article.isEditorEdition ? 290 : Math.max(220, displayBadge.length * 8.2 + 36)}" height="26" rx="13" fill="${profile.primary}" fill-opacity="0.16" stroke="${profile.primary}" stroke-opacity="0.45" />
+  <text x="${50 + (article.isEditorEdition ? 145 : Math.max(110, (displayBadge.length * 8.2 + 36) / 2))}" y="53" text-anchor="middle" fill="${profile.accent}" font-family="monospace" font-size="10" font-weight="bold" letter-spacing="1.5">${displayBadge}</text>
 
   <!-- Context-Derived Mathematical Formula Overlay -->
   <text x="750" y="54" text-anchor="end" fill="${profile.accent}" font-family="monospace" font-size="11" font-weight="600" opacity="0.9" letter-spacing="0.5">${profile.formula}</text>
 
   <!-- Article Title & Unique Run Branding -->
   ${titleLines.length > 1
-    ? `<text x="50" y="324" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="17" font-weight="800" letter-spacing="-0.4">${titleLines[0]}</text>
-  <text x="50" y="345" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="17" font-weight="800" letter-spacing="-0.4">${titleLines[1]}</text>`
-    : `<text x="50" y="338" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="800" letter-spacing="-0.5">${titleLines[0] || rawTitle}</text>`
+    ? `<text x="50" y="324" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="${titleFontSize}" font-weight="800" letter-spacing="-0.4">${titleLines[0]}</text>
+  <text x="50" y="345" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="${titleFontSize}" font-weight="800" letter-spacing="-0.4">${titleLines[1]}</text>`
+    : `<text x="50" y="338" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="800" letter-spacing="-0.5">${titleLines[0] || cleanTitle}</text>`
   }
   <text x="50" y="366" fill="#94a3b8" font-family="monospace" font-size="10" letter-spacing="1.2">MERIDIAN RESEARCH // ${profile.label} // #${profile.corpusHash}</text>
 </svg>`;

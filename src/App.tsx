@@ -234,6 +234,15 @@ export default function App() {
             if (isEditorMode && isPending) {
               setIsDailyEditorialModalOpen(true);
             }
+            if ((data.dispatch.status === "auto_published" || data.dispatch.status === "accepted_and_published") && data.dispatch.draftArticle) {
+              const newPublished = data.dispatch.draftArticle;
+              setBlogs((prev) => {
+                if (newPublished.id && !prev.some((b) => b.id === newPublished.id)) {
+                  return sortBlogsByPublicationDate([newPublished, ...prev]);
+                }
+                return prev;
+              });
+            }
           } else {
             setHasPendingDispatch(false);
           }

@@ -1,4 +1,6 @@
 import { CloudflareEnv, getExpectedPassword, isPasswordValid, jsonResponse } from "../_utils";
+import { generateScientificArticleFromArxiv, createBespokeExcerpt } from "../../../src/lib/paperGenerationEngine";
+import { generateCorpusBannerSvg } from "../../../src/lib/corpusBannerAlgorithm";
 
 // Robust arXiv ID extractor
 function extractArxivId(input: string): string | null {
@@ -333,124 +335,35 @@ Respond strictly in JSON format with keys "title", "excerpt", and "content". Nev
     }
 
     // 3. Guaranteed High-Fidelity Procedural Scholarly Article Fallback
+    let generatedTags: string[] = [paperCategory, "Theoretical Physics"];
     if (!generatedContent) {
-      generatedContent = `## Executive Summary & Physical Breakthrough
-
-In preprint **${arxivId ? `arXiv:${arxivId}` : "Preprint"}**, ${paperAuthors} report a milestone advancement in **${paperCategory}**:
-
-> ${paperSummary}
-
-This investigation presents a rigorous experimental and theoretical formulation addressing foundational particle dynamics and detection topologies. By optimizing sensor architecture and evaluating angular reconstruction metrics, this work establishes unprecedented sensitivity and opens new observational trajectories for neutrino and multi-messenger astrophysics.
-
----
-
-## Mathematical Formulation & Physical Dynamics
-
-To characterize the underlying detection mechanics, consider the coherent Cherenkov emission angle $\\theta_c$ governed by the refractive index $n$ of the dielectric medium and the charged particle velocity $\\beta = v/c$:
-
-$$\\cos \\theta_c = \\frac{1}{n \\beta}$$
-
-The spectral photon yield per unit path length $dx$ across wavelength bandwidth $[\lambda_1, \lambda_2]$ is formulated via the Frank-Tamm relation:
-
-$$\\frac{d^2 N}{dx \\, d\\lambda} = \\frac{2\\pi \\alpha}{\\lambda^2} \\left( 1 - \\frac{1}{n^2 \\beta^2} \\right)$$
-
-Where $\\alpha \\approx 1/137$ is the fine-structure constant. The reconstructed arrival vector $\\mathbf{\\hat{u}}$ for an incident particle is determined through maximum likelihood estimation over the photomultiplier timing distribution $\\{t_i\\}$:
-
-$$\\mathcal{L}(\\mathbf{r}_0, \\mathbf{\\hat{u}}, t_0) = \\prod_{i=1}^M P\\left( t_i - t_0 - \\frac{d_i(\\mathbf{r}_0, \\mathbf{\\hat{u}})}{c/n} \\right)$$
-
-This analytical framework ensures minimal directional uncertainty down to $\\Delta \\theta \\approx 6^\\circ$, providing robust background rejection against ambient radioactivity and surface cosmic rays.
-
----
-
-## Experimental Architecture & Operational Findings
-
-1. **Substantial Detection Efficiency Gain**: The upgraded MCP-PMT matrix yields a 59% enhancement in muon detection efficiency relative to legacy liquid scintillator prototypes.
-2. **Precision Muon Flux Determination**: Systematic flux measurements yield $\\phi_{\\text{I+II}} = (3.55 \\pm 0.43_{\\mathrm{stat}} \\pm 0.28_{\\mathrm{syst}}) \\times 10^{-10} \\, \\text{cm}^{-2} \\text{s}^{-1}$, confirming theoretical expectations beneath extreme rock overburden.
-3. **Neutrino Event Discrimination**: Clear identification of up-going track topologies enables unambiguous separation of neutrino-induced secondary leptons from down-going atmospheric cascades.
-
----
-
-## Scientific Horizon & Observational Implications
-
-These results establish water Cherenkov instrumentation as a cost-effective, highly scalable architecture for ultra-deep underground particle physics and neutrino observatories worldwide.`;
+      const proceduralResult = generateScientificArticleFromArxiv(
+        paperTitle || generatedTitle,
+        paperSummary,
+        fullArxivUrl,
+        paperAuthors || "Meridian Research Collaboration",
+        Date.now()
+      );
+      generatedTitle = proceduralResult.title;
+      generatedExcerpt = proceduralResult.excerpt;
+      generatedContent = proceduralResult.content;
+      generatedTags = proceduralResult.tags;
+      provider = "procedural";
     }
 
-    const bannerTitle = generatedTitle.length > 55 ? generatedTitle.slice(0, 52) + "..." : generatedTitle;
-    const bannerCategory = paperCategory.toUpperCase();
+    if (!generatedExcerpt || generatedExcerpt.includes("http://") || generatedExcerpt.includes("https://") || generatedExcerpt.includes("transformative implications of")) {
+      generatedExcerpt = createBespokeExcerpt(generatedTitle, paperSummary || generatedContent);
+    }
 
-    const bannerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%" class="w-full h-full rounded-2xl overflow-hidden shadow-2xl">
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#050b1a"/>
-      <stop offset="50%" stop-color="#0b1736"/>
-      <stop offset="100%" stop-color="#030712"/>
-    </linearGradient>
-    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="50%" stop-color="#818cf8"/>
-      <stop offset="100%" stop-color="#34d399"/>
-    </linearGradient>
-    <radialGradient id="detectorGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
-      <stop offset="60%" stop-color="#818cf8" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="#030712" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="6" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
+    const candidateBlogForBanner = {
+      id: canonicalSlug,
+      title: generatedTitle,
+      excerpt: generatedExcerpt,
+      content: generatedContent,
+      tags: generatedTags && generatedTags.length > 0 ? generatedTags : [paperCategory, "Theoretical Physics"]
+    };
 
-  <!-- Deep Cosmic Canvas -->
-  <rect width="800" height="400" fill="url(#bgGrad)"/>
-
-  <!-- Underground Coordinate Grid -->
-  <g opacity="0.12" stroke="#64748b" stroke-width="0.75">
-    <line x1="0" y1="80" x2="800" y2="80" />
-    <line x1="0" y1="160" x2="800" y2="160" />
-    <line x1="0" y1="240" x2="800" y2="240" />
-    <line x1="0" y1="320" x2="800" y2="320" />
-    <line x1="160" y1="0" x2="160" y2="400" />
-    <line x1="320" y1="0" x2="320" y2="400" />
-    <line x1="480" y1="0" x2="480" y2="400" />
-    <line x1="640" y1="0" x2="640" y2="400" />
-  </g>
-
-  <!-- Cherenkov Radiation Cone & Spherical Detector Array -->
-  <g transform="translate(400, 185)">
-    <circle cx="0" cy="0" r="110" fill="url(#detectorGlow)"/>
-    <circle cx="0" cy="0" r="90" stroke="url(#accentGrad)" stroke-width="2" fill="none" opacity="0.7"/>
-    <circle cx="0" cy="0" r="60" stroke="#38bdf8" stroke-dasharray="6,4" stroke-width="1.5" fill="none" opacity="0.5"/>
-    
-    <!-- Cherenkov Wavefronts -->
-    <path d="M -120 -80 L 0 0 L 120 -80" stroke="#34d399" stroke-width="2.5" fill="none" filter="url(#glow)" opacity="0.8"/>
-    <path d="M -160 -110 L 0 0 L 160 -110" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4,4" fill="none" opacity="0.6"/>
-    
-    <!-- Muon Track Vector -->
-    <line x1="0" y1="-140" x2="0" y2="120" stroke="#f43f5e" stroke-width="3" filter="url(#glow)"/>
-    <polygon points="0,130 -6,115 6,115" fill="#f43f5e"/>
-    
-    <!-- MCP-PMT Sensor Array Nodes -->
-    <circle cx="-65" cy="-40" r="5" fill="#38bdf8"/>
-    <circle cx="65" cy="-40" r="5" fill="#38bdf8"/>
-    <circle cx="-75" cy="30" r="5" fill="#38bdf8"/>
-    <circle cx="75" cy="30" r="5" fill="#38bdf8"/>
-    <circle cx="0" cy="-85" r="5" fill="#34d399"/>
-    <circle cx="0" cy="85" r="5" fill="#34d399"/>
-  </g>
-
-  <!-- Category & Formulation Badges -->
-  <rect x="50" y="35" width="230" height="26" rx="13" fill="#38bdf8" fill-opacity="0.15" stroke="#38bdf8" stroke-opacity="0.4"/>
-  <text x="165" y="52" text-anchor="middle" fill="#38bdf8" font-family="monospace" font-size="11" font-weight="bold" letter-spacing="1">${bannerCategory}</text>
-  <text x="750" y="52" text-anchor="end" fill="#94a3b8" font-family="monospace" font-size="12">cos θ_c = 1/(nβ)</text>
-
-  <!-- Typography: Title & Context -->
-  <text x="50" y="340" fill="#f8fafc" font-size="20" font-weight="800" font-family="system-ui, -apple-system, sans-serif">${bannerTitle}</text>
-  <text x="50" y="368" fill="#94a3b8" font-size="11" font-family="monospace" letter-spacing="1">MERIDIAN RESEARCH // ${arxivId ? `arXiv:${arxivId}` : "PREPRINT"} // CHERENKOV DYNAMICS</text>
-</svg>`;
+    const bannerSvg = generateCorpusBannerSvg(candidateBlogForBanner, [], Date.now());
 
     const newBlog = {
       id: `generated-${Date.now()}`,
@@ -464,10 +377,10 @@ These results establish water Cherenkov instrumentation as a cost-effective, hig
       ].filter(Boolean),
       excerpt: generatedExcerpt,
       date: formattedDate,
-      readingTime: "8 min read",
+      readingTime: `${Math.min(14, Math.max(7, Math.round((generatedContent.length) / 500)))} min read`,
       arxivLink: fullArxivUrl,
       author: paperAuthors || "Meridian Research Collaboration",
-      tags: [paperCategory, "Neutrino Physics", "Cherenkov Radiation", "Particle Detection", "High Energy Physics"],
+      tags: generatedTags && generatedTags.length > 0 ? generatedTags : [paperCategory, "Theoretical Physics"],
       content: generatedContent,
       views: Math.floor(Math.random() * 200) + 250,
       bannerSvg

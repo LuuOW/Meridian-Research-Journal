@@ -10,7 +10,7 @@ import { MicroserviceRegistry } from "./src/services/MicroserviceRegistry";
 import { extractArxivId, cleanJsonText, generateSlug, parseArxivXml, parseArxivFeedXml, extractSvgString, decodeHtmlEntities } from "./src/lib/arxivUtils";
 import { generateProceduralBannerSvg, generateCorpusBannerSvg, regenerateAllCorpusBanners } from "./src/lib/svgBannerGenerator";
 import { ensureAnimatedSvg } from "./src/lib/svgUtils";
-import { generateScientificArticleFromArxiv } from "./src/lib/paperGenerationEngine";
+import { generateScientificArticleFromArxiv, createBespokeExcerpt } from "./src/lib/paperGenerationEngine";
 import { auditArticleAgainstArxiv, auditCatalogUniqueness } from "./src/lib/arxivAuditor";
 import {
   buildLinkedInSystemInstruction,
@@ -1784,8 +1784,13 @@ app.get("/api/verify-github-token", async (req, res) => {
 // Procedural scholarly article generator with authoritative arXiv domain-specific formulations
 function generateProceduralPaperArticle(paperTitle: string, paperSummary: string, arxivLink: string, paperAuthors: string, triggerId: number) {
   const generated = generateScientificArticleFromArxiv(paperTitle, paperSummary, arxivLink, paperAuthors, triggerId);
-  const bannerTags = Array.isArray(generated.tags) ? generated.tags.slice(0, 2).join(" & ") : "Optics & Quantum";
-  const bannerSvg = ensureAnimatedSvg(generateProceduralBannerSvg(generated.title, bannerTags, triggerId));
+  const bannerCandidate = {
+    title: generated.title,
+    excerpt: generated.excerpt,
+    content: generated.content,
+    tags: generated.tags
+  };
+  const bannerSvg = ensureAnimatedSvg(generateCorpusBannerSvg(bannerCandidate, [], triggerId));
 
   return {
     ...generated,
@@ -2049,8 +2054,8 @@ Requirements:
     }
 
     let finalExcerpt = parsedBlog.excerpt || "";
-    if (!finalExcerpt || finalExcerpt.includes("http://") || finalExcerpt.includes("https://")) {
-      finalExcerpt = `A rigorous scholarly analysis exploring the fundamental mathematical physics, particle dynamics, and transformative implications of ${finalTitle}.`;
+    if (!finalExcerpt || finalExcerpt.includes("http://") || finalExcerpt.includes("https://") || finalExcerpt.includes("transformative implications of")) {
+      finalExcerpt = createBespokeExcerpt(finalTitle, paperSummary || parsedBlog.content || "");
     }
 
     const slug = generateSlug(finalTitle);
