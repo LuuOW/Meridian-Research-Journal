@@ -84,6 +84,7 @@ let inMemoryRefreshToken: string | null = null;
 
 // Track refresh tokens that have been rejected as invalid or revoked to avoid infinite retry loops and console errors
 const invalidRefreshTokens = new Set<string>();
+let isOAuth2TokenExpired = false;
 let lastRefreshFailure: { error: string; timestamp: number } | null = null;
 
 // Lightweight cache for connection status to prevent exhausting Twitter API rate limits on /users/me
@@ -92,6 +93,7 @@ const CONNECTION_CACHE_TTL_MS = 60000; // 60 seconds
 
 export function clearInvalidRefreshTokens(): void {
   invalidRefreshTokens.clear();
+  isOAuth2TokenExpired = false;
   lastRefreshFailure = null;
   cachedConnectionStatus = null;
 }
@@ -102,6 +104,7 @@ export function resetXConnectionCache(): void {
 
 export function setInMemoryOAuth2Tokens(accessToken: string, refreshToken?: string): void {
   inMemoryOAuth2Token = accessToken.trim() || null;
+  isOAuth2TokenExpired = false;
   if (refreshToken) {
     inMemoryRefreshToken = refreshToken.trim() || null;
     invalidRefreshTokens.delete(refreshToken.trim());
@@ -174,6 +177,12 @@ export function getOAuth2Tokens(): XOAuth2Tokens | null {
     ""
   ).trim();
 
+  // If the OAuth 2.0 access token was verified as expired (401) and the refresh token is invalid or unauthorized,
+  // do not return the dead OAuth 2.0 tokens so callers cleanly use OAuth 1.0a without hitting 401 loops.
+  if (isOAuth2TokenExpired && (!refreshToken || invalidRefreshTokens.has(refreshToken))) {
+    return null;
+  }
+
   const clientId = (
     process.env.X_OAUTH_2_0_CLIENT_ID ||
     process.env.X_CLIENT_ID ||
@@ -194,7 +203,7 @@ export async function refreshOAuth2AccessToken(): Promise<string | null> {
   const tokens = getOAuth2Tokens();
   if (!tokens?.refreshToken || !tokens?.clientId) return null;
 
-  // Prevent repeated refresh attempts for tokens known to be invalid/revoked
+  // Prevent repeated refresh attempts for tokens known to be invalid/revoked/unauthorized
   if (invalidRefreshTokens.has(tokens.refreshToken)) {
     return null;
   }
@@ -222,16 +231,43 @@ export async function refreshOAuth2AccessToken(): Promise<string | null> {
       bodyParams.client_secret = clientSecret;
     }
 
-    const res = await fetch("https://api.twitter.com/2/oauth2/token", {
+    let res = await fetch("https://api.twitter.com/2/oauth2/token", {
       method: "POST",
       headers,
       body: new URLSearchParams(bodyParams).toString(),
     });
 
+    // If confidential client failed with unauthorized_client, try public client fallback without Basic Auth
+    if (!res.ok && clientSecret) {
+      let firstErr = "";
+      try {
+        firstErr = await res.clone().text();
+      } catch {}
+      if (firstErr.includes("unauthorized_client") || res.status === 400 || res.status === 401) {
+        const publicHeaders = {
+          "Content-Type": "application/x-www-form-urlencoded",
+        };
+        const publicBody = {
+          grant_type: "refresh_token",
+          refresh_token: tokens.refreshToken,
+          client_id: tokens.clientId,
+        };
+        const retryRes = await fetch("https://api.twitter.com/2/oauth2/token", {
+          method: "POST",
+          headers: publicHeaders,
+          body: new URLSearchParams(publicBody).toString(),
+        });
+        if (retryRes.ok) {
+          res = retryRes;
+        }
+      }
+    }
+
     if (res.ok) {
       const data: any = await res.json();
       if (data.access_token) {
         inMemoryOAuth2Token = data.access_token;
+        isOAuth2TokenExpired = false;
         if (data.refresh_token) {
           inMemoryRefreshToken = data.refresh_token;
           invalidRefreshTokens.delete(data.refresh_token);
@@ -245,20 +281,28 @@ export async function refreshOAuth2AccessToken(): Promise<string | null> {
       let parsedJson: any = null;
       try { parsedJson = JSON.parse(errText); } catch {}
 
-      // Identify token invalidity / expiration / revocation errors (HTTP 400 invalid_request or invalid_grant)
+      // Identify token invalidity / expiration / client revocation errors (HTTP 400/401 invalid_request, invalid_grant, unauthorized_client, invalid_client, etc.)
       const isTokenInvalidError =
-        res.status === 400 &&
-        (errText.includes("invalid_request") ||
-         errText.includes("invalid_grant") ||
-         errText.includes("Value passed for the token was invalid") ||
-         errText.includes("invalid_token") ||
-         parsedJson?.error === "invalid_request");
+        res.status === 400 ||
+        res.status === 401 ||
+        errText.includes("invalid_request") ||
+        errText.includes("invalid_grant") ||
+        errText.includes("unauthorized_client") ||
+        errText.includes("invalid_client") ||
+        errText.includes("unsupported_grant_type") ||
+        errText.includes("Value passed for the token was invalid") ||
+        errText.includes("invalid_token") ||
+        parsedJson?.error === "invalid_request" ||
+        parsedJson?.error === "unauthorized_client" ||
+        parsedJson?.error === "invalid_grant" ||
+        parsedJson?.error === "invalid_client";
 
       if (isTokenInvalidError) {
         invalidRefreshTokens.add(tokens.refreshToken);
+        isOAuth2TokenExpired = true;
         lastRefreshFailure = { error: errText, timestamp: Date.now() };
         console.info(
-          `[OAuth 2.0 Refresh] Stored refresh token is inactive or expired (${parsedJson?.error_description || parsedJson?.error || "Value passed for the token was invalid"}). Stored token marked inactive until updated in Settings.`
+          `[OAuth 2.0 Refresh] Stored refresh token is inactive or client unauthorized (${parsedJson?.error_description || parsedJson?.error || "Value passed for the token was invalid"}). Stored token marked inactive; falling back to configured OAuth 1.0a credentials.`
         );
       } else {
         console.info(`[OAuth 2.0 Refresh] Token refresh endpoint returned HTTP ${res.status}:`, errText);
@@ -395,7 +439,11 @@ export async function postTweetToX(text: string): Promise<XTweetResult> {
             },
             body: JSON.stringify({ text: cleanText }),
           });
+        } else {
+          isOAuth2TokenExpired = true;
         }
+      } else if (response.status === 401) {
+        isOAuth2TokenExpired = true;
       }
 
       const httpStatus = response.status;
@@ -574,7 +622,11 @@ export async function testXConnection(forceRefresh = false): Promise<XConnection
               Authorization: `Bearer ${currentToken}`,
             },
           });
+        } else {
+          isOAuth2TokenExpired = true;
         }
+      } else if (res.status === 401) {
+        isOAuth2TokenExpired = true;
       }
 
       if (res.ok) {
