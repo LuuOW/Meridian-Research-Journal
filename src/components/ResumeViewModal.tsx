@@ -27,6 +27,7 @@ import {
   downloadFile,
   printResumeDocument
 } from "../lib/resumeExporter";
+import { safeClipboardWrite } from "../lib/storageUtils";
 
 interface ResumeViewModalProps {
   isOpen: boolean;
@@ -42,9 +43,10 @@ export const ResumeViewModal: React.FC<ResumeViewModalProps> = ({ isOpen, onClos
 
   const handleCopyMarkdown = () => {
     const md = generateMarkdownResume();
-    navigator.clipboard.writeText(md);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    safeClipboardWrite(md).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const handleDownloadMarkdown = () => {

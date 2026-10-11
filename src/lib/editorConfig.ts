@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { AutonomousStackConfig } from "../types";
+import { safeStorage } from "./storageUtils";
 
 export const LOCAL_STORAGE_ARXIV_KEY = "meridian_config_arxiv_generation";
 export const LOCAL_STORAGE_X_KEY = "meridian_config_x_posting";
@@ -14,11 +15,9 @@ export const DEFAULT_CONFIG: AutonomousStackConfig = {
  * Loads the current autonomous stack configuration from localStorage.
  */
 export function getLocalConfig(): AutonomousStackConfig {
-  if (typeof window === "undefined") return DEFAULT_CONFIG;
-
   try {
-    const arxivStored = localStorage.getItem(LOCAL_STORAGE_ARXIV_KEY);
-    const xStored = localStorage.getItem(LOCAL_STORAGE_X_KEY);
+    const arxivStored = safeStorage.getItem(LOCAL_STORAGE_ARXIV_KEY);
+    const xStored = safeStorage.getItem(LOCAL_STORAGE_X_KEY);
 
     return {
       arxivGenerationEnabled: arxivStored !== null ? arxivStored === "true" : DEFAULT_CONFIG.arxivGenerationEnabled,
@@ -42,11 +41,13 @@ export function saveLocalConfig(updates: Partial<AutonomousStackConfig>): Autono
   };
 
   try {
-    localStorage.setItem(LOCAL_STORAGE_ARXIV_KEY, String(next.arxivGenerationEnabled));
-    localStorage.setItem(LOCAL_STORAGE_X_KEY, String(next.xPostingEnabled));
-    window.dispatchEvent(new CustomEvent("meridian-config-changed", { detail: next }));
+    safeStorage.setItem(LOCAL_STORAGE_ARXIV_KEY, String(next.arxivGenerationEnabled));
+    safeStorage.setItem(LOCAL_STORAGE_X_KEY, String(next.xPostingEnabled));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("meridian-config-changed", { detail: next }));
+    }
   } catch (err) {
-    console.warn("[Config] Failed to save to localStorage:", err);
+    console.warn("[Config] Failed to save to safeStorage:", err);
   }
 
   return next;

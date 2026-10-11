@@ -6,6 +6,7 @@
  */
 
 import { BlogPost } from "../types";
+import { safeStorage } from "./storageUtils";
 
 export type InteractionType =
   | "ad_impression"
@@ -125,7 +126,7 @@ let inMemoryEvents: InteractionEvent[] = [];
 export function getStoredTelemetryEvents(): InteractionEvent[] {
   if (typeof window === "undefined") return inMemoryEvents;
   try {
-    const raw = localStorage.getItem(TELEMETRY_STORAGE_KEY);
+    const raw = safeStorage.getItem(TELEMETRY_STORAGE_KEY);
     if (!raw) return inMemoryEvents;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
@@ -163,15 +164,13 @@ export function trackInteraction(
     inMemoryEvents = inMemoryEvents.slice(0, 200);
   }
 
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(
-        TELEMETRY_STORAGE_KEY,
-        JSON.stringify(inMemoryEvents.slice(0, 150))
-      );
-    } catch {
-      // Storage full or sandboxed
-    }
+  try {
+    safeStorage.setItem(
+      TELEMETRY_STORAGE_KEY,
+      JSON.stringify(inMemoryEvents.slice(0, 150))
+    );
+  } catch {
+    // Storage full or sandboxed
   }
 
   return event;
@@ -273,12 +272,10 @@ export function getInteractionSummary(events?: InteractionEvent[]): TelemetrySum
  */
 export function resetTelemetry(): void {
   inMemoryEvents = [];
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.removeItem(TELEMETRY_STORAGE_KEY);
-    } catch {
-      // Ignore
-    }
+  try {
+    safeStorage.removeItem(TELEMETRY_STORAGE_KEY);
+  } catch {
+    // Ignore
   }
 }
 

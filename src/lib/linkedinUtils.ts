@@ -1,3 +1,5 @@
+import { safeStorage } from "./storageUtils";
+
 export interface CachedLinkedInPost {
   draftText: string;
   headline?: string;
@@ -35,34 +37,32 @@ export function getLinkedInPostCache(key: string, tone?: string): CachedLinkedIn
   const storageKey = getStorageKey(key, tone);
 
   try {
-    if (typeof localStorage !== "undefined") {
-      const item = localStorage.getItem(storageKey);
-      if (item) {
-        const parsed = JSON.parse(item) as CachedLinkedInPost;
+    const item = safeStorage.getItem(storageKey);
+    if (item) {
+      const parsed = JSON.parse(item) as CachedLinkedInPost;
+      if (parsed && typeof parsed.draftText === "string") {
+        return parsed;
+      }
+    }
+    // If tone was specified but not found, check base key as fallback
+    if (tone) {
+      const baseItem = safeStorage.getItem(`meridian_linkedin_cache_${key}`);
+      if (baseItem) {
+        const parsed = JSON.parse(baseItem) as CachedLinkedInPost;
         if (parsed && typeof parsed.draftText === "string") {
           return parsed;
         }
       }
-      // If tone was specified but not found, check base key as fallback
-      if (tone) {
-        const baseItem = localStorage.getItem(`meridian_linkedin_cache_${key}`);
-        if (baseItem) {
-          const parsed = JSON.parse(baseItem) as CachedLinkedInPost;
-          if (parsed && typeof parsed.draftText === "string") {
-            return parsed;
-          }
-        }
-      }
     }
   } catch {
-    // Ignore localStorage access errors
+    // Ignore storage access errors
   }
 
   return MEMORY_CACHE.get(storageKey) || (tone ? MEMORY_CACHE.get(`meridian_linkedin_cache_${key}`) : null) || null;
 }
 
 /**
- * Saves generated LinkedIn post to cache (localStorage and in-memory map).
+ * Saves generated LinkedIn post to cache (safeStorage and in-memory map).
  */
 export function saveLinkedInPostCache(
   key: string,
@@ -83,10 +83,8 @@ export function saveLinkedInPostCache(
     // Also set base key for generic fallback
     MEMORY_CACHE.set(`meridian_linkedin_cache_${key}`, cachedItem);
     try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(storageKey, JSON.stringify(cachedItem));
-        localStorage.setItem(`meridian_linkedin_cache_${key}`, JSON.stringify(cachedItem));
-      }
+      safeStorage.setItem(storageKey, JSON.stringify(cachedItem));
+      safeStorage.setItem(`meridian_linkedin_cache_${key}`, JSON.stringify(cachedItem));
     } catch {
       // Ignore quota errors
     }
@@ -107,22 +105,18 @@ export function clearLinkedInPostCache(key?: string): void {
       }
     }
     try {
-      if (typeof localStorage !== "undefined") {
-        Object.keys(localStorage)
-          .filter((k) => k.startsWith(basePrefix) || k === basePrefix)
-          .forEach((k) => localStorage.removeItem(k));
-      }
+      safeStorage.getAllKeys()
+        .filter((k) => k.startsWith(basePrefix) || k === basePrefix)
+        .forEach((k) => safeStorage.removeItem(k));
     } catch {
       // Ignore
     }
   } else {
     MEMORY_CACHE.clear();
     try {
-      if (typeof localStorage !== "undefined") {
-        Object.keys(localStorage)
-          .filter((k) => k.startsWith("meridian_linkedin_cache_"))
-          .forEach((k) => localStorage.removeItem(k));
-      }
+      safeStorage.getAllKeys()
+        .filter((k) => k.startsWith("meridian_linkedin_cache_"))
+        .forEach((k) => safeStorage.removeItem(k));
     } catch {
       // Ignore
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Key, Fingerprint, Shield, CheckCircle, AlertCircle, Sparkles, Loader2, RefreshCw, X, Laptop } from "lucide-react";
 import { getEffectiveRpId, base64UrlToUint8Array } from "../lib/passkeyManager";
+import { safeStorage, safeSessionStorage } from "../lib/storageUtils";
 
 interface PasskeyPortalProps {
   token: string;
@@ -127,12 +128,12 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
         throw new Error("Failed to authorize portal token.");
       }
 
-      // Save locally to localStorage so this tab's origin retains the passkey ID and enrolled passkeys list
+      // Save locally to safeStorage so this tab's origin retains the passkey ID and enrolled passkeys list
       try {
-        localStorage.setItem("meridian_editor_passkey_id", credentialData.id);
-        localStorage.setItem("meridian_editor_passkey_name", deviceName);
+        safeStorage.setItem("meridian_editor_passkey_id", credentialData.id);
+        safeStorage.setItem("meridian_editor_passkey_name", deviceName);
 
-        const rawList = localStorage.getItem("meridian_enrolled_passkeys");
+        const rawList = safeStorage.getItem("meridian_enrolled_passkeys");
         let existingList: any[] = [];
         if (rawList) {
           try { existingList = JSON.parse(rawList); } catch {}
@@ -147,9 +148,9 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
           },
           ...existingList.filter((p: any) => p.id !== credentialData.id)
         ];
-        localStorage.setItem("meridian_enrolled_passkeys", JSON.stringify(updatedList));
+        safeStorage.setItem("meridian_enrolled_passkeys", JSON.stringify(updatedList));
       } catch {
-        // Safe fallback if localStorage is restricted
+        // Safe fallback if storage is restricted
       }
 
       setStatus("success");
@@ -233,7 +234,7 @@ export const PasskeyPortal: React.FC<PasskeyPortalProps> = ({ token, type, onClo
         const authData = await authRes.json().catch(() => ({}));
         if (authData.password) {
           try {
-            sessionStorage.setItem("meridian_editor_pwd", authData.password);
+            safeSessionStorage.setItem("meridian_editor_pwd", authData.password);
           } catch {}
         }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Lock, Eye, EyeOff, Fingerprint, Loader2, X, AlertCircle, CheckCircle2, Shield } from "lucide-react";
+import { safeSessionStorage } from "../lib/storageUtils";
 
 interface EditorPasswordModalProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
       setIsPasskeyLoading(false);
 
       // Check if user already has an active session in storage
-      const cachedPwd = sessionStorage.getItem("meridian_editor_pwd");
+      const cachedPwd = safeSessionStorage.getItem("meridian_editor_pwd");
       if (cachedPwd) {
         setPassword(cachedPwd);
       }
@@ -77,14 +78,14 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
       }
 
       if (res.ok && (data?.valid || data?.success)) {
-        sessionStorage.setItem("meridian_editor_pwd", trimmed);
+        safeSessionStorage.setItem("meridian_editor_pwd", trimmed);
         setSuccessMsg("Editor Access Granted");
         setTimeout(() => {
           onConfirm(trimmed);
         }, 150);
       } else if (trimmed === "meridian") {
         // Default resilience fallback
-        sessionStorage.setItem("meridian_editor_pwd", trimmed);
+        safeSessionStorage.setItem("meridian_editor_pwd", trimmed);
         setSuccessMsg("Editor Access Granted");
         setTimeout(() => {
           onConfirm(trimmed);
@@ -94,7 +95,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
       }
     } catch (err: any) {
       if (trimmed === "meridian") {
-        sessionStorage.setItem("meridian_editor_pwd", trimmed);
+        safeSessionStorage.setItem("meridian_editor_pwd", trimmed);
         setSuccessMsg("Editor Access Granted");
         setTimeout(() => {
           onConfirm(trimmed);
@@ -113,7 +114,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
 
     try {
       // 1. Try checking for an existing active passkey session
-      const savedSessionId = sessionStorage.getItem("meridian_passkey_session_id");
+      const savedSessionId = safeSessionStorage.getItem("meridian_passkey_session_id");
       if (savedSessionId) {
         const restoreRes = await fetch("/api/passkeys/session-restore", {
           method: "POST",
@@ -123,7 +124,7 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
         if (restoreRes.ok) {
           const rData = await restoreRes.json();
           if (rData?.valid && rData?.password) {
-            sessionStorage.setItem("meridian_editor_pwd", rData.password);
+            safeSessionStorage.setItem("meridian_editor_pwd", rData.password);
             setSuccessMsg("Passkey Authenticated");
             setTimeout(() => {
               onConfirm(rData.password);
@@ -167,9 +168,9 @@ export const EditorPasswordModal: React.FC<EditorPasswordModalProps> = ({
             if (verifyRes.ok) {
               const vData = await verifyRes.json();
               if (vData?.success && vData?.password) {
-                sessionStorage.setItem("meridian_editor_pwd", vData.password);
+                safeSessionStorage.setItem("meridian_editor_pwd", vData.password);
                 if (vData.sessionId) {
-                  sessionStorage.setItem("meridian_passkey_session_id", vData.sessionId);
+                  safeSessionStorage.setItem("meridian_passkey_session_id", vData.sessionId);
                 }
                 setSuccessMsg("Biometric Verification Complete");
                 setTimeout(() => {

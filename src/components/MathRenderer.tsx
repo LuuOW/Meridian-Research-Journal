@@ -10,6 +10,7 @@ import {
   FileCode2
 } from "lucide-react";
 import { isMathExpression as isMath } from "../lib/mathUtils";
+import { safeClipboardWrite } from "../lib/storageUtils";
 
 interface MathRendererProps {
   text: string;
@@ -43,9 +44,10 @@ const CustomCodeOrDiagram: React.FC<CustomCodeOrDiagramProps> = ({ lang, code })
   const [viewMode, setViewMode] = React.useState<"conceptual" | "mathematical">("conceptual");
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    safeClipboardWrite(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   // Check if this is the relativistic MHD GC-FNO pipeline diagram

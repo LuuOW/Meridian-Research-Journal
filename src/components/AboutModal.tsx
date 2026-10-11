@@ -43,6 +43,7 @@ import {
   downloadFile,
   printResumeDocument
 } from "../lib/resumeExporter";
+import { safeClipboardWrite, safeStorage } from "../lib/storageUtils";
 
 const STAR_PARTICLES = Array.from({ length: 16 }).map((_, i) => {
   const angle = (i * 360) / 16;
@@ -204,9 +205,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({
 
   const handleCopyMarkdown = () => {
     const md = generateMarkdownResume();
-    navigator.clipboard.writeText(md);
-    setCopiedMd(true);
-    setTimeout(() => setCopiedMd(false), 2000);
+    safeClipboardWrite(md).then(() => {
+      setCopiedMd(true);
+      setTimeout(() => setCopiedMd(false), 2000);
+    });
   };
 
   const handleDownloadMarkdown = () => {
@@ -235,10 +237,12 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     if (!isOpen) return;
 
     // 1. Try local storage first
-    const cachedImg = localStorage.getItem("meridian_custom_profile_image");
-    if (cachedImg) {
-      setProfileImg(cachedImg);
-    }
+    try {
+      const cachedImg = safeStorage.getItem("meridian_custom_profile_image");
+      if (cachedImg) {
+        setProfileImg(cachedImg);
+      }
+    } catch (_) {}
 
     // 2. Fetch from Firestore
     const fetchCloudProfile = async () => {
@@ -250,7 +254,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
           const data = docSnap.data();
           if (data && data.profileImage) {
             setProfileImg(data.profileImage);
-            localStorage.setItem("meridian_custom_profile_image", data.profileImage);
+            safeStorage.setItem("meridian_custom_profile_image", data.profileImage);
           }
         }
       } catch (err) {
@@ -276,7 +280,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
           const compressed = await compressImage(base64Str);
           
           setProfileImg(compressed);
-          localStorage.setItem("meridian_custom_profile_image", compressed);
+          safeStorage.setItem("meridian_custom_profile_image", compressed);
 
           if (db) {
             try {
@@ -326,7 +330,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   const handleReset = async () => {
     if (confirm("Reset profile picture to the default image?")) {
       setProfileImg(lucasProfileImg);
-      localStorage.removeItem("meridian_custom_profile_image");
+      safeStorage.removeItem("meridian_custom_profile_image");
       if (db) {
         try {
           await setDoc(doc(db, "settings", "profile"), {

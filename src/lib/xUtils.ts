@@ -1,4 +1,5 @@
 import { latexToHumanReadable } from "./titleSubtitlePipeline";
+import { safeStorage } from "./storageUtils";
 
 export interface CachedXPost {
   draftText: string;
@@ -36,32 +37,30 @@ export function getXPostCache(key: string): CachedXPost | null {
   const storageKey = getStorageKey(key);
 
   try {
-    if (typeof localStorage !== "undefined") {
-      const item = localStorage.getItem(storageKey);
-      if (item) {
-        const parsed = JSON.parse(item) as CachedXPost;
-        if (parsed && typeof parsed.draftText === "string") {
-          return parsed;
-        }
+    const item = safeStorage.getItem(storageKey);
+    if (item) {
+      const parsed = JSON.parse(item) as CachedXPost;
+      if (parsed && typeof parsed.draftText === "string") {
+        return parsed;
       }
-      // Check legacy linkedin cache as migration fallback if available
-      const legacyItem = localStorage.getItem(`meridian_linkedin_cache_${key}_future`) || localStorage.getItem(`meridian_linkedin_cache_${key}`);
-      if (legacyItem) {
-        const parsed = JSON.parse(legacyItem) as CachedXPost;
-        if (parsed && typeof parsed.draftText === "string") {
-          return parsed;
-        }
+    }
+    // Check legacy linkedin cache as migration fallback if available
+    const legacyItem = safeStorage.getItem(`meridian_linkedin_cache_${key}_future`) || safeStorage.getItem(`meridian_linkedin_cache_${key}`);
+    if (legacyItem) {
+      const parsed = JSON.parse(legacyItem) as CachedXPost;
+      if (parsed && typeof parsed.draftText === "string") {
+        return parsed;
       }
     }
   } catch {
-    // Ignore localStorage access errors
+    // Ignore storage access errors
   }
 
   return MEMORY_CACHE.get(storageKey) || null;
 }
 
 /**
- * Saves generated X post to cache (localStorage and in-memory map).
+ * Saves generated X post to cache (safeStorage and in-memory map).
  */
 export function saveXPostCache(
   key: string,
@@ -78,9 +77,7 @@ export function saveXPostCache(
     const storageKey = getStorageKey(key);
     MEMORY_CACHE.set(storageKey, cachedItem);
     try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(storageKey, JSON.stringify(cachedItem));
-      }
+      safeStorage.setItem(storageKey, JSON.stringify(cachedItem));
     } catch {
       // Ignore quota errors
     }
@@ -97,19 +94,15 @@ export function clearXPostCache(key?: string): void {
     const storageKey = getStorageKey(key);
     MEMORY_CACHE.delete(storageKey);
     try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.removeItem(storageKey);
-      }
+      safeStorage.removeItem(storageKey);
     } catch {}
   } else {
     MEMORY_CACHE.clear();
     try {
-      if (typeof localStorage !== "undefined") {
-        const keysToRemove = Object.keys(localStorage).filter((k) =>
-          k.startsWith("meridian_x_cache_")
-        );
-        keysToRemove.forEach((k) => localStorage.removeItem(k));
-      }
+      const keysToRemove = safeStorage.getAllKeys().filter((k) =>
+        k.startsWith("meridian_x_cache_")
+      );
+      keysToRemove.forEach((k) => safeStorage.removeItem(k));
     } catch {}
   }
 }

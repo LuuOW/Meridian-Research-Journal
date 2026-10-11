@@ -44,18 +44,27 @@ import { SearchFilterBar } from "./components/SearchFilterBar";
 import { filterBlogsIntelligently } from "./lib/autocompleteUtils";
 import { BinanceTerminalModal } from "./components/BinanceTerminalModal";
 import { DonationModal } from "./components/DonationModal";
+import { safeStorage, safeSessionStorage, safeHistory } from "./lib/storageUtils";
 import { db, handleFirestoreError, OperationType } from "./lib/googleAuth";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 
 export default function App() {
   const [portalToken, setPortalToken] = useState<string | null>(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("portal_token") || params.get("register_portal");
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("portal_token") || params.get("register_portal");
+    } catch {
+      return null;
+    }
   });
 
   const [portalType, setPortalType] = useState<"register" | "auth">(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("portal_type") === "auth" ? "auth" : "register";
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("portal_type") === "auth" ? "auth" : "register";
+    } catch {
+      return "register";
+    }
   });
 
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -96,11 +105,7 @@ export default function App() {
   const [isXaiAgentModalOpen, setIsXaiAgentModalOpen] = useState(false);
   const [hasPendingDispatch, setHasPendingDispatch] = useState(false);
   const [editorPassword, setEditorPassword] = useState<string>(() => {
-    try {
-      return sessionStorage.getItem("meridian_editor_pwd") || "";
-    } catch {
-      return "";
-    }
+    return safeSessionStorage.getItem("meridian_editor_pwd") || "";
   });
   const [jobs, setJobs] = useState<GenerationJob[]>(() => {
     return loadStoredJobs();
@@ -118,7 +123,7 @@ export default function App() {
   const [isInjectArxivModalOpen, setIsInjectArxivModalOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const saved = localStorage.getItem("theme");
+    const saved = safeStorage.getItem("theme");
     if (saved === "light" || saved === "dark") return saved;
     if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
       return "dark";
@@ -133,7 +138,7 @@ export default function App() {
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("theme", theme);
+    safeStorage.setItem("theme", theme);
   }, [theme]);
 
   // Listen to OS / browser dark/bright system settings when not overridden
@@ -141,7 +146,7 @@ export default function App() {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-      const saved = localStorage.getItem("theme");
+      const saved = safeStorage.getItem("theme");
       if (!saved) {
         setTheme(e.matches ? "dark" : "light");
       }
@@ -270,7 +275,7 @@ export default function App() {
     if (e) e.stopPropagation();
     if (!blogToUpdate) return;
 
-    const activePassword = editorPassword || sessionStorage.getItem("meridian_editor_pwd") || "meridian";
+    const activePassword = editorPassword || safeSessionStorage.getItem("meridian_editor_pwd") || "meridian";
     const bannerJob = createBannerGenerationJob(blogToUpdate);
     setJobs((prev) => [bannerJob, ...prev]);
 
@@ -340,19 +345,19 @@ export default function App() {
 
         // Persist banner override to local storage
         try {
-          const overrides = JSON.parse(localStorage.getItem("meridian_banner_overrides") || "{}");
+          const overrides = JSON.parse(safeStorage.getItem("meridian_banner_overrides") || "{}");
           overrides[blogToUpdate.id] = newSvg;
           if (blogToUpdate.slug) {
             overrides[blogToUpdate.slug] = newSvg;
           }
-          localStorage.setItem("meridian_banner_overrides", JSON.stringify(overrides));
+          safeStorage.setItem("meridian_banner_overrides", JSON.stringify(overrides));
 
           const customBlogs = blogs.map((b) =>
             b.id === blogToUpdate.id || (b.slug && b.slug === blogToUpdate.slug)
               ? updatedBlog
               : b
           );
-          localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+          safeStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
         } catch (_) {}
 
         setBannerToastMsg("Banner SVG regenerated successfully!");
@@ -381,7 +386,7 @@ export default function App() {
       return;
     }
 
-    const activePassword = editorPassword || sessionStorage.getItem("meridian_editor_pwd") || "meridian";
+    const activePassword = editorPassword || safeSessionStorage.getItem("meridian_editor_pwd") || "meridian";
     const articleJob = createArticleRegenerationJob(blogToUpdate);
     setJobs((prev) => [articleJob, ...prev]);
 
@@ -446,7 +451,7 @@ export default function App() {
           const customBlogs = blogs
             .map((b) => (b.id === blogToUpdate.id ? updatedBlog : b))
             .filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id));
-          localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+          safeStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
         } catch (_) {}
 
         setArticleToastMsg("Scholarly article regenerated & updated successfully!");
@@ -490,14 +495,14 @@ export default function App() {
       // Persist to local storage with quota protection
       try {
         const customBlogs = updatedList.filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id));
-        localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+        safeStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
       } catch (_) {
         try {
           const lightweight = updatedList.slice(0, 20).filter((b) => !PRELOADED_BLOGS.some((pb) => pb.id === b.id)).map(b => ({
             ...b,
             bannerSvg: b.bannerSvg ? b.bannerSvg.slice(0, 500) : ""
           }));
-          localStorage.setItem("meridian_blogs_saved", JSON.stringify(lightweight));
+          safeStorage.setItem("meridian_blogs_saved", JSON.stringify(lightweight));
         } catch (_) {}
       }
 
@@ -717,23 +722,23 @@ export default function App() {
   const loadBlogs = async () => {
     // 0. Clean any quarantined/blocked papers from localStorage cache immediately
     try {
-      const cachedActive = localStorage.getItem("meridian_active_blog_id");
+      const cachedActive = safeStorage.getItem("meridian_active_blog_id");
       if (cachedActive && isArticleBlocked(cachedActive)) {
-        localStorage.removeItem("meridian_active_blog_id");
+        safeStorage.removeItem("meridian_active_blog_id");
       }
-      const rawSaved = localStorage.getItem("meridian_blogs_saved");
+      const rawSaved = safeStorage.getItem("meridian_blogs_saved");
       if (rawSaved) {
         const parsed = JSON.parse(rawSaved);
         if (Array.isArray(parsed)) {
           const cleaned = parsed.filter((b: any) => !isArticleBlocked(b));
-          localStorage.setItem("meridian_blogs_saved", JSON.stringify(cleaned));
+          safeStorage.setItem("meridian_blogs_saved", JSON.stringify(cleaned));
         }
       }
     } catch (_) {}
 
     // 1. Get initial local custom blogs from localStorage as a local cache
     let localCustomBlogs: BlogPost[] = [];
-    const saved = localStorage.getItem("meridian_blogs_saved");
+    const saved = safeStorage.getItem("meridian_blogs_saved");
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as BlogPost[];
@@ -745,7 +750,7 @@ export default function App() {
 
     const bannerOverrides: Record<string, string> = (() => {
       try {
-        return JSON.parse(localStorage.getItem("meridian_banner_overrides") || "{}");
+        return JSON.parse(safeStorage.getItem("meridian_banner_overrides") || "{}");
       } catch (_) {
         return {};
       }
@@ -778,7 +783,7 @@ export default function App() {
         const candidate = decodeURIComponent(pathParts[2]);
         if (isArticleBlocked(candidate)) {
           console.warn("[Blocklist] Quarantined article route detected. Redirecting to home:", candidate);
-          window.history.replaceState({}, "", "/");
+          safeHistory.replaceState({}, "", "/");
           return null;
         }
         return candidate;
@@ -787,7 +792,7 @@ export default function App() {
       const queryId = searchParams.get("blog") || searchParams.get("id");
       if (queryId) {
         if (isArticleBlocked(queryId)) {
-          window.history.replaceState({}, "", "/");
+          safeHistory.replaceState({}, "", "/");
           return null;
         }
         return queryId;
@@ -862,7 +867,7 @@ export default function App() {
           setBlogs(allBlogs);
           const customOnly = mergedCustomBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
           if (customOnly.length > 0) {
-            localStorage.setItem("meridian_blogs_saved", JSON.stringify(customOnly));
+            safeStorage.setItem("meridian_blogs_saved", JSON.stringify(customOnly));
           }
 
           // Handle deep linking with resilient slug/ID matching
@@ -894,7 +899,7 @@ export default function App() {
     // Fallback: update state and local storage with the merged local/offline list
     const allBlogs = sortBlogsByPublicationDate(applyOverrides([...mergedCustomBlogs, ...PRELOADED_BLOGS]));
     setBlogs(allBlogs);
-    localStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
+    safeStorage.setItem("meridian_blogs_saved", JSON.stringify(mergedCustomBlogs));
 
     // Handle deep linking again
     const refreshedBlogId = getBlogIdFromUrl();
@@ -924,7 +929,7 @@ export default function App() {
   useEffect(() => {
     const tryRestorePasskeySession = async () => {
       try {
-        const sessionId = sessionStorage.getItem("meridian_passkey_session_id") || localStorage.getItem("meridian_passkey_session_id");
+        const sessionId = safeSessionStorage.getItem("meridian_passkey_session_id") || safeStorage.getItem("meridian_passkey_session_id");
         if (!sessionId) return;
 
         const res = await fetch("/api/passkeys/session-restore", {
@@ -938,8 +943,8 @@ export default function App() {
           if (data.valid && data.authorized && data.password) {
             setEditorPassword(data.password);
             try {
-              sessionStorage.setItem("meridian_editor_pwd", data.password);
-              sessionStorage.setItem("meridian_passkey_session_id", data.session?.sessionId);
+              safeSessionStorage.setItem("meridian_editor_pwd", data.password);
+              safeSessionStorage.setItem("meridian_passkey_session_id", data.session?.sessionId);
             } catch {}
             setIsEditorMode(true);
             console.log(`[Passkey] Biometric session restored seamlessly across window reload. Device: ${data.session?.deviceName}, reload count: ${data.session?.reloadCount}`);
@@ -947,8 +952,8 @@ export default function App() {
         } else {
           // Session expired or revoked
           try {
-            sessionStorage.removeItem("meridian_passkey_session_id");
-            localStorage.removeItem("meridian_passkey_session_id");
+            safeSessionStorage.removeItem("meridian_passkey_session_id");
+            safeStorage.removeItem("meridian_passkey_session_id");
           } catch {}
         }
       } catch (err) {
@@ -975,7 +980,7 @@ export default function App() {
             const data = await res.json();
             // Clear URL parameter
             const newUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, "", newUrl);
+            safeHistory.replaceState({}, "", newUrl);
             await loadBlogs();
             if (data.blog) {
               setActiveBlog(data.blog);
@@ -995,17 +1000,17 @@ export default function App() {
     const currentSearch = window.location.search;
     
     if (activeBlog) {
-      localStorage.setItem("meridian_active_blog_id", activeBlog.id);
+      safeStorage.setItem("meridian_active_blog_id", activeBlog.id);
       const targetPath = `/blog/${activeBlog.slug || activeBlog.id}`;
       // Push history only if path is different or we are switching away from search parameters
       if (currentPath !== targetPath || currentSearch !== "") {
-        window.history.pushState({}, "", targetPath);
+        safeHistory.pushState({}, "", targetPath);
       }
     } else {
-      localStorage.removeItem("meridian_active_blog_id");
+      safeStorage.removeItem("meridian_active_blog_id");
       const targetPath = "/";
       if (currentPath !== targetPath || currentSearch !== "") {
-        window.history.pushState({}, "", targetPath);
+        safeHistory.pushState({}, "", targetPath);
       }
     }
   }, [activeBlog]);
@@ -1077,22 +1082,24 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [blogs]);
 
-  // Load hidden blog IDs from LocalStorage
+  // Load hidden blog IDs from safeStorage
   useEffect(() => {
-    const savedHidden = localStorage.getItem("meridian_hidden_blogs");
-    if (savedHidden) {
-      try {
+    try {
+      const savedHidden = safeStorage.getItem("meridian_hidden_blogs");
+      if (savedHidden) {
         setHiddenBlogIds(JSON.parse(savedHidden));
-      } catch (err) {
-        console.error("Failed to parse hidden blog IDs:", err);
       }
+    } catch (err) {
+      console.error("Failed to parse hidden blog IDs:", err);
     }
   }, []);
 
   const handleToggleHideBlog = (id: string) => {
     setHiddenBlogIds((prev) => {
       const updated = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      localStorage.setItem("meridian_hidden_blogs", JSON.stringify(updated));
+      try {
+        safeStorage.setItem("meridian_hidden_blogs", JSON.stringify(updated));
+      } catch (_) {}
       return updated;
     });
   };
@@ -1102,14 +1109,14 @@ export default function App() {
       const updatedBlogs = sortBlogsByPublicationDate([newBlog, ...prev.filter(b => b.id !== newBlog.id)]);
       const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
       try {
-        localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+        safeStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
       } catch (_) {
         try {
           const lightweight = customBlogs.slice(0, 20).map(b => ({
             ...b,
             bannerSvg: b.bannerSvg ? b.bannerSvg.slice(0, 500) : ""
           }));
-          localStorage.setItem("meridian_blogs_saved", JSON.stringify(lightweight));
+          safeStorage.setItem("meridian_blogs_saved", JSON.stringify(lightweight));
         } catch (_) {}
       }
       return updatedBlogs;
@@ -1128,7 +1135,7 @@ export default function App() {
         if (data.blogs && Array.isArray(data.blogs)) {
           const syncedCustom = data.blogs.filter((b: BlogPost) => b && b.id && !PRELOADED_BLOGS.some(pb => pb.id === b.id));
           try {
-            localStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedCustom));
+            safeStorage.setItem("meridian_blogs_saved", JSON.stringify(syncedCustom));
           } catch (_) {}
         }
       }
@@ -1184,7 +1191,7 @@ export default function App() {
       );
     }, 3200);
 
-    const activePassword = editorPassword || sessionStorage.getItem("meridian_editor_pwd") || "meridian";
+    const activePassword = editorPassword || safeSessionStorage.getItem("meridian_editor_pwd") || "meridian";
 
     try {
       const response = await fetch("/api/blog/generate", {
@@ -1268,7 +1275,9 @@ export default function App() {
     const updatedBlogs = blogs.filter(b => b.id !== id);
     setBlogs(updatedBlogs);
     const customBlogs = updatedBlogs.filter(b => !PRELOADED_BLOGS.some(pb => pb.id === b.id));
-    localStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+    try {
+      safeStorage.setItem("meridian_blogs_saved", JSON.stringify(customBlogs));
+    } catch (_) {}
     if (activeBlog?.id === id) {
       setActiveBlog(null);
     }
@@ -1298,7 +1307,7 @@ export default function App() {
         onClose={() => {
           setPortalToken(null);
           const newUrl = window.location.origin + window.location.pathname;
-          window.history.replaceState({}, "", newUrl);
+          safeHistory.replaceState({}, "", newUrl);
         }} 
       />
     );

@@ -1,6 +1,70 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        console.warn('[Global Error Contained]:', message, source, lineno, colno);
+        return true;
+      };
+      window.onunhandledrejection = function(event) {
+        console.warn('[Unhandled Rejection Contained]:', event && event.reason);
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        return true;
+      };
+      window.addEventListener('error', function(event) {
+        console.warn('[Runtime Error Intercepted]:', event && (event.message || event));
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        if (event && typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+        return true;
+      }, true);
+      window.addEventListener('unhandledrejection', function(event) {
+        console.warn('[Unhandled Rejection Intercepted]:', event && event.reason);
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        if (event && typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+        return true;
+      }, true);
+
+      // Polyfill localStorage and sessionStorage if inaccessible in restricted environments
+      (function() {
+        function createFallbackStorage() {
+          var store = new Map();
+          return {
+            getItem: function(key) { return store.has(String(key)) ? store.get(String(key)) : null; },
+            setItem: function(key, val) { store.set(String(key), String(val)); },
+            removeItem: function(key) { store.delete(String(key)); },
+            clear: function() { store.clear(); },
+            get length() { return store.size; },
+            key: function(idx) { return Array.from(store.keys())[idx] || null; }
+          };
+        }
+        try {
+          var testK = '__storage_probe__';
+          window.localStorage.setItem(testK, '1');
+          window.localStorage.removeItem(testK);
+        } catch (_) {
+          try {
+            Object.defineProperty(window, 'localStorage', {
+              value: createFallbackStorage(),
+              configurable: true,
+              writable: true
+            });
+          } catch (e) {}
+        }
+        try {
+          var testS = '__session_probe__';
+          window.sessionStorage.setItem(testS, '1');
+          window.sessionStorage.removeItem(testS);
+        } catch (_) {
+          try {
+            Object.defineProperty(window, 'sessionStorage', {
+              value: createFallbackStorage(),
+              configurable: true,
+              writable: true
+            });
+          } catch (e) {}
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Meridian Research Journal | Quantum Optics, Computing &amp; AI</title>

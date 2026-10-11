@@ -1,4 +1,5 @@
 import { GenerationJob, BlogPost, JobStepLog, PipelineExecutionRecord } from "../types";
+import { safeStorage } from "./storageUtils";
 
 export const PIPELINE_STEPS = [
   "Contacting arXiv open archives export server...",
@@ -26,9 +27,8 @@ const STORAGE_KEY = "meridian_generation_pipeline_jobs";
 const METRICS_STORAGE_KEY = "meridian_pipeline_execution_metrics";
 
 export function loadStoredJobs(): GenerationJob[] {
-  if (typeof window === "undefined" || !window.localStorage) return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = safeStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
@@ -64,7 +64,7 @@ export function loadStoredJobs(): GenerationJob[] {
 
       // Save the cleaned jobs back to storage
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated.slice(0, 40)));
+        safeStorage.setItem(STORAGE_KEY, JSON.stringify(updated.slice(0, 40)));
       } catch (_) {}
 
       return updated;
@@ -76,11 +76,10 @@ export function loadStoredJobs(): GenerationJob[] {
 }
 
 export function saveStoredJobs(jobs: GenerationJob[]): void {
-  if (typeof window === "undefined" || !window.localStorage) return;
   try {
     // Retain up to 40 most recent jobs to prevent unbounded storage growth
     const trimmed = jobs.slice(0, 40);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+    safeStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
   } catch (err) {
     console.warn("Failed to persist generation jobs:", err);
   }

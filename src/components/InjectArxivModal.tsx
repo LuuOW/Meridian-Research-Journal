@@ -17,6 +17,7 @@ import {
   getInjectModalThemeTokens,
   createClientSideFallbackArticle
 } from "../lib/arxivInjectionUtils";
+import { safeStorage, safeSessionStorage } from "../lib/storageUtils";
 
 interface InjectArxivModalProps {
   isOpen: boolean;
@@ -145,8 +146,8 @@ export const InjectArxivModal: React.FC<InjectArxivModalProps> = ({
     try {
       const activePassword =
         editorPassword ||
-        sessionStorage.getItem("meridian_editor_pwd") ||
-        localStorage.getItem("meridian_editor_pwd") ||
+        safeSessionStorage.getItem("meridian_editor_pwd") ||
+        safeStorage.getItem("meridian_editor_pwd") ||
         "meridian";
 
       const timer1 = setTimeout(() => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Brain, ExternalLink, RefreshCw, BookOpen, Calendar, ArrowRight, CheckCircle2 } from "lucide-react";
 import { RayTracedCard } from "./RayTracedCard";
+import { safeStorage } from "../lib/storageUtils";
 
 interface DailyPredictionProps {
   onGeneratePredictedBlog: (arxivId: string) => void;
@@ -51,18 +52,18 @@ export const DailyPrediction: React.FC<DailyPredictionProps> = ({ onGeneratePred
 
   // Load cached prediction on mount
   useEffect(() => {
-    const cached = localStorage.getItem("meridian_daily_prediction");
-    if (cached) {
-      try {
+    try {
+      const cached = safeStorage.getItem("meridian_daily_prediction");
+      if (cached) {
         const parsed = JSON.parse(cached) as PredictionData;
         const todayStr = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
         // Check if the prediction belongs to today
         if (parsed.predictedAt === todayStr) {
           setPrediction(parsed);
         }
-      } catch (err) {
-        console.error("Failed to load cached daily prediction:", err);
       }
+    } catch (err) {
+      console.error("Failed to load cached daily prediction:", err);
     }
   }, []);
 
@@ -98,7 +99,7 @@ export const DailyPrediction: React.FC<DailyPredictionProps> = ({ onGeneratePred
           timestamp: data.timestamp || Date.now()
         };
         setPrediction(predictionResult);
-        localStorage.setItem("meridian_daily_prediction", JSON.stringify(predictionResult));
+        safeStorage.setItem("meridian_daily_prediction", JSON.stringify(predictionResult));
       } else {
         throw new Error("Invalid prediction payload received from GitHub Models advisor.");
       }

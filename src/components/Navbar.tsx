@@ -4,6 +4,7 @@ import { GenerationJob, BlogPost } from "../types";
 import { EditorModeButton } from "./EditorModeButton";
 import { Switch } from "./Switch";
 import { useEditorConfig } from "../lib/editorConfig";
+import { safeSessionStorage } from "../lib/storageUtils";
 
 // Vector Arxiv Logo Badge matching uploaded brand asset
 const ArxivLogoIcon: React.FC<{ className?: string }> = ({ className = "w-8 h-8" }) => (
@@ -150,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           setIsToolsOpen(false);
         }, 1200);
       } else {
-        const activePassword = sessionStorage.getItem("meridian_editor_pwd") || "meridian";
+        const activePassword = safeSessionStorage.getItem("meridian_editor_pwd") || "meridian";
         const response = await fetch("/api/blog/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
