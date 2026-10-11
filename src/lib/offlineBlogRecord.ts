@@ -478,6 +478,7 @@ class OfflineRecordScheduler {
     this.intervalCheck = setInterval(() => {
       this.heartbeatCheck();
     }, 15 * 60 * 1000);
+    this.intervalCheck.unref?.();
   }
 
   public stop(): void {

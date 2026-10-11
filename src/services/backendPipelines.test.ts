@@ -336,4 +336,5 @@ test("MicroserviceRegistry: Coordinates all microservices and provides aggregate
   registry.emit("blog:created", { id: "test-evt" });
   assert.strictEqual(eventReceived, true);
   unsubscribe();
+  await registry.shutdownAll();
 });

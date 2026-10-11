@@ -476,6 +476,7 @@ export class OfflineRecordThreeTimesAuditorService {
     this.intervalTimer = setInterval(() => {
       this.runAuditCheck();
     }, 15 * 60 * 1000);
+    this.intervalTimer.unref?.();
   }
 
   public stop(): void {

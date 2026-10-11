@@ -812,7 +812,7 @@ export function generateStagedArticleDraft(
     tags,
     excerpt
   };
-  const rawSvg = generateCorpusBannerSvg(draftStub, existingCorpus || []);
+  const rawSvg = generateCorpusBannerSvg(draftStub, existingCorpus || [], timestamp);
   const bannerSvg = ensureAnimatedSvg(rawSvg);
 
   // Scholarly markdown content with KaTeX math equations
@@ -862,7 +862,7 @@ The experimental signatures of these high-energy neutrino interactions provide c
     slug: slugId,
     excerpt,
     content,
-    author: candidate.authors ? candidate.authors.split(",")[0] : "Lucas Kempe",
+    author: candidate.authors ? candidate.authors.split(",")[0].trim() : "Meridian Research",
     date: artInfo.isWeekend ? formatArtReadableDate(artInfo.targetPublishDate) : formatArtReadableDate(artInfo.dateString),
     readingTime: "9 min read",
     bannerSvg,

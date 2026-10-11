@@ -39,7 +39,7 @@ import {
   validatePreprintFreshness,
   PipelineExecutionReport
 } from "../lib/arxivAutonomousPipeline";
-import { scrapeArxivPreprint, verifyPreprintDateMatch } from "./ArxivWebScraper";
+import { scrapeArxivPreprint, verifyPreprintDateMatch, normalizeDateToIso } from "./ArxivWebScraper";
 
 export class DailyScheduleDaemon implements IMicroservice {
   public readonly serviceName = "DailyScheduleDaemon";
@@ -177,6 +177,7 @@ export class DailyScheduleDaemon implements IMicroservice {
         console.error(`[${this.serviceName}] Error in scheduled check:`, err);
       });
     }, 30000);
+    this.intervalTimer.unref?.();
 
     return true;
   }
@@ -236,6 +237,11 @@ export class DailyScheduleDaemon implements IMicroservice {
       const isArticleForDate = (b: any) => {
         if (!b) return false;
         if (b.date === targetDateStr || b.date === targetFormattedDate) return true;
+        if (formatArtReadableDate(b.date) === targetFormattedDate) return true;
+        try {
+          const norm = normalizeDateToIso(b.date);
+          if (norm.isoDate === targetDateStr || norm.canonicalDate === targetFormattedDate) return true;
+        } catch (_) {}
         if (b.date) {
           const parsed = new Date(b.date);
           if (!isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === targetDateStr) {

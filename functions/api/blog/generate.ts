@@ -1,6 +1,7 @@
 import { CloudflareEnv, getExpectedPassword, isPasswordValid, jsonResponse } from "../_utils";
 import { generateScientificArticleFromArxiv, createBespokeExcerpt } from "../../../src/lib/paperGenerationEngine";
 import { generateCorpusBannerSvg } from "../../../src/lib/corpusBannerAlgorithm";
+import { ensureAnimatedSvg } from "../../../src/lib/svgUtils";
 
 // Robust arXiv ID extractor
 function extractArxivId(input: string): string | null {
@@ -341,7 +342,7 @@ Respond strictly in JSON format with keys "title", "excerpt", and "content". Nev
         paperTitle || generatedTitle,
         paperSummary,
         fullArxivUrl,
-        paperAuthors || "Meridian Research Collaboration",
+        paperAuthors || "Meridian Research",
         Date.now()
       );
       generatedTitle = proceduralResult.title;
@@ -363,7 +364,8 @@ Respond strictly in JSON format with keys "title", "excerpt", and "content". Nev
       tags: generatedTags && generatedTags.length > 0 ? generatedTags : [paperCategory, "Theoretical Physics"]
     };
 
-    const bannerSvg = generateCorpusBannerSvg(candidateBlogForBanner, [], Date.now());
+    const rawBannerSvg = generateCorpusBannerSvg(candidateBlogForBanner, [], Date.now());
+    const bannerSvg = ensureAnimatedSvg(rawBannerSvg);
 
     const newBlog = {
       id: `generated-${Date.now()}`,
@@ -379,7 +381,7 @@ Respond strictly in JSON format with keys "title", "excerpt", and "content". Nev
       date: formattedDate,
       readingTime: `${Math.min(14, Math.max(7, Math.round((generatedContent.length) / 500)))} min read`,
       arxivLink: fullArxivUrl,
-      author: paperAuthors || "Meridian Research Collaboration",
+      author: paperAuthors || "Meridian Research",
       tags: generatedTags && generatedTags.length > 0 ? generatedTags : [paperCategory, "Theoretical Physics"],
       content: generatedContent,
       views: Math.floor(Math.random() * 200) + 250,
