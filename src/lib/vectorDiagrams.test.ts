@@ -76,3 +76,23 @@ test("ensureAnimatedSvg handles empty or non-string inputs safely", () => {
   assert.strictEqual(ensureAnimatedSvg(null as unknown as string), null);
   assert.strictEqual(ensureAnimatedSvg(undefined as unknown as string), undefined);
 });
+
+test("ensureAnimatedSvg applies dark mode theme attributes and styles", () => {
+  const rawSvg = `<svg viewBox="0 0 1200 675"><rect width="100%" height="100%" fill="#0a1128"/></svg>`;
+  const darkSvg = ensureAnimatedSvg(rawSvg, "dark");
+
+  assert.ok(darkSvg.includes('data-theme="dark"'));
+  assert.ok(darkSvg.includes("mrd-dark-mode"));
+  assert.ok(darkSvg.includes("meridian-banner-svg"));
+  assert.ok(darkSvg.includes("invert(0.92) hue-rotate(180deg)"));
+});
+
+test("ensureAnimatedSvg applies light mode theme attributes", () => {
+  const rawSvg = `<svg viewBox="0 0 1200 675"><rect width="100%" height="100%" fill="#0a1128"/></svg>`;
+  const lightSvg = ensureAnimatedSvg(rawSvg, "light");
+
+  assert.ok(lightSvg.includes('data-theme="light"'));
+  assert.ok(!lightSvg.match(/<svg\b[^>]*\bmrd-dark-mode\b/i));
+  assert.ok(lightSvg.includes("meridian-banner-svg"));
+});
+

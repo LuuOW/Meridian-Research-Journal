@@ -1040,7 +1040,7 @@ export function generateCorpusBannerSvg(
     : profile.badgeLabel;
   const titleFontSize = cleanTitle.length > 70 ? 15 : 17;
 
-  return `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:${profile.bgMid}">
+  return `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" class="meridian-banner-svg mrd-banner-root" data-banner="true" style="background:${profile.bgMid}">
   <defs>
     <style id="mrd-svg-animations">${SVG_ANIMATION_STYLES}</style>
     <linearGradient id="bgGrad_${uid}" x1="0%" y1="0%" x2="100%" y2="100%">

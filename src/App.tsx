@@ -537,7 +537,8 @@ export default function App() {
   const handleDownloadPng = (blog: BlogPost) => {
     if (!blog?.bannerSvg) return;
     
-    let svgString = prepareSvgForPngExport(blog.bannerSvg, 1200, 675);
+    const isDark = theme === "dark";
+    let svgString = prepareSvgForPngExport(blog.bannerSvg, 1200, 675, isDark ? "dark" : "light");
     
     // Parse and sanitize the SVG using a forgiving HTML DOMParser to ensure 100% standard compliance and fix any malformed XML automatically
     try {
@@ -646,7 +647,13 @@ export default function App() {
           if (ctx) {
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = "high";
-            ctx.fillStyle = "#090d16";
+            if (isDark) {
+              ctx.filter = "invert(0.92) hue-rotate(180deg) contrast(1.05)";
+              ctx.fillStyle = "#f8fafc";
+            } else {
+              ctx.filter = "none";
+              ctx.fillStyle = "#090d16";
+            }
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             
@@ -1659,8 +1666,8 @@ export default function App() {
                       <RayTracedCard className="w-full max-w-[440px]" accentGlowColor="rgba(14, 165, 233, 0.25)">
                         <div className="p-2 relative group">
                           <div 
-                            className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none"
-                            dangerouslySetInnerHTML={{ __html: ensureAnimatedSvg(activeBlog.bannerSvg) }}
+                            className="w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-inner pointer-events-none banner-svg-display"
+                            dangerouslySetInnerHTML={{ __html: ensureAnimatedSvg(activeBlog.bannerSvg, theme) }}
                           />
                         </div>
                       </RayTracedCard>
@@ -1682,8 +1689,8 @@ export default function App() {
                           <button
                             onClick={() => {
                               if (!activeBlog?.bannerSvg) return;
-                              const animatedSvg = ensureAnimatedSvg(activeBlog.bannerSvg);
-                              const blob = new Blob([animatedSvg], { type: "image/svg+xml" });
+                              const animatedSvg = ensureAnimatedSvg(activeBlog.bannerSvg, theme);
+                              const blob = new Blob([animatedSvg], { type: "image/svg+xml;charset=utf-8" });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = url;

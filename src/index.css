@@ -480,3 +480,25 @@
   }
 }
 
+/* ==========================================================================
+   SVG Banner Adaptive Dark Mode Inversion
+   When user toggles dark mode, banners smoothly invert their dark deep-space
+   backgrounds into luminous celestial ivory plates, preserving vibrant chromatic
+   neon hues (via 180° hue restoration) and rendering crisp mathematical text.
+   ========================================================================== */
+.dark .banner-svg-display svg,
+.dark svg.meridian-banner-svg,
+.dark [data-meridian-banner] svg,
+.dark svg[data-banner="true"],
+svg[data-theme="dark"],
+svg.mrd-dark-mode {
+  filter: invert(0.92) hue-rotate(180deg) contrast(1.05);
+  transition: filter 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:not(.dark) .banner-svg-display svg:not([data-theme="dark"]),
+:not(.dark) svg.meridian-banner-svg:not([data-theme="dark"]):not(.mrd-dark-mode) {
+  filter: none;
+  transition: filter 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+

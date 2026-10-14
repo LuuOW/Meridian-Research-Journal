@@ -61,32 +61,70 @@ export const SVG_ANIMATION_STYLES = `
   .mrd-anim-beam {
     animation: mrdBeamPulse 2.5s ease-in-out infinite;
   }
+
+  /* Adaptive Dark Mode color inversion: Inverts dark canvas to illuminate the UI and match dark mode */
+  @media (prefers-color-scheme: dark) {
+    :root, svg.meridian-banner-svg, .mrd-banner-root {
+      filter: invert(0.92) hue-rotate(180deg) contrast(1.05);
+    }
+  }
+
+  /* Explicit theme attribute / class triggers */
+  svg.mrd-dark-mode, svg[data-theme="dark"], .dark svg.meridian-banner-svg, html.dark svg.meridian-banner-svg {
+    filter: invert(0.92) hue-rotate(180deg) contrast(1.05);
+  }
 `;
 
 /**
- * Ensures an SVG string contains embedded CSS keyframe animations and moving element classes.
- * Converts static banner SVGs into dynamic moving vector artwork.
+ * Ensures an SVG string contains embedded CSS keyframe animations, dark mode inversion,
+ * and moving element classes.
+ * Converts static banner SVGs into dynamic moving vector artwork that gracefully inverts
+ * in dark mode to provide illumination and contrast.
  */
-export function ensureAnimatedSvg(rawSvg: string): string {
+export function ensureAnimatedSvg(rawSvg: string, themeMode?: "light" | "dark" | "auto"): string {
   if (!rawSvg || typeof rawSvg !== "string") return rawSvg;
-
-  // Check if style animation keyframes already exist
-  const hasKeyframes = rawSvg.includes("mrdWaveFlow") || rawSvg.includes("@keyframes");
 
   let svg = rawSvg;
 
-  // 1. Inject CSS animation style block into <defs> or top of <svg>
-  if (!hasKeyframes) {
-    const styleBlock = `<style id="mrd-svg-animations">${SVG_ANIMATION_STYLES}</style>`;
-
-    if (svg.includes("<defs>")) {
-      svg = svg.replace("<defs>", `<defs>\n    ${styleBlock}`);
-    } else if (svg.includes("</defs>")) {
-      svg = svg.replace("</defs>", `  ${styleBlock}\n  </defs>`);
-    } else {
-      // Insert right after opening <svg ...> tag
-      svg = svg.replace(/(<svg[^>]*>)/i, `$1\n  <defs>\n    ${styleBlock}\n  </defs>`);
+  // 1. Ensure root <svg> has meridian banner identifying class and attributes
+  svg = svg.replace(/<svg\b([^>]*)>/i, (match, attrs) => {
+    let newAttrs = attrs;
+    if (!/class=["'][^"']*meridian-banner-svg[^"']*["']/i.test(newAttrs)) {
+      if (/class=["']/i.test(newAttrs)) {
+        newAttrs = newAttrs.replace(/class=["']([^"']*)["']/i, 'class="$1 meridian-banner-svg mrd-banner-root"');
+      } else {
+        newAttrs += ' class="meridian-banner-svg mrd-banner-root"';
+      }
     }
+    if (!/data-banner=/i.test(newAttrs)) {
+      newAttrs += ' data-banner="true"';
+    }
+    if (themeMode === "dark") {
+      newAttrs = newAttrs.replace(/\s*data-theme=["'][^"']*["']/gi, "");
+      newAttrs += ' data-theme="dark"';
+      if (!/mrd-dark-mode/i.test(newAttrs)) {
+        newAttrs = newAttrs.replace(/class=["']([^"']*)["']/i, 'class="$1 mrd-dark-mode"');
+      }
+    } else if (themeMode === "light") {
+      newAttrs = newAttrs.replace(/\s*data-theme=["'][^"']*["']/gi, "");
+      newAttrs = newAttrs.replace(/\s*\bmrd-dark-mode\b/gi, "");
+      newAttrs += ' data-theme="light"';
+    }
+    return `<svg ${newAttrs.trim()}>`;
+  });
+
+  // 2. Inject or update CSS animation & dark mode style block into <defs> or top of <svg>
+  const styleBlock = `<style id="mrd-svg-animations">${SVG_ANIMATION_STYLES}</style>`;
+
+  if (svg.includes('id="mrd-svg-animations"')) {
+    svg = svg.replace(/<style\b[^>]*id="mrd-svg-animations"[^>]*>[\s\S]*?<\/style>/i, styleBlock);
+  } else if (svg.includes("<defs>")) {
+    svg = svg.replace("<defs>", `<defs>\n    ${styleBlock}`);
+  } else if (svg.includes("</defs>")) {
+    svg = svg.replace("</defs>", `  ${styleBlock}\n  </defs>`);
+  } else {
+    // Insert right after opening <svg ...> tag
+    svg = svg.replace(/(<svg[^>]*>)/i, `$1\n  <defs>\n    ${styleBlock}\n  </defs>`);
   }
 
   // 2. Enhance SVG elements with animation classes if not already annotated
@@ -119,8 +157,8 @@ export function ensureAnimatedSvg(rawSvg: string): string {
 /**
  * Prepares an SVG string for crisp HTML5 canvas rendering during PNG export.
  */
-export function prepareSvgForPngExport(svgString: string, width = 1200, height = 675): string {
-  let cleaned = ensureAnimatedSvg(svgString);
+export function prepareSvgForPngExport(svgString: string, width = 1200, height = 675, themeMode?: "light" | "dark"): string {
+  let cleaned = ensureAnimatedSvg(svgString, themeMode);
 
   // Pre-escape unescaped ampersands
   cleaned = cleaned.replace(/&(?!(amp|lt|gt|quot|apos|#\d+);)/g, "&amp;");

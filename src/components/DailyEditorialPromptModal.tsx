@@ -39,6 +39,7 @@ import {
   LightState
 } from "../lib/rayTracingUtils";
 import { ObservatoryTelemetryDeck } from "./ObservatoryTelemetryDeck";
+import { ensureAnimatedSvg } from "../lib/svgUtils";
 
 export interface StagedDispatchResponse {
   success: boolean;
@@ -825,7 +826,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                             isLight ? "border-slate-200 bg-slate-100" : "border-slate-700 bg-slate-950"
                           }`}
                         >
-                          <div dangerouslySetInnerHTML={{ __html: currentCandidate.bannerSvg }} />
+                          <div className="w-full h-full banner-svg-display" dangerouslySetInnerHTML={{ __html: ensureAnimatedSvg(currentCandidate.bannerSvg, isLight ? "light" : "dark") }} />
                         </div>
                       ) : null}
                       <div className={currentCandidate?.bannerSvg ? "sm:col-span-8 space-y-1.5" : "sm:col-span-12 space-y-1.5"}>
@@ -1192,7 +1193,7 @@ export const DailyEditorialPromptModal: React.FC<DailyEditorialPromptModalProps>
                                 : "border-slate-700 bg-slate-950"
                             }`}
                           >
-                            <div dangerouslySetInnerHTML={{ __html: currentCandidate.bannerSvg }} />
+                            <div className="w-full h-full banner-svg-display" dangerouslySetInnerHTML={{ __html: ensureAnimatedSvg(currentCandidate.bannerSvg, isLight ? "light" : "dark") }} />
                           </div>
                         ) : (
                           <div

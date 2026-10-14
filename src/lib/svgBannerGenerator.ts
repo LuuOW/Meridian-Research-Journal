@@ -325,7 +325,7 @@ export function generateProceduralBannerSvg(title: string, tags?: string | strin
   <text x="50" y="345" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="${fs}" font-weight="800" letter-spacing="-0.4">${line2}</text>`;
   }
 
-  return `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="background:${t.bgMid}">
+  return `<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" class="meridian-banner-svg mrd-banner-root" data-banner="true" style="background:${t.bgMid}">
   <defs>
     <style id="mrd-svg-animations">${SVG_ANIMATION_STYLES}</style>
     <linearGradient id="bgGrad_${uid}" x1="0%" y1="0%" x2="100%" y2="100%">

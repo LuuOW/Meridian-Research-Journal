@@ -31,13 +31,13 @@ export const BlogPostCard: React.FC<BlogPostCardProps & { onClick: () => void }>
       <article className="group flex flex-col h-full cursor-pointer">
         
         {/* Banner / Graphic Thumbnail */}
-        <div className="relative aspect-[16/9] overflow-hidden bg-[#0a1128] flex-shrink-0">
+        <div className="relative aspect-[16/9] overflow-hidden bg-[#0a1128] dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-800/80 flex-shrink-0 transition-colors">
           <div 
-            className="w-full h-full transform group-hover:scale-[1.03] transition-transform duration-500 pointer-events-none"
+            className="w-full h-full transform group-hover:scale-[1.03] transition-transform duration-500 pointer-events-none banner-svg-display"
             dangerouslySetInnerHTML={{ __html: ensureAnimatedSvg(blog.bannerSvg) }}
           />
           {/* Soft overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent dark:from-black/10 dark:to-transparent pointer-events-none" />
         </div>
 
         {/* Content panel */}
