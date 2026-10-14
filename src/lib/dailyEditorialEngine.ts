@@ -299,6 +299,69 @@ export function getSourceArxivBatch(dayOfWeek: number): { sourceBatchName: strin
   }
 }
 
+/**
+ * Detects whether a calendar date is an arXiv non-publishing day due to weekends or US federal holidays.
+ * arXiv does not announce preprints on US federal holidays (such as Columbus Day / Indigenous Peoples' Day).
+ * When a federal holiday occurs on Monday (e.g. October 12, 2026), arXiv shifts announcements to Tuesday 20:00 ET,
+ * meaning Tuesday morning has no new arXiv announcements from the arXiv source.
+ */
+export function isArxivHolidayOrNonPublishing(dateInput?: Date | string): {
+  isNonPublishing: boolean;
+  reason?: string;
+  holidayName?: string;
+} {
+  const d = dateInput
+    ? typeof dateInput === "string"
+      ? new Date(dateInput.includes("T") ? dateInput : `${dateInput}T12:00:00Z`)
+      : dateInput
+    : new Date();
+
+  if (isNaN(d.getTime())) {
+    return { isNonPublishing: false };
+  }
+
+  const month = d.getUTCMonth() + 1; // 1-12
+  const day = d.getUTCDate();
+  const dayOfWeek = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+
+  // Standard weekends: arXiv has no Saturday/Sunday announcements
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    return {
+      isNonPublishing: true,
+      reason: "Weekend (arXiv has no Saturday or Sunday announcements)",
+      holidayName: "Weekend"
+    };
+  }
+
+  // Columbus Day / Indigenous Peoples' Day: 2nd Monday of October
+  // In 2026: October 12 is the 2nd Monday of October.
+  // When Columbus Day falls on Monday (Oct 8..14), arXiv has no announcements on Monday.
+  // Submissions accepted through Tuesday 14:00 ET are announced Tuesday at 20:00 ET.
+  // Hence, Tuesday morning (Oct 9..15) has NO new morning arXiv announcement batch.
+  if (month === 10) {
+    const isColumbusMonday = dayOfWeek === 1 && day >= 8 && day <= 14;
+    const isPostColumbusTuesday = dayOfWeek === 2 && day >= 9 && day <= 15;
+
+    if (isColumbusMonday) {
+      return {
+        isNonPublishing: true,
+        reason: "Columbus Day / Indigenous Peoples' Day (arXiv observes US federal holiday; no announcements)",
+        holidayName: "Columbus Day / Indigenous Peoples' Day"
+      };
+    }
+
+    if (isPostColumbusTuesday) {
+      return {
+        isNonPublishing: true,
+        reason: "Post-Columbus Day arXiv announcement hiatus (announcements deferred to Tuesday 20:00 ET; no morning arXiv batch)",
+        holidayName: "Post-Columbus Day Hiatus"
+      };
+    }
+  }
+
+  return { isNonPublishing: false };
+}
+
 export interface KeywordTaxonomyCluster {
   name: string;
   category: HepCategory;

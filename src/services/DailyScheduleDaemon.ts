@@ -25,6 +25,7 @@ import {
   buildCandidateDeck,
   buildAdaptiveArxivQueryUrl,
   formatArtReadableDate,
+  isArxivHolidayOrNonPublishing,
   StagedDailyDispatch,
   EditorialCandidate
 } from "../lib/dailyEditorialEngine";
@@ -253,6 +254,16 @@ export class DailyScheduleDaemon implements IMicroservice {
 
       const existingBlogs = this.persistenceService.readBlogs();
       const publishedToday = existingBlogs.some(isArticleForDate);
+
+      // Check if target date is an arXiv non-publishing day (weekend or federal holiday hiatus)
+      const holidayCheck = isArxivHolidayOrNonPublishing(targetDateStr);
+      if (holidayCheck.isNonPublishing) {
+        // If today has no arXiv announcements from the arXiv source, contemplate the gap and do not force an article
+        if (!publishedToday) {
+          console.log(`[${this.serviceName}] ${targetDateStr} is an arXiv non-publishing day (${holidayCheck.reason}). No article from arXiv source; skipping autonomous dispatch.`);
+          return;
+        }
+      }
 
       // If no dispatch staged for today, or previous dispatch is from a previous date,
       // or today's article has not been published yet past 5:30 AM ART:

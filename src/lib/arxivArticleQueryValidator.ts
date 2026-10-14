@@ -1,5 +1,6 @@
 import { extractArxivId, decodeHtmlEntities, generateSlug } from "./arxivUtils.js";
 import { checkArticleBlocked, BlockcheckResult } from "./arxivBlocklist.js";
+import { isArxivHolidayOrNonPublishing } from "./dailyEditorialEngine.js";
 
 export const ALLOWED_QUERY_CATEGORIES = ["quant-ph", "physics.optics"] as const;
 export type AllowedQueryCategory = (typeof ALLOWED_QUERY_CATEGORIES)[number];
@@ -98,7 +99,8 @@ export function getArxivCalendarSchedule(referenceDate?: Date | string): ArxivCa
   const queryDate = referenceDate ? new Date(referenceDate) : new Date();
   const dayOfWeek = queryDate.getUTCDay(); // 0 = Sunday, 6 = Saturday
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-  const isArxivPublishingDay = !isWeekend;
+  const holidayCheck = isArxivHolidayOrNonPublishing(queryDate);
+  const isArxivPublishingDay = !isWeekend && !holidayCheck.isNonPublishing;
 
   // Calculate latest active arXiv publishing date
   let daysBackToLatest = 0;
@@ -137,6 +139,8 @@ export function getArxivCalendarSchedule(referenceDate?: Date | string): ArxivCa
     scheduleNotice = `Sunday (${isoDateString}) is an arXiv non-publishing day. arXiv does not publish weekend mailings. The active baseline publication date is Friday ${latestPublish.toISOString().split("T")[0]}.`;
   } else if (dayOfWeek === 6) {
     scheduleNotice = `Saturday (${isoDateString}) is an arXiv non-publishing day. The active baseline publication date is Friday ${latestPublish.toISOString().split("T")[0]}.`;
+  } else if (holidayCheck.isNonPublishing) {
+    scheduleNotice = `${DAY_NAMES[dayOfWeek]} (${isoDateString}) is an arXiv non-publishing day (${holidayCheck.reason}).`;
   } else {
     scheduleNotice = `Active arXiv publishing weekday: ${DAY_NAMES[dayOfWeek]} (${isoDateString}).`;
   }
