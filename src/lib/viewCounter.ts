@@ -185,15 +185,15 @@ export function sortBlogsByPublicationDate(
   const sorted = [...blogs];
 
   const sortFn = (a: BlogPost, b: BlogPost) => {
-    const timeA = getBlogTimestamp(a);
-    const timeB = getBlogTimestamp(b);
-    if (timeA !== timeB) {
-      return direction === "desc" ? timeB - timeA : timeA - timeB;
-    }
     const dateA = parsePublicationDate(a.date)?.getTime() || 0;
     const dateB = parsePublicationDate(b.date)?.getTime() || 0;
     if (dateA !== dateB) {
       return direction === "desc" ? dateB - dateA : dateA - dateB;
+    }
+    const timeA = getBlogTimestamp(a);
+    const timeB = getBlogTimestamp(b);
+    if (timeA !== timeB) {
+      return direction === "desc" ? timeB - timeA : timeA - timeB;
     }
     const manualA = isManualGeneratedBlog(a) ? 1 : 0;
     const manualB = isManualGeneratedBlog(b) ? 1 : 0;

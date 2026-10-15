@@ -340,21 +340,11 @@ export function isArxivHolidayOrNonPublishing(dateInput?: Date | string): {
   // Hence, Tuesday morning (Oct 9..15) has NO new morning arXiv announcement batch.
   if (month === 10) {
     const isColumbusMonday = dayOfWeek === 1 && day >= 8 && day <= 14;
-    const isPostColumbusTuesday = dayOfWeek === 2 && day >= 9 && day <= 15;
-
     if (isColumbusMonday) {
       return {
         isNonPublishing: true,
         reason: "Columbus Day / Indigenous Peoples' Day (arXiv observes US federal holiday; no announcements)",
         holidayName: "Columbus Day / Indigenous Peoples' Day"
-      };
-    }
-
-    if (isPostColumbusTuesday) {
-      return {
-        isNonPublishing: true,
-        reason: "Post-Columbus Day arXiv announcement hiatus (announcements deferred to Tuesday 20:00 ET; no morning arXiv batch)",
-        holidayName: "Post-Columbus Day Hiatus"
       };
     }
   }

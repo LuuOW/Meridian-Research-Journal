@@ -370,14 +370,20 @@ export class DailyScheduleDaemon implements IMicroservice {
   ): Promise<StagedDailyDispatch> {
     const art = getArtTime();
 
-    // Defensive: do not stage if past 5:30 AM ART unless explicitly forced or in late staging recovery
-    if (art.isPast530AmArt && !forceCategory && !allowLateStaging) {
-      console.log(`[${this.serviceName}] stageTodayDispatch called after 5:30 AM ART; skipping staging to prevent immediate auto-publish.`);
-      throw new Error("Staging skipped: past 5:30 AM ART");
-    }
-
     const sourceBatch = getSourceArxivBatch(art.dayOfWeek);
     const existingBlogs = this.persistenceService.readBlogs();
+    const targetDateStr = art.isWeekend ? art.targetPublishDate : art.dateString;
+    const targetFormattedDate = formatArtReadableDate(targetDateStr);
+    const publishedToday = existingBlogs.some((b: any) => {
+      if (!b) return false;
+      return b.date === targetDateStr || b.date === targetFormattedDate || formatArtReadableDate(b.date) === targetFormattedDate;
+    });
+
+    // Defensive: do not stage if past 5:30 AM ART unless explicitly forced, in late staging recovery, or today has no published article yet
+    if (art.isPast530AmArt && !forceCategory && !allowLateStaging && publishedToday) {
+      console.log(`[${this.serviceName}] stageTodayDispatch called after 5:30 AM ART and today's article already exists; skipping redundant staging.`);
+      throw new Error("Staging skipped: past 5:30 AM ART and today's article already published");
+    }
 
     console.log(`[${this.serviceName}] Analyzing corpus (${existingBlogs.length} articles) for ${art.dayName} dispatch...`);
     const corpus = analyzeCorpusHistory(existingBlogs);
